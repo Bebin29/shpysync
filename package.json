@@ -1,0 +1,62 @@
+{
+  "name": "wawisync",
+  "version": "1.0.0",
+  "description": "Electron App zur Synchronisation von Warenbeständen zwischen POS-System und Shopify",
+  "main": "electron/main.js",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "electron:build:ts": "tsc -p electron/tsconfig.json",
+    "electron:dev": "npm run electron:build:ts && concurrently \"npm run dev\" \"wait-on http://localhost:3000 && electron .\"",
+    "electron:build": "npm run build && npm run electron:build:ts && electron-builder",
+    "lint": "next lint",
+    "type-check": "tsc --noEmit",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage"
+  },
+  "keywords": [
+    "electron",
+    "nextjs",
+    "shopify",
+    "inventory",
+    "sync"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "next": "^14.2.5",
+    "zod": "^3.23.8",
+    "react-hook-form": "^7.52.1",
+    "@hookform/resolvers": "^3.9.0",
+    "zustand": "^4.5.2",
+    "lucide-react": "^0.427.0",
+    "csv-parse": "^5.5.6",
+    "axios": "^1.7.2",
+    "electron-store": "^10.1.0",
+    "better-sqlite3": "^11.6.0",
+    "winston": "^3.14.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.10",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@types/better-sqlite3": "^7.6.11",
+    "typescript": "^5.5.3",
+    "tailwindcss": "^3.4.4",
+    "postcss": "^8.4.38",
+    "autoprefixer": "^10.4.19",
+    "eslint": "^8.57.0",
+    "eslint-config-next": "^14.2.5",
+    "prettier": "^3.3.2",
+    "electron": "^28.2.0",
+    "electron-builder": "^24.9.1",
+    "concurrently": "^8.2.2",
+    "wait-on": "^7.2.0",
+    "vitest": "^1.6.0",
+    "@vitest/coverage-v8": "^1.6.0"
+  }
+}
+
