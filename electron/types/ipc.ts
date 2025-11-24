@@ -74,6 +74,7 @@ export interface OperationResult {
 export interface AppConfig {
   shop: ShopConfig | null;
   defaultColumnMapping: ColumnMapping | null;
+  apiVersion?: string; // Shopify API-Version (z.B. "2025-10")
   autoSync: {
     enabled: boolean;
     interval?: number; // in Minuten

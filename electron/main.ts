@@ -57,9 +57,14 @@ app.on("window-all-closed", () => {
   }
 });
 
-// IPC-Handler werden später in electron/services/ipc-handlers.ts implementiert
-// Hier nur Platzhalter für die Struktur
+// IPC-Handler registrieren
+import { registerIpcHandlers } from "./services/ipc-handlers";
+
+// App-Info Handler
 ipcMain.handle("app:version", () => {
   return app.getVersion();
 });
+
+// Alle IPC-Handler registrieren
+registerIpcHandlers();
 

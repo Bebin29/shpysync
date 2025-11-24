@@ -44,3 +44,26 @@ export function columnLetterToIndex(letter: string): number {
   return result - 1;
 }
 
+/**
+ * Konvertiert Index zu Spaltenbuchstaben (0 -> A, 1 -> B, ..., 25 -> Z, 26 -> AA, ...).
+ * 
+ * @param index - 0-basierter Index
+ * @returns Spaltenbuchstabe (z.B. "A", "B", "AB")
+ */
+export function indexToColumnLetter(index: number): string {
+  if (index < 0) {
+    throw new Error("Index muss >= 0 sein");
+  }
+
+  let result = "";
+  let num = index + 1; // Excel-Stil: 1-basiert intern
+
+  while (num > 0) {
+    const remainder = (num - 1) % 26;
+    result = String.fromCharCode(65 + remainder) + result; // 65 = 'A'
+    num = Math.floor((num - 1) / 26);
+  }
+
+  return result;
+}
+

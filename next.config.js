@@ -4,6 +4,10 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  // Service Worker deaktivieren für Electron-App
+  generateBuildId: async () => {
+    return 'build-' + Date.now();
+  },
   // Electron-spezifische Konfiguration
   webpack: (config, { isServer }) => {
     if (!isServer) {

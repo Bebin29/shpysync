@@ -26,11 +26,16 @@ const electronAPI = {
     },
   },
 
-  // Config-Funktionen (werden später implementiert)
+  // Config-Funktionen
   config: {
     get: () => ipcRenderer.invoke("config:get"),
     set: (config: unknown) => ipcRenderer.invoke("config:set", config),
-    testConnection: () => ipcRenderer.invoke("config:test-connection"),
+    getShop: () => ipcRenderer.invoke("config:get-shop"),
+    setShop: (shopConfig: unknown) => ipcRenderer.invoke("config:set-shop", shopConfig),
+    getColumnMapping: () => ipcRenderer.invoke("config:get-column-mapping"),
+    setColumnMapping: (mapping: unknown) => ipcRenderer.invoke("config:set-column-mapping", mapping),
+    testConnection: (shopConfig: unknown) => ipcRenderer.invoke("config:test-connection", shopConfig),
+    getLocations: (shopConfig: unknown) => ipcRenderer.invoke("config:get-locations", shopConfig),
   },
 
   // CSV-Funktionen (werden später implementiert)
