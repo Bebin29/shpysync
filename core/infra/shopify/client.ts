@@ -13,7 +13,9 @@ import {
  * Portiert von Python `gql()` und verwandten Funktionen.
  */
 
-const API_VERSION = "2025-10"; // TODO: Bei Implementierung neueste Version prüfen
+// API-Version wird als Parameter übergeben oder aus Config geladen
+// Standard-Version für Fallback
+const DEFAULT_API_VERSION = "2025-10";
 const DEFAULT_SLEEP_MS = 200;
 const MAX_RETRIES = 5;
 const BACKOFF_FACTOR = 1.5;
@@ -21,6 +23,7 @@ const BACKOFF_FACTOR = 1.5;
 export interface ShopifyConfig {
   shopUrl: string;
   accessToken: string;
+  apiVersion?: string; // Optional: API-Version (Standard: "2025-10")
 }
 
 export interface RateLimitInfo {
@@ -28,6 +31,85 @@ export interface RateLimitInfo {
   limit: number;
   remaining: number;
   percentage: number;
+}
+
+/**
+ * Parst Rate-Limit-Header-String zu RateLimitInfo.
+ * 
+ * @param rateLimitHeader - Header-String im Format "40/40" (used/limit)
+ * @returns RateLimitInfo oder null bei ungültigem Format
+ */
+export function parseRateLimitHeader(rateLimitHeader: string | undefined): RateLimitInfo | null {
+  if (!rateLimitHeader) {
+    return null;
+  }
+
+  const parts = rateLimitHeader.split("/");
+  if (parts.length !== 2) {
+    return null;
+  }
+
+  const used = parseInt(parts[0], 10);
+  const limit = parseInt(parts[1], 10);
+
+  if (isNaN(used) || isNaN(limit) || limit === 0) {
+    return null;
+  }
+
+  return {
+    used,
+    limit,
+    remaining: limit - used,
+    percentage: (used / limit) * 100,
+  };
+}
+
+/**
+ * Ruft die letzte Rate-Limit-Info ab (von der letzten GraphQL-Anfrage).
+ * 
+ * @returns RateLimitInfo oder null
+ */
+export function getLastRateLimitInfo(): RateLimitInfo | null {
+  const header = (globalThis as any).__lastRateLimitInfo;
+  return parseRateLimitHeader(header);
+}
+
+/**
+ * Ruft die letzte Request-Cost ab (von der letzten GraphQL-Anfrage).
+ * 
+ * @returns Cost als Number oder null
+ */
+export function getLastRequestCost(): number | null {
+  const costHeader = (globalThis as any).__lastRequestCost;
+  if (!costHeader) {
+    return null;
+  }
+
+  const cost = parseFloat(costHeader);
+  if (isNaN(cost)) {
+    return null;
+  }
+
+  return cost;
+}
+
+/**
+ * Cost-Tracking-Info für Monitoring.
+ */
+export interface CostTrackingInfo {
+  lastRequestCost: number | null;
+  totalCost?: number; // Optional: Kumulierte Cost (wenn Tracking aktiviert)
+}
+
+/**
+ * Ruft Cost-Tracking-Info ab.
+ * 
+ * @returns Cost-Tracking-Info
+ */
+export function getCostTrackingInfo(): CostTrackingInfo {
+  return {
+    lastRequestCost: getLastRequestCost(),
+  };
 }
 
 export interface GraphQLResponse<T = unknown> {
@@ -62,7 +144,8 @@ async function executeGraphQL<T = unknown>(
   query: string,
   variables: Record<string, unknown> = {}
 ): Promise<T> {
-  const url = `${config.shopUrl}/admin/api/${API_VERSION}/graphql.json`;
+  const apiVersion = config.apiVersion || DEFAULT_API_VERSION;
+  const url = `${config.shopUrl}/admin/api/${apiVersion}/graphql.json`;
   const headers = {
     "X-Shopify-Access-Token": config.accessToken,
     "Content-Type": "application/json",
@@ -80,6 +163,16 @@ async function executeGraphQL<T = unknown>(
 
       const rateLimitHeader = response.headers["x-shopify-shop-api-call-limit"];
       const costHeader = response.headers["x-request-cost"];
+
+      // Rate-Limit-Info für spätere Verwendung speichern (global)
+      if (rateLimitHeader) {
+        (globalThis as any).__lastRateLimitInfo = rateLimitHeader;
+      }
+
+      // Cost-Info für spätere Verwendung speichern (global)
+      if (costHeader) {
+        (globalThis as any).__lastRequestCost = costHeader;
+      }
 
       console.debug(
         `GraphQL Response: status=${response.status} | rate=${rateLimitHeader} | cost=${costHeader}`
@@ -219,6 +312,58 @@ export async function getAllProducts(config: ShopifyConfig): Promise<Product[]> 
 
   console.log(`Gesamt Produkte geladen: ${products.length}`);
   return products;
+}
+
+/**
+ * Ruft alle Locations von Shopify ab.
+ * 
+ * @param config - Shopify-Konfiguration
+ * @returns Liste von Locations
+ */
+export async function getAllLocations(
+  config: ShopifyConfig
+): Promise<Array<{ id: string; name: string }>> {
+  const locations: Array<{ id: string; name: string }> = [];
+  let after: string | null = null;
+  let page = 0;
+
+  while (true) {
+    page++;
+    const variables: Record<string, unknown> = { first: 250 };
+    if (after) {
+      variables.after = after;
+    }
+
+    const data = await executeGraphQL<{
+      locations: {
+        pageInfo: { hasNextPage: boolean; endCursor: string | null };
+        edges: Array<{
+          node: {
+            id: string;
+            name: string;
+          };
+        }>;
+      };
+    }>(config, GQL_LOCATIONS, variables);
+
+    const connection = data.locations;
+    console.log(`[locations] Seite ${page}: edges=${connection.edges.length}`);
+
+    for (const edge of connection.edges) {
+      locations.push({
+        id: edge.node.id,
+        name: edge.node.name,
+      });
+    }
+
+    if (!connection.pageInfo.hasNextPage) {
+      break;
+    }
+
+    after = connection.pageInfo.endCursor;
+  }
+
+  return locations;
 }
 
 /**
