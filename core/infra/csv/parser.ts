@@ -2,6 +2,7 @@ import * as fs from "fs";
 import { parse } from "csv-parse/sync";
 import * as iconv from "iconv-lite";
 import type { RawCsvRow, CsvRow } from "../../domain/types";
+import { columnLetterToIndex } from "../../utils/normalization";
 
 /**
  * CSV-Parser mit robuster Encoding-Erkennung.
@@ -80,22 +81,37 @@ export function parseCsv(
     console.warn("CSV konnte nicht sauber decodiert werden – verwende utf-8 mit 'replace'.");
   }
 
-  // CSV parsen
-  const records = parse(text, {
+  // CSV parsen (zuerst ohne columns, um Header-Reihenfolge zu behalten)
+  const allRecords = parse(text, {
     delimiter,
-    columns: true, // Erste Zeile als Header
     skip_empty_lines: true,
     trim: true,
-  }) as Array<Record<string, string>>;
+  }) as string[][];
 
-  // Headers extrahieren (erste Zeile)
-  const headers = records.length > 0 ? Object.keys(records[0]) : [];
+  if (allRecords.length === 0) {
+    return {
+      rows: [],
+      headers: [],
+      encoding: usedEncoding,
+      totalRows: 0,
+    };
+  }
 
-  // Rows konvertieren
-  const rows: RawCsvRow[] = records.map((record, index) => ({
-    rowNumber: index + 2, // +2 weil: 1 = Header, 2 = erste Datenzeile
-    data: record,
-  }));
+  // Erste Zeile als Header
+  const headers = allRecords[0];
+  const dataRows = allRecords.slice(1);
+
+  // Rows konvertieren: Array zu Record (Header-Name -> Wert)
+  const rows: RawCsvRow[] = dataRows.map((rowArray, index) => {
+    const record: Record<string, string> = {};
+    for (let i = 0; i < headers.length; i++) {
+      record[headers[i]] = rowArray[i] || "";
+    }
+    return {
+      rowNumber: index + 2, // +2 weil: 1 = Header, 2 = erste Datenzeile
+      data: record,
+    };
+  });
 
   return {
     rows,
@@ -128,10 +144,18 @@ export interface ExtractedRow {
   rawData: Record<string, string>;
 }
 
+/**
+ * Extrahiert Werte aus einer CSV-Zeile basierend auf Spalten-Mapping.
+ * 
+ * @param row - CSV-Zeile
+ * @param columnMapping - Mapping von Feldnamen zu Spaltenbuchstaben (z.B. { sku: "A", name: "B" })
+ * @param headers - Array von Header-Namen (in der Reihenfolge der Spalten)
+ * @returns Extrahierte Werte oder null bei Fehler
+ */
 export function extractRowValues(
   row: RawCsvRow,
   columnMapping: ColumnMapping,
-  columnLetterToIndex: (letter: string) => number
+  headers: string[]
 ): ExtractedRow | null {
   try {
     // Konvertiere Spaltenbuchstaben zu Indizes
@@ -140,27 +164,26 @@ export function extractRowValues(
     const priceIndex = columnLetterToIndex(columnMapping.price);
     const stockIndex = columnLetterToIndex(columnMapping.stock);
 
-    // Extrahiere Werte aus rawData (wenn als Array verfügbar) oder aus data
-    // Da csv-parse mit columns:true arbeitet, haben wir ein Record
-    // Aber für Spaltenbuchstaben-Mapping brauchen wir Indizes
-    // Wir müssen die Headers verwenden, um die richtige Spalte zu finden
-    
-    // TODO: Dies muss angepasst werden, wenn wir Spaltenbuchstaben-Mapping haben
-    // Für jetzt nehmen wir an, dass die Headers die Spaltenbuchstaben sind
-    // oder wir müssen die Daten anders strukturieren
-    
-    // Temporäre Lösung: Verwende die Header-Namen direkt
-    // Später: Konvertiere Spaltenbuchstaben zu Header-Namen
-    
-    const headers = Object.keys(row.data);
-    if (headers.length <= Math.max(skuIndex, nameIndex, priceIndex, stockIndex)) {
-      return null; // Nicht genug Spalten
+    // Validiere, dass genug Spalten vorhanden sind
+    const maxIndex = Math.max(skuIndex, nameIndex, priceIndex, stockIndex);
+    if (headers.length <= maxIndex) {
+      console.warn(
+        `Zeile ${row.rowNumber}: Nicht genug Spalten (${headers.length} vorhanden, ${maxIndex + 1} benötigt)`
+      );
+      return null;
     }
 
-    const sku = (row.data[headers[skuIndex]] || "").trim();
-    const name = (row.data[headers[nameIndex]] || "").trim();
-    const price = (row.data[headers[priceIndex]] || "").trim();
-    const stock = (row.data[headers[stockIndex]] || "").trim();
+    // Hole Header-Namen an den entsprechenden Indizes
+    const skuHeader = headers[skuIndex];
+    const nameHeader = headers[nameIndex];
+    const priceHeader = headers[priceIndex];
+    const stockHeader = headers[stockIndex];
+
+    // Extrahiere Werte aus row.data (Record mit Header-Namen als Keys)
+    const sku = (row.data[skuHeader] || "").trim();
+    const name = (row.data[nameHeader] || "").trim();
+    const price = (row.data[priceHeader] || "").trim();
+    const stock = (row.data[stockHeader] || "").trim();
 
     return {
       rowNumber: row.rowNumber,
@@ -174,5 +197,46 @@ export function extractRowValues(
     console.error(`Fehler beim Extrahieren von Zeile ${row.rowNumber}:`, error);
     return null;
   }
+}
+
+/**
+ * Konvertiert extrahierte CSV-Zeilen zu CsvRow (mit validiertem Stock als Number).
+ * 
+ * @param extractedRows - Extrahierte Zeilen
+ * @returns CsvRow-Array (mit gefilterten ungültigen Zeilen)
+ */
+export function convertToCsvRows(extractedRows: ExtractedRow[]): CsvRow[] {
+  const csvRows: CsvRow[] = [];
+
+  for (const extracted of extractedRows) {
+    // Stock zu Number konvertieren
+    let stock: number;
+    try {
+      const stockStr = extracted.stock.trim();
+      if (stockStr === "") {
+        console.warn(`Zeile ${extracted.rowNumber}: leerer Bestand – übersprungen`);
+        continue;
+      }
+      stock = parseInt(stockStr, 10);
+      if (isNaN(stock)) {
+        console.warn(`Zeile ${extracted.rowNumber}: Bestand nicht numerisch ('${stockStr}') – übersprungen`);
+        continue;
+      }
+    } catch (error) {
+      console.warn(`Zeile ${extracted.rowNumber}: Fehler beim Parsen des Bestands – übersprungen: ${error}`);
+      continue;
+    }
+
+    csvRows.push({
+      rowNumber: extracted.rowNumber,
+      sku: extracted.sku,
+      name: extracted.name,
+      price: extracted.price,
+      stock,
+      rawData: extracted.rawData,
+    });
+  }
+
+  return csvRows;
 }
 

@@ -1,14 +1,43 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { AlertCircle, CheckCircle2, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useConfig } from "@/app/hooks/use-config";
 
 /**
  * Header-Komponente mit Status-Indikator.
  */
 export function Header() {
-  // TODO: Status aus Electron/State holen
-  const connectionStatus: "connected" | "disconnected" | "checking" = "checking";
+  const { shopConfig, loading } = useConfig();
+  const [connectionStatus, setConnectionStatus] = useState<
+    "connected" | "disconnected" | "checking"
+  >("checking");
+
+  // Bestimme Status basierend auf Shop-Config
+  useEffect(() => {
+    if (loading) {
+      setConnectionStatus("checking");
+      return;
+    }
+
+    if (!shopConfig) {
+      setConnectionStatus("disconnected");
+      return;
+    }
+
+    // Wenn Shop-Config vorhanden ist, prüfe ob alle erforderlichen Felder vorhanden sind
+    if (
+      shopConfig.shopUrl &&
+      shopConfig.accessToken &&
+      shopConfig.locationId &&
+      shopConfig.locationName
+    ) {
+      setConnectionStatus("connected");
+    } else {
+      setConnectionStatus("disconnected");
+    }
+  }, [shopConfig, loading]);
 
   const statusConfig = {
     connected: {
