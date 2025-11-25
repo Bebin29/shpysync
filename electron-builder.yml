@@ -11,11 +11,34 @@ directories:
   output: dist
 
 files:
+  # Next.js statischer Export
   - "out/**/*"
-  - "electron/**/*"
+  # Kompilierte Electron-Dateien (nur dist, nicht Quellen)
+  - "electron/dist/**/*"
+  # Package.json für Electron
   - "package.json"
-  - "node_modules/**/*"
+  # Nur benötigte node_modules (Runtime Dependencies)
+  - "!node_modules/**/*"
+  - "node_modules/better-sqlite3/**/*"
+  - "node_modules/electron-store/**/*"
+  - "node_modules/winston/**/*"
+  - "node_modules/axios/**/*"
+  - "node_modules/csv-parse/**/*"
+  - "node_modules/iconv-lite/**/*"
+  - "node_modules/zod/**/*"
+  # Exclude
   - "!node_modules/.cache"
+  - "!electron/**/*.ts"
+  - "!electron/**/*.tsbuildinfo"
+  - "!core/**/*.ts"
+  - "!core/**/*.tsbuildinfo"
+  - "!**/*.map"
+  - "!tests"
+  - "!scripts"
+  - "!docs"
+  - "!*.md"
+  - "!tsconfig*.json"
+  - "!vitest.config.ts"
 
 win:
   target:
@@ -43,4 +66,9 @@ linux:
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+
+# Optional: ASAR deaktivieren, falls Pfadprobleme auftreten
+# asar: false
 

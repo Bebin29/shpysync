@@ -15,8 +15,22 @@ let mainWindow: BrowserWindow | null = null;
  */
 function createWindow(): void {
   // Preload-Pfad absolut machen (Electron benötigt absolute Pfade)
-  // preload.js liegt in electron/dist/electron/electron/preload.js (doppelt verschachtelt)
-  const preloadPath = path.resolve(dirnamePath, "electron", "preload.js");
+  let preloadPath: string;
+  
+  if (app.isPackaged) {
+    // Production: Preload liegt in resources/app/electron/dist/electron/preload.js
+    // Oder in resources/app.asar/electron/dist/electron/preload.js (wenn asar aktiviert)
+    const appPath = app.getAppPath();
+    preloadPath = path.join(appPath, "electron", "dist", "electron", "preload.js");
+    
+    // Fallback: Versuche auch ohne "electron" Prefix (falls Struktur anders ist)
+    if (!existsSync(preloadPath)) {
+      preloadPath = path.join(appPath, "dist", "electron", "preload.js");
+    }
+  } else {
+    // Dev: Preload liegt in electron/dist/electron/preload.js
+    preloadPath = path.resolve(dirnamePath, "electron", "preload.js");
+  }
   
   // Debug-Logging im Dev-Modus
   if (!app.isPackaged) {
@@ -54,58 +68,11 @@ function createWindow(): void {
     });
   } else {
     // Im Production-Build: Verwende loadURL mit file:// Protokoll
-    // Damit werden relative Asset-Pfade korrekt aufgelöst
+    // Base-Tag wird bereits statisch von fix-html-base-tag.js gesetzt
     const outDir = path.join(app.getAppPath(), "out");
     const indexPath = path.join(outDir, "index.html");
     // Konvertiere Windows-Pfad zu file:// URL
     const fileUrl = `file://${indexPath.replace(/\\/g, "/")}`;
-    
-    // Setze Base-URL für Assets BEVOR die Seite geladen wird
-    const setBaseTag = (url: string) => {
-      const parsedUrl = new URL(url);
-      const urlPath = parsedUrl.pathname;
-      
-      // Finde Position von "out" im Pfad
-      const outIndex = urlPath.indexOf("/out/");
-      if (outIndex !== -1) {
-        // Extrahiere Pfad nach "out/"
-        const pathAfterOut = urlPath.substring(outIndex + 5); // +5 für "/out/"
-        // Zähle Verzeichnisse (ohne index.html)
-        const pathParts = pathAfterOut.split("/").filter(p => p && !p.endsWith(".html"));
-        const pathDepth = pathParts.length;
-        const basePath = pathDepth > 0 ? "../".repeat(pathDepth) : "./";
-        
-        // Setze <base> Tag so früh wie möglich
-        mainWindow?.webContents.executeJavaScript(`
-          (function() {
-            const base = document.querySelector('base');
-            if (base) {
-              base.href = "${basePath}";
-            } else {
-              const baseTag = document.createElement('base');
-              baseTag.href = "${basePath}";
-              if (document.head) {
-                document.head.insertBefore(baseTag, document.head.firstChild);
-              } else {
-                document.addEventListener('DOMContentLoaded', function() {
-                  document.head.insertBefore(baseTag, document.head.firstChild);
-                });
-              }
-            }
-          })();
-        `).catch((err) => {
-          console.error("[Electron] Fehler beim Setzen der Base-URL:", err);
-        });
-      }
-    };
-    
-    // Setze Base-Tag so früh wie möglich
-    mainWindow.webContents.on("dom-ready", () => {
-      if (mainWindow) {
-        const currentUrl = mainWindow.webContents.getURL();
-        setBaseTag(currentUrl);
-      }
-    });
     
     mainWindow.loadURL(fileUrl);
     
@@ -115,9 +82,6 @@ function createWindow(): void {
       
       // Nur file:// URLs verarbeiten
       if (parsedUrl.protocol === "file:") {
-        // Setze Base-Tag für die aktuelle Navigation
-        setBaseTag(navigationUrl);
-        
         // Wenn die URL auf eine Route zeigt (z.B. file:///C:/sync/), 
         // leite sie zur entsprechenden HTML-Datei um
         const urlPath = parsedUrl.pathname;
@@ -147,8 +111,6 @@ function createWindow(): void {
           if (existsSync(htmlPath) && mainWindow) {
             event.preventDefault();
             const fileUrl = `file://${htmlPath.replace(/\\/g, "/")}`;
-            // Setze Base-Tag für die neue URL
-            setBaseTag(fileUrl);
             mainWindow.loadURL(fileUrl);
           }
         }
