@@ -1,0 +1,14 @@
+SKU;Name;Preis;Bestand
+SKU-001;Test Produkt 1;12,50;10
+SKU-002;Test Produkt 2;8,99;5
+DEF456;Produkt ohne SKU;15.00;20
+ABC123;Produkt mit Barcode;20,99;15
+XYZ789;Produkt mit Tausenderpunkt;1.234,56;100
+TEST-001;Produkt mit Währung;25 €;30
+TEST-002;Produkt mit EUR;EUR 30.50;40
+EMPTY-SKU;;50.00;50
+NO-PRICE;Produkt ohne Preis;;60
+NO-STOCK;Produkt ohne Bestand;70.00;
+MULTI-WORD;Produkt mit mehreren Wörtern;80.00;70
+
+

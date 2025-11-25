@@ -87,7 +87,8 @@ export type ShopConfigSchema = z.infer<typeof shopConfigSchema>;
 export const autoSyncSchema = z.object({
 	enabled: z.boolean(),
 	interval: z.number().positive().optional(),
-	schedule: z.string().optional(),
+	csvPath: z.string().optional(),
+	schedule: z.string().optional(), // Für zukünftige Verwendung (Cron-ähnliche Syntax)
 });
 
 export type AutoSyncSchema = z.infer<typeof autoSyncSchema>;
