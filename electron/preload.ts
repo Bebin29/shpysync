@@ -8,6 +8,9 @@ import { contextBridge, ipcRenderer } from "electron";
 
 // IPC-API für den Renderer-Prozess
 const electronAPI = {
+  // Test-Funktion (für Phase 1 - IPC-Verbindungstest)
+  ping: () => ipcRenderer.invoke("ping") as Promise<string>,
+
   // App-Info
   getVersion: () => ipcRenderer.invoke("app:version"),
 

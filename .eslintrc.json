@@ -3,6 +3,17 @@
   "rules": {
     "@typescript-eslint/no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
     "@typescript-eslint/no-explicit-any": "warn"
-  }
+  },
+  "overrides": [
+    {
+      "files": ["electron/**/*.ts", "core/**/*.ts"],
+      "rules": {
+        // Electron-spezifische Regeln
+        "@typescript-eslint/no-var-requires": "off",
+        "@typescript-eslint/no-require-imports": "off",
+        "no-console": ["warn", { "allow": ["warn", "error"] }]
+      }
+    }
+  ]
 }
 

@@ -1,0 +1,108 @@
+import { z } from "zod";
+
+/**
+ * Zod-Schemas für Config-Validierung.
+ * 
+ * Stellt type-safe Validierung für ShopConfig und AppConfig bereit.
+ */
+
+/**
+ * Column-Mapping Schema.
+ */
+export const columnMappingSchema = z.object({
+	sku: z.string().min(1, "SKU-Spalte ist erforderlich"),
+	name: z.string().min(1, "Name-Spalte ist erforderlich"),
+	price: z.string().min(1, "Preis-Spalte ist erforderlich"),
+	stock: z.string().min(1, "Bestand-Spalte ist erforderlich"),
+});
+
+export type ColumnMappingSchema = z.infer<typeof columnMappingSchema>;
+
+/**
+ * Shop-Config Schema (für Persistierung mit accessTokenRef).
+ */
+export const shopConfigStoredSchema = z.object({
+	shopUrl: z
+		.string()
+		.min(1, "Shop-URL ist erforderlich")
+		.refine(
+			(url) => {
+				try {
+					let normalizedUrl = url.trim();
+					if (!normalizedUrl.startsWith("http://") && !normalizedUrl.startsWith("https://")) {
+						normalizedUrl = `https://${normalizedUrl}`;
+					}
+					const urlObj = new URL(normalizedUrl);
+					return urlObj.hostname.endsWith(".myshopify.com");
+				} catch {
+					return false;
+				}
+			},
+			{ message: "Shop-URL muss auf .myshopify.com enden" }
+		),
+	accessTokenRef: z.string().min(1, "Access-Token-Referenz ist erforderlich"),
+	locationId: z.string().min(1, "Location-ID ist erforderlich"),
+	locationName: z.string().min(1, "Location-Name ist erforderlich"),
+});
+
+export type ShopConfigStoredSchema = z.infer<typeof shopConfigStoredSchema>;
+
+/**
+ * Shop-Config Schema (für Verwendung mit accessToken).
+ * Wird verwendet, wenn Token aus dem Store geladen wurde.
+ */
+export const shopConfigSchema = z.object({
+	shopUrl: z
+		.string()
+		.min(1, "Shop-URL ist erforderlich")
+		.refine(
+			(url) => {
+				try {
+					let normalizedUrl = url.trim();
+					if (!normalizedUrl.startsWith("http://") && !normalizedUrl.startsWith("https://")) {
+						normalizedUrl = `https://${normalizedUrl}`;
+					}
+					const urlObj = new URL(normalizedUrl);
+					return urlObj.hostname.endsWith(".myshopify.com");
+				} catch {
+					return false;
+				}
+			},
+			{ message: "Shop-URL muss auf .myshopify.com enden" }
+		),
+	accessToken: z
+		.string()
+		.min(1, "Access-Token ist erforderlich")
+		.refine(
+			(token) => token.startsWith("shpat_") || token.startsWith("shpca_"),
+			{ message: "Access-Token muss mit 'shpat_' oder 'shpca_' beginnen" }
+		),
+	locationId: z.string().min(1, "Location-ID ist erforderlich"),
+	locationName: z.string().min(1, "Location-Name ist erforderlich"),
+});
+
+export type ShopConfigSchema = z.infer<typeof shopConfigSchema>;
+
+/**
+ * Auto-Sync Schema.
+ */
+export const autoSyncSchema = z.object({
+	enabled: z.boolean(),
+	interval: z.number().positive().optional(),
+	schedule: z.string().optional(),
+});
+
+export type AutoSyncSchema = z.infer<typeof autoSyncSchema>;
+
+/**
+ * App-Config Schema.
+ */
+export const appConfigSchema = z.object({
+	shop: shopConfigStoredSchema.nullable(),
+	defaultColumnMapping: columnMappingSchema.nullable(),
+	apiVersion: z.string().optional(),
+	autoSync: autoSyncSchema,
+});
+
+export type AppConfigSchema = z.infer<typeof appConfigSchema>;
+
