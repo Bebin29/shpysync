@@ -92,3 +92,13 @@ export const GQL_INVENTORY_SET = `
   }
 `;
 
+export const GQL_SHOP_ACCESS_SCOPES = `
+  query GetShopAccessScopes {
+    shop {
+      accessScopes {
+        handle
+      }
+    }
+  }
+`;
+

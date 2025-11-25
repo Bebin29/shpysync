@@ -2,6 +2,10 @@ appId: com.wawisync.app
 productName: WAWISync
 copyright: Copyright © 2025
 
+# Setze "type": "module" nur für Electron im Build-Prozess
+extraMetadata:
+  type: module
+
 directories:
   buildResources: build
   output: dist
@@ -18,6 +22,9 @@ win:
     - nsis
     - portable
   icon: build/icon.ico
+  # Code-Signing: wird automatisch aktiviert, wenn CSC_LINK Umgebungsvariable gesetzt ist
+  signingHashAlgorithms:
+    - sha256
 
 mac:
   target:

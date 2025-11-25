@@ -20,6 +20,8 @@ import {
 import { testConnection, getLocations } from "./shopify-service.js";
 import { previewCsvWithMapping, createColumnNameToLetterMap } from "./csv-service.js";
 import { getSyncEngine } from "./sync-engine.js";
+import { errorToErrorInfo } from "./error-handler.js";
+import { WawiError } from "../../core/domain/errors.js";
 
 /**
  * Registriert alle IPC-Handler für die Electron-App.
@@ -67,20 +69,32 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(
     "config:test-connection",
     async (_event, shopConfig: ShopConfig) => {
-      // Validiere zuerst die Konfiguration
-      const validation = validateShopConfig(shopConfig);
-      if (!validation.valid) {
+      try {
+        // Validiere zuerst die Konfiguration
+        const validation = validateShopConfig(shopConfig);
+        if (!validation.valid) {
+          return {
+            success: false,
+            message: `Konfiguration ungültig: ${validation.errors.join(", ")}`,
+            errorCode: "CONFIG_INVALID",
+            errorSeverity: "error" as const,
+          };
+        }
+
+        // Teste die Verbindung
+        return testConnection({
+          shopUrl: shopConfig.shopUrl,
+          accessToken: shopConfig.accessToken,
+        });
+      } catch (error) {
+        const errorInfo = errorToErrorInfo(error);
         return {
           success: false,
-          message: `Konfiguration ungültig: ${validation.errors.join(", ")}`,
+          message: errorInfo.userMessage,
+          errorCode: errorInfo.code,
+          errorSeverity: errorInfo.severity,
         };
       }
-
-      // Teste die Verbindung
-      return testConnection({
-        shopUrl: shopConfig.shopUrl,
-        accessToken: shopConfig.accessToken,
-      });
     }
   );
 
@@ -134,10 +148,13 @@ export function registerIpcHandlers(): void {
         encoding: result.encoding,
       };
     } catch (error) {
-      console.error("Fehler beim Laden der CSV-Header:", error);
+      const errorInfo = errorToErrorInfo(error);
+      console.error("Fehler beim Laden der CSV-Header:", errorInfo);
       return {
         success: false,
-        error: error instanceof Error ? error.message : "Unbekannter Fehler",
+        error: errorInfo.userMessage,
+        errorCode: errorInfo.code,
+        errorSeverity: errorInfo.severity,
         headers: [],
       };
     }
@@ -179,10 +196,13 @@ export function registerIpcHandlers(): void {
           },
         };
       } catch (error) {
-        console.error("Fehler beim CSV-Preview:", error);
+        const errorInfo = errorToErrorInfo(error);
+        console.error("Fehler beim CSV-Preview:", errorInfo);
         return {
           success: false,
-          error: error instanceof Error ? error.message : "Unbekannter Fehler",
+          error: errorInfo.userMessage,
+          errorCode: errorInfo.code,
+          errorSeverity: errorInfo.severity,
         };
       }
     }
@@ -191,9 +211,19 @@ export function registerIpcHandlers(): void {
   // Sync-Handler
   ipcMain.handle("sync:preview", async (_event, config: SyncPreviewRequest): Promise<SyncPreviewResponse> => {
     try {
-      // Validiere Konfiguration
+      // DEBUG: Log das Token vor der Validierung
+      console.log("DEBUG - Token vor Validierung:", {
+        tokenPrefix: config.shopConfig.accessToken?.substring(0, 15),
+        tokenLength: config.shopConfig.accessToken?.length,
+        tokenStartsWithShpat: config.shopConfig.accessToken?.startsWith("shpat_"),
+        tokenStartsWithShpca: config.shopConfig.accessToken?.startsWith("shpca_"),
+        shopUrl: config.shopConfig.shopUrl,
+      });
+
+      // Validiere Konfiguration (nicht-strikt für Token-Format, da API-Verbindung der beste Test ist)
       const validation = validateShopConfig(config.shopConfig);
       if (!validation.valid) {
+        console.error("DEBUG - Validierungsfehler:", validation.errors);
         return {
           success: false,
           error: `Konfiguration ungültig: ${validation.errors.join(", ")}`,
@@ -214,10 +244,13 @@ export function registerIpcHandlers(): void {
         },
       };
     } catch (error) {
-      console.error("Fehler beim Generieren der Vorschau:", error);
+      const errorInfo = errorToErrorInfo(error);
+      console.error("Fehler beim Generieren der Vorschau:", errorInfo);
       return {
         success: false,
-        error: error instanceof Error ? error.message : "Unbekannter Fehler",
+        error: errorInfo.userMessage,
+        errorCode: errorInfo.code,
+        errorSeverity: errorInfo.severity,
       };
     }
   });
@@ -249,10 +282,13 @@ export function registerIpcHandlers(): void {
         message: "Synchronisation gestartet",
       };
     } catch (error) {
-      console.error("Fehler beim Starten des Syncs:", error);
+      const errorInfo = errorToErrorInfo(error);
+      console.error("Fehler beim Starten des Syncs:", errorInfo);
       return {
         success: false,
-        error: error instanceof Error ? error.message : "Unbekannter Fehler",
+        error: errorInfo.userMessage,
+        errorCode: errorInfo.code,
+        errorSeverity: errorInfo.severity,
       };
     }
   });
@@ -266,10 +302,13 @@ export function registerIpcHandlers(): void {
         message: "Synchronisation abgebrochen",
       };
     } catch (error) {
-      console.error("Fehler beim Abbrechen des Syncs:", error);
+      const errorInfo = errorToErrorInfo(error);
+      console.error("Fehler beim Abbrechen des Syncs:", errorInfo);
       return {
         success: false,
-        error: error instanceof Error ? error.message : "Unbekannter Fehler",
+        error: errorInfo.userMessage,
+        errorCode: errorInfo.code,
+        errorSeverity: errorInfo.severity,
       };
     }
   });

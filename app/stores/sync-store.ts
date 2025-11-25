@@ -1,7 +1,7 @@
 "use client";
 
 import { create } from "zustand";
-import type { SyncResult, SyncProgress, SyncLog } from "../../electron/types/ipc";
+import type { SyncResult, SyncLog } from "../../electron/types/ipc";
 
 /**
  * Sync-Step-Typen für den Wizard-Flow.

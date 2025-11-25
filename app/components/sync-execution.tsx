@@ -5,13 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ProgressView } from "./progress-view";
 import { LogViewer } from "./log-viewer";
-import { CheckCircle2, XCircle, AlertCircle, Loader2, X, Download } from "lucide-react";
+import { CheckCircle2, XCircle, AlertCircle, X, Download } from "lucide-react";
 import type { SyncProgress, SyncResult, SyncLog } from "../../electron/types/ipc";
-import { useSyncStore } from "../stores/sync-store";
 
 interface SyncExecutionProps {
 	progress: SyncProgress;
-	logs: Array<{ level: "info" | "warn" | "error"; message: string; timestamp: string }>;
+	logs: SyncLog[];
 	result?: SyncResult;
 	isRunning: boolean;
 	onCancel: () => void;

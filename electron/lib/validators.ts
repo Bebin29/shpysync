@@ -72,11 +72,9 @@ export const shopConfigSchema = z.object({
 		),
 	accessToken: z
 		.string()
-		.min(1, "Access-Token ist erforderlich")
-		.refine(
-			(token) => token.startsWith("shpat_") || token.startsWith("shpca_"),
-			{ message: "Access-Token muss mit 'shpat_' oder 'shpca_' beginnen" }
-		),
+		.min(1, "Access-Token ist erforderlich"),
+		// Format-Prüfung entfernt - die tatsächliche API-Verbindung ist der beste Test
+		// Shopify akzeptiert möglicherweise auch andere Token-Formate, die funktionieren
 	locationId: z.string().min(1, "Location-ID ist erforderlich"),
 	locationName: z.string().min(1, "Location-Name ist erforderlich"),
 });

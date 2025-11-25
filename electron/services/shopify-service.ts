@@ -4,8 +4,11 @@ import {
   getAllLocations,
   getLocationId,
   getLastRateLimitInfo,
+  getAccessScopes,
 } from "../../core/infra/shopify/client.js";
 import type { Product } from "../../core/domain/types.js";
+import { WawiError } from "../../core/domain/errors.js";
+import { validateShopifyScopes } from "../../core/domain/validators.js";
 import { getApiVersionFromConfig } from "./api-version-manager.js";
 import { getConfig } from "./config-service.js";
 
@@ -44,7 +47,23 @@ export async function testConnection(
       apiVersion,
     };
 
-    // Versuche, Locations abzurufen (leichter als alle Produkte)
+    // Schritt 1: Scopes abrufen und validieren
+    try {
+      const availableScopes = await getAccessScopes(configWithVersion);
+      validateShopifyScopes(availableScopes);
+    } catch (scopeError) {
+      // Wenn Scope-Validierung fehlschlägt, geben wir eine spezifische Fehlermeldung zurück
+      if (scopeError instanceof WawiError) {
+        return {
+          success: false,
+          message: scopeError.getUserMessage(),
+        };
+      }
+      // Bei anderen Fehlern (z.B. Netzwerk-Fehler) weiterwerfen
+      throw scopeError;
+    }
+
+    // Schritt 2: Versuche, Locations abzurufen (leichter als alle Produkte)
     const locations = await getAllLocations(configWithVersion);
 
     // Rate-Limit-Info aus der letzten Anfrage abrufen
@@ -85,6 +104,14 @@ export async function testConnection(
       return {
         success: false,
         message: "Shop-URL nicht gefunden",
+      };
+    }
+
+    // Wenn es bereits ein WawiError ist, verwende die benutzerfreundliche Nachricht
+    if (error instanceof WawiError) {
+      return {
+        success: false,
+        message: error.getUserMessage(),
       };
     }
 
