@@ -1,11 +1,11 @@
 import { app, BrowserWindow, ipcMain } from "electron";
 import * as path from "path";
 import { fileURLToPath } from "url";
-import { dirname } from "path";
+import { existsSync } from "fs";
 
-// ES Module __dirname equivalent
-const filename = fileURLToPath(import.meta.url);
-const dirnamePath = dirname(filename);
+// ES-Module: __dirname aus import.meta.url erstellen
+const __filename = fileURLToPath(import.meta.url);
+const dirnamePath = path.dirname(__filename);
 
 // Keep a global reference of the window object
 let mainWindow: BrowserWindow | null = null;
@@ -51,7 +51,107 @@ function createWindow(): void {
       });
     });
   } else {
-    mainWindow.loadFile(path.join(dirnamePath, "../out/index.html"));
+    // Im Production-Build: Verwende loadURL mit file:// Protokoll
+    // Damit werden relative Asset-Pfade korrekt aufgelöst
+    const outDir = path.join(app.getAppPath(), "out");
+    const indexPath = path.join(outDir, "index.html");
+    // Konvertiere Windows-Pfad zu file:// URL
+    const fileUrl = `file://${indexPath.replace(/\\/g, "/")}`;
+    
+    // Setze Base-URL für Assets BEVOR die Seite geladen wird
+    const setBaseTag = (url: string) => {
+      const parsedUrl = new URL(url);
+      const urlPath = parsedUrl.pathname;
+      
+      // Finde Position von "out" im Pfad
+      const outIndex = urlPath.indexOf("/out/");
+      if (outIndex !== -1) {
+        // Extrahiere Pfad nach "out/"
+        const pathAfterOut = urlPath.substring(outIndex + 5); // +5 für "/out/"
+        // Zähle Verzeichnisse (ohne index.html)
+        const pathParts = pathAfterOut.split("/").filter(p => p && !p.endsWith(".html"));
+        const pathDepth = pathParts.length;
+        const basePath = pathDepth > 0 ? "../".repeat(pathDepth) : "./";
+        
+        // Setze <base> Tag so früh wie möglich
+        mainWindow?.webContents.executeJavaScript(`
+          (function() {
+            const base = document.querySelector('base');
+            if (base) {
+              base.href = "${basePath}";
+            } else {
+              const baseTag = document.createElement('base');
+              baseTag.href = "${basePath}";
+              if (document.head) {
+                document.head.insertBefore(baseTag, document.head.firstChild);
+              } else {
+                document.addEventListener('DOMContentLoaded', function() {
+                  document.head.insertBefore(baseTag, document.head.firstChild);
+                });
+              }
+            }
+          })();
+        `).catch((err) => {
+          console.error("[Electron] Fehler beim Setzen der Base-URL:", err);
+        });
+      }
+    };
+    
+    // Setze Base-Tag so früh wie möglich
+    mainWindow.webContents.on("dom-ready", () => {
+      if (mainWindow) {
+        const currentUrl = mainWindow.webContents.getURL();
+        setBaseTag(currentUrl);
+      }
+    });
+    
+    mainWindow.loadURL(fileUrl);
+    
+    // Navigation zu lokalen Dateien umleiten (für Next.js Router)
+    mainWindow.webContents.on("will-navigate", (event, navigationUrl) => {
+      const parsedUrl = new URL(navigationUrl);
+      
+      // Nur file:// URLs verarbeiten
+      if (parsedUrl.protocol === "file:") {
+        // Setze Base-Tag für die aktuelle Navigation
+        setBaseTag(navigationUrl);
+        
+        // Wenn die URL auf eine Route zeigt (z.B. file:///C:/sync/), 
+        // leite sie zur entsprechenden HTML-Datei um
+        const urlPath = parsedUrl.pathname;
+        
+        // Entferne führenden Slash und normalisiere
+        let routePath = urlPath.replace(/^\/+/, "").replace(/\\/g, "/");
+        
+        // Wenn es eine Route ist (nicht index.html oder eine Datei)
+        if (routePath && !routePath.includes(".") && routePath !== "index.html") {
+          // Entferne führenden Laufwerksbuchstaben (z.B. "C:/sync/" -> "sync/")
+          routePath = routePath.replace(/^[A-Z]:\//i, "");
+          
+          // Konstruiere Pfad zur HTML-Datei
+          let htmlPath: string;
+          if (routePath.endsWith("/")) {
+            htmlPath = path.join(outDir, routePath, "index.html");
+          } else {
+            htmlPath = path.join(outDir, routePath, "index.html");
+          }
+          
+          // Prüfe ob Datei existiert, sonst versuche ohne trailing slash
+          if (!existsSync(htmlPath)) {
+            htmlPath = path.join(outDir, routePath + ".html");
+          }
+          
+          // Wenn Datei existiert, lade sie
+          if (existsSync(htmlPath) && mainWindow) {
+            event.preventDefault();
+            const fileUrl = `file://${htmlPath.replace(/\\/g, "/")}`;
+            // Setze Base-Tag für die neue URL
+            setBaseTag(fileUrl);
+            mainWindow.loadURL(fileUrl);
+          }
+        }
+      }
+    });
   }
 
   mainWindow.on("closed", () => {

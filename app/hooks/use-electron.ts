@@ -11,6 +11,7 @@ import type {
 	CsvParseResult,
 	ColumnMapping,
 	PlannedOperation,
+	SyncTestRequest,
 } from "../../electron/types/ipc";
 
 /**

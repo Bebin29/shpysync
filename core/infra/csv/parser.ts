@@ -5,6 +5,7 @@ import * as iconv from "iconv-lite";
 import { Transform } from "stream";
 import type { RawCsvRow, CsvRow } from "../../domain/types.js";
 import { columnLetterToIndex } from "../../utils/normalization.js";
+import { validateCsvFile, validateCsvHeaders, validateColumnMapping } from "../../domain/validators.js";
 
 /**
  * CSV-Parser mit robuster Encoding-Erkennung.
@@ -32,6 +33,9 @@ export function parseCsv(
   filePath: string,
   delimiter: string = ";"
 ): CsvParseResult {
+  // Validiere Datei
+  validateCsvFile(filePath);
+
   // Datei als Buffer lesen
   const raw = fs.readFileSync(filePath);
 
@@ -107,6 +111,10 @@ export function parseCsv(
 
   // Erste Zeile als Header
   const headers = allRecords[0];
+  
+  // Validiere Header
+  validateCsvHeaders(headers);
+  
   const dataRows = allRecords.slice(1);
 
   // Rows konvertieren: Array zu Record (Header-Name -> Wert)
@@ -166,6 +174,16 @@ export function extractRowValues(
   headers: string[]
 ): ExtractedRow | null {
   try {
+    // Validiere Mapping (wird nur einmal pro CSV gemacht, aber hier für Sicherheit)
+    // In der Praxis sollte validateColumnMapping vor dem Parsen aufgerufen werden
+    try {
+      validateColumnMapping(columnMapping, headers);
+    } catch (error) {
+      // Wenn Mapping ungültig ist, geben wir null zurück (wird in unmatchedRows gesammelt)
+      console.warn(`Zeile ${row.rowNumber}: Mapping-Validierungsfehler:`, error);
+      return null;
+    }
+
     // Konvertiere Spaltenbuchstaben zu Indizes
     const skuIndex = columnLetterToIndex(columnMapping.sku);
     const nameIndex = columnLetterToIndex(columnMapping.name);
@@ -424,6 +442,9 @@ export async function parseCsvStream(
 	filePath: string,
 	delimiter: string = ";"
 ): Promise<CsvStreamResult> {
+	// Validiere Datei
+	validateCsvFile(filePath);
+
 	// Encoding-Erkennung
 	const encoding = detectEncoding(filePath);
 	console.log(`CSV mit Encoding '${encoding.name}' erkannt (Streaming-Modus).`);
@@ -516,6 +537,9 @@ export async function parseCsvStream(
 	}
 
 	headers = headerRecord.value as string[];
+	
+	// Validiere Header
+	validateCsvHeaders(headers);
 
 	// Generator-Funktion für Rows (nach Header)
 	let rowNumber = 2; // Start bei 2 (1 = Header)
@@ -560,6 +584,9 @@ export async function parseCsvPreview(
 	maxRows: number = 200,
 	delimiter: string = ";"
 ): Promise<CsvParseResult> {
+	// Validiere Datei
+	validateCsvFile(filePath);
+
 	const rows: RawCsvRow[] = [];
 	let headers: string[] | null = null;
 	let encoding = "utf-8";

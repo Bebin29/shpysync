@@ -9,7 +9,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { TestTube, Save, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 import { useConfig } from "@/app/hooks/use-config";
-import type { ShopConfig } from "../../electron/types/ipc";
 
 /**
  * Einstellungs-Seite für Shop-Konfiguration.
@@ -83,7 +82,8 @@ export default function SettingsPage() {
     if (shopUrl && accessToken && shopUrl.includes(".myshopify.com")) {
       handleLoadLocations();
     }
-  }, [shopUrl, accessToken]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shopUrl, accessToken]); // handleLoadLocations wird nur intern verwendet
 
   const handleTestConnection = async () => {
     if (!shopUrl || !accessToken) {

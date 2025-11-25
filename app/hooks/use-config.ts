@@ -12,29 +12,38 @@ export function useConfig() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Lade Konfiguration beim Mount
-  useEffect(() => {
-    loadConfig();
-  }, []);
-
   const loadConfig = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
-      if (typeof window !== "undefined" && window.electron) {
-        const shop = await window.electron.config.getShop();
-        const mapping = await window.electron.config.getColumnMapping();
-
-        setShopConfigState(shop);
-        setColumnMappingState(mapping);
+      // Prüfe explizit, ob wir im Browser sind und Electron verfügbar ist
+      if (typeof window === "undefined" || !window.electron) {
+        setLoading(false);
+        return;
       }
+
+      const shop = await window.electron.config.getShop();
+      const mapping = await window.electron.config.getColumnMapping();
+
+      setShopConfigState(shop);
+      setColumnMappingState(mapping);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Fehler beim Laden der Konfiguration");
     } finally {
       setLoading(false);
     }
   }, []);
+
+  // Lade Konfiguration beim Mount (nur im Browser)
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.electron) {
+      loadConfig();
+    } else {
+      setLoading(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // loadConfig ist stabil (useCallback ohne Dependencies)
 
   const saveShopConfig = useCallback(async (config: ShopConfig | null) => {
     try {

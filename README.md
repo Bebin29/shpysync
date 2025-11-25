@@ -43,9 +43,15 @@ npm run electron:dev
 # Production-Build
 npm run build
 
-# Electron-App bauen
+# Electron-App bauen (ohne Code-Signing)
 npm run electron:build
+
+# Electron-App bauen (mit Code-Signing)
+# Siehe docs/CODE_SIGNING.md für Setup-Anleitung
+npm run electron:build:prod
 ```
+
+**Hinweis:** Für Code-Signing siehe [docs/CODE_SIGNING.md](docs/CODE_SIGNING.md)
 
 ## 📁 Projektstruktur
 
