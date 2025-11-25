@@ -60,6 +60,16 @@ export function useElectron() {
 			[isAvailable]
 		),
 
+		test: useCallback(
+			async (config: SyncTestRequest): Promise<void> => {
+				if (!isAvailable) {
+					throw new Error("Electron API nicht verfügbar");
+				}
+				await window.electron.sync.test(config);
+			},
+			[isAvailable]
+		),
+
 		cancel: useCallback(async (): Promise<void> => {
 			if (!isAvailable) {
 				throw new Error("Electron API nicht verfügbar");
