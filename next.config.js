@@ -25,6 +25,9 @@ const nextConfig = {
     }
     return config;
   },
+  // Optimierungen für Production
+  productionBrowserSourceMaps: false, // Kleinere Builds
+  compress: true, // Explizit aktivieren (Standard, aber klar machen)
 };
 
 module.exports = nextConfig;
