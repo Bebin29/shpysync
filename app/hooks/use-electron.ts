@@ -7,6 +7,7 @@ import type {
 	SyncLog,
 	SyncResult,
 	CsvParseResult,
+	ColumnMapping,
 } from "../../electron/types/ipc";
 
 /**
@@ -92,6 +93,46 @@ export function useElectron() {
 					throw new Error("Electron API nicht verfügbar");
 				}
 				return window.electron.csv.parse(filePath) as Promise<CsvParseResult>;
+			},
+			[isAvailable]
+		),
+
+		selectFile: useCallback(async () => {
+			if (!isAvailable) {
+				throw new Error("Electron API nicht verfügbar");
+			}
+			return window.electron.csv.selectFile() as Promise<{
+				success: boolean;
+				filePath: string | null;
+				error?: string;
+			}>;
+		}, [isAvailable]),
+
+		getHeaders: useCallback(
+			async (filePath: string) => {
+				if (!isAvailable) {
+					throw new Error("Electron API nicht verfügbar");
+				}
+				return window.electron.csv.getHeaders(filePath) as Promise<{
+					success: boolean;
+					headers: string[];
+					encoding?: string;
+					error?: string;
+				}>;
+			},
+			[isAvailable]
+		),
+
+		preview: useCallback(
+			async (config: {
+				filePath: string;
+				mapping: ColumnMapping;
+				maxRows?: number;
+			}) => {
+				if (!isAvailable) {
+					throw new Error("Electron API nicht verfügbar");
+				}
+				return window.electron.csv.preview(config) as Promise<import("../../electron/types/ipc").CsvPreviewResponse>;
 			},
 			[isAvailable]
 		),
