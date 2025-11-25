@@ -7,8 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { TestTube, Save, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
+import { TestTube, Save, CheckCircle2, AlertCircle, Loader2, RefreshCw, Clock, Play, Square } from "lucide-react";
 import { useConfig } from "@/app/hooks/use-config";
+import { useElectron } from "@/app/hooks/use-electron";
+import { Checkbox } from "@/components/ui/checkbox";
 
 /**
  * Einstellungs-Seite für Shop-Konfiguration.
@@ -23,7 +25,15 @@ export default function SettingsPage() {
     saveColumnMapping,
     testConnection,
     getLocations,
+    autoSyncConfig,
+    autoSyncStatus,
+    saveAutoSyncConfig,
+    startAutoSync,
+    stopAutoSync,
+    testAutoSync,
   } = useConfig();
+  
+  const { csv } = useElectron();
 
   const [shopUrl, setShopUrl] = useState("");
   const [accessToken, setAccessToken] = useState("");
@@ -44,6 +54,13 @@ export default function SettingsPage() {
     };
   } | null>(null);
   const [saving, setSaving] = useState(false);
+  
+  // Auto-Sync State
+  const [autoSyncEnabled, setAutoSyncEnabled] = useState(false);
+  const [autoSyncInterval, setAutoSyncInterval] = useState<number>(30);
+  const [autoSyncCsvPath, setAutoSyncCsvPath] = useState("");
+  const [savingAutoSync, setSavingAutoSync] = useState(false);
+  const [testingAutoSync, setTestingAutoSync] = useState(false);
 
   // Lade vorhandene Konfiguration
   useEffect(() => {
@@ -54,6 +71,15 @@ export default function SettingsPage() {
       setLocationName(shopConfig.locationName);
     }
   }, [shopConfig]);
+
+  // Lade Auto-Sync-Config
+  useEffect(() => {
+    if (autoSyncConfig) {
+      setAutoSyncEnabled(autoSyncConfig.enabled || false);
+      setAutoSyncInterval(autoSyncConfig.interval || 30);
+      setAutoSyncCsvPath(autoSyncConfig.csvPath || "");
+    }
+  }, [autoSyncConfig]);
 
   // Lade Locations wenn Shop-URL und Token vorhanden
   const handleLoadLocations = async () => {
@@ -438,13 +464,239 @@ export default function SettingsPage() {
         <CardHeader>
           <CardTitle>Automatische Synchronisation</CardTitle>
           <CardDescription>
-            Konfiguriere automatische Syncs (Post-MVP Feature)
+            Konfiguriere automatische Syncs in konfigurierbaren Intervallen
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            Wird in Phase 10 (v1.1) implementiert
-          </p>
+        <CardContent className="space-y-4">
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="auto-sync-enabled"
+              checked={autoSyncEnabled}
+              onCheckedChange={(checked) => {
+                setAutoSyncEnabled(checked === true);
+              }}
+            />
+            <Label htmlFor="auto-sync-enabled" className="cursor-pointer">
+              Automatische Synchronisation aktivieren
+            </Label>
+          </div>
+
+          {autoSyncEnabled && (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="auto-sync-csv">CSV-Datei</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="auto-sync-csv"
+                    placeholder="Pfad zur CSV-Datei"
+                    value={autoSyncCsvPath}
+                    readOnly
+                    className="flex-1"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={async () => {
+                      try {
+                        const result = await csv.selectFile();
+                        if (result.success && result.filePath) {
+                          setAutoSyncCsvPath(result.filePath);
+                        }
+                      } catch (err) {
+                        console.error("Fehler beim Auswählen der CSV-Datei:", err);
+                      }
+                    }}
+                  >
+                    Datei auswählen
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Die CSV-Datei, die automatisch synchronisiert werden soll
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="auto-sync-interval">Intervall</Label>
+                <Select
+                  value={autoSyncInterval.toString()}
+                  onValueChange={(value) => setAutoSyncInterval(parseInt(value, 10))}
+                >
+                  <SelectTrigger id="auto-sync-interval">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="15">Alle 15 Minuten</SelectItem>
+                    <SelectItem value="30">Alle 30 Minuten</SelectItem>
+                    <SelectItem value="60">Alle 60 Minuten</SelectItem>
+                    <SelectItem value="120">Alle 120 Minuten</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Wie oft die Synchronisation automatisch ausgeführt werden soll
+                </p>
+              </div>
+
+              <div className="rounded-lg bg-muted p-3">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium">Status:</p>
+                    <p className="text-xs text-muted-foreground">
+                      {autoSyncStatus?.isRunning ? (
+                        <span className="flex items-center gap-1 text-green-600">
+                          <Clock className="h-3 w-3" />
+                          Läuft
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">Gestoppt</span>
+                      )}
+                    </p>
+                    {autoSyncStatus?.nextRunTime && (
+                      <p className="text-xs text-muted-foreground">
+                        Nächste Ausführung:{" "}
+                        {new Date(autoSyncStatus.nextRunTime).toLocaleString("de-DE")}
+                      </p>
+                    )}
+                    {autoSyncStatus?.lastRunTime && (
+                      <p className="text-xs text-muted-foreground">
+                        Letzte Ausführung:{" "}
+                        {new Date(autoSyncStatus.lastRunTime).toLocaleString("de-DE")}
+                        {autoSyncStatus.lastRunResult === "success" && (
+                          <span className="ml-1 text-green-600">✓</span>
+                        )}
+                        {autoSyncStatus.lastRunResult === "failed" && (
+                          <span className="ml-1 text-red-600">✗</span>
+                        )}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    {autoSyncStatus?.isRunning ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={async () => {
+                          try {
+                            await stopAutoSync();
+                          } catch (err) {
+                            console.error("Fehler beim Stoppen des Auto-Sync:", err);
+                          }
+                        }}
+                      >
+                        <Square className="mr-2 h-4 w-4" />
+                        Stoppen
+                      </Button>
+                    ) : (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={async () => {
+                          try {
+                            await startAutoSync();
+                          } catch (err) {
+                            console.error("Fehler beim Starten des Auto-Sync:", err);
+                          }
+                        }}
+                        disabled={!autoSyncCsvPath || !shopConfig}
+                      >
+                        <Play className="mr-2 h-4 w-4" />
+                        Starten
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  Auto-Sync läuft nur, solange die App geöffnet ist. Die App muss im Hintergrund
+                  laufen, damit automatische Syncs ausgeführt werden.
+                </AlertDescription>
+              </Alert>
+
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={async () => {
+                    if (!autoSyncCsvPath) {
+                      setConnectionResult({
+                        success: false,
+                        message: "Bitte CSV-Datei auswählen",
+                      });
+                      return;
+                    }
+
+                    setTestingAutoSync(true);
+                    try {
+                      await testAutoSync(autoSyncCsvPath);
+                      setConnectionResult({
+                        success: true,
+                        message: "Test-Sync erfolgreich gestartet",
+                      });
+                    } catch (err) {
+                      setConnectionResult({
+                        success: false,
+                        message: err instanceof Error ? err.message : "Fehler beim Test-Sync",
+                      });
+                    } finally {
+                      setTestingAutoSync(false);
+                    }
+                  }}
+                  disabled={testingAutoSync || !autoSyncCsvPath || !shopConfig}
+                >
+                  {testingAutoSync ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                  )}
+                  Jetzt synchronisieren (Test)
+                </Button>
+                <Button
+                  type="button"
+                  onClick={async () => {
+                    if (!autoSyncCsvPath) {
+                      setConnectionResult({
+                        success: false,
+                        message: "Bitte CSV-Datei auswählen",
+                      });
+                      return;
+                    }
+
+                    setSavingAutoSync(true);
+                    try {
+                      await saveAutoSyncConfig({
+                        enabled: autoSyncEnabled,
+                        interval: autoSyncInterval,
+                        csvPath: autoSyncCsvPath,
+                      });
+                      setConnectionResult({
+                        success: true,
+                        message: "Auto-Sync-Konfiguration gespeichert",
+                      });
+                    } catch (err) {
+                      setConnectionResult({
+                        success: false,
+                        message: err instanceof Error ? err.message : "Fehler beim Speichern",
+                      });
+                    } finally {
+                      setSavingAutoSync(false);
+                    }
+                  }}
+                  disabled={savingAutoSync || !autoSyncCsvPath || !shopConfig}
+                >
+                  {savingAutoSync ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="mr-2 h-4 w-4" />
+                  )}
+                  Speichern
+                </Button>
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
 

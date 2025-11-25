@@ -1,0 +1,79 @@
+[
+  {
+    "id": "gid://shopify/Product/1",
+    "title": "Test Produkt 1",
+    "variants": [
+      {
+        "id": "gid://shopify/ProductVariant/1",
+        "productId": "gid://shopify/Product/1",
+        "sku": "SKU-001",
+        "barcode": null,
+        "title": "Standard",
+        "price": "10.00",
+        "inventoryItemId": "gid://shopify/InventoryItem/1"
+      }
+    ]
+  },
+  {
+    "id": "gid://shopify/Product/2",
+    "title": "Test Produkt 2",
+    "variants": [
+      {
+        "id": "gid://shopify/ProductVariant/2",
+        "productId": "gid://shopify/Product/2",
+        "sku": "SKU-002",
+        "barcode": "123456789",
+        "title": "Standard",
+        "price": "8.99",
+        "inventoryItemId": "gid://shopify/InventoryItem/2"
+      }
+    ]
+  },
+  {
+    "id": "gid://shopify/Product/3",
+    "title": "Produkt ohne SKU",
+    "variants": [
+      {
+        "id": "gid://shopify/ProductVariant/3",
+        "productId": "gid://shopify/Product/3",
+        "sku": null,
+        "barcode": null,
+        "title": "Standard",
+        "price": "15.00",
+        "inventoryItemId": "gid://shopify/InventoryItem/3"
+      }
+    ]
+  },
+  {
+    "id": "gid://shopify/Product/4",
+    "title": "Produkt mit Barcode",
+    "variants": [
+      {
+        "id": "gid://shopify/ProductVariant/4",
+        "productId": "gid://shopify/Product/4",
+        "sku": "ABC123",
+        "barcode": "987654321",
+        "title": "Standard",
+        "price": "20.99",
+        "inventoryItemId": "gid://shopify/InventoryItem/4"
+      }
+    ]
+  },
+  {
+    "id": "gid://shopify/Product/5",
+    "title": "Produkt mit mehreren Wörtern",
+    "variants": [
+      {
+        "id": "gid://shopify/ProductVariant/5",
+        "productId": "gid://shopify/Product/5",
+        "sku": "MULTI-WORD",
+        "barcode": null,
+        "title": "Standard",
+        "price": "80.00",
+        "inventoryItemId": "gid://shopify/InventoryItem/5"
+      }
+    ]
+  }
+]
+
+

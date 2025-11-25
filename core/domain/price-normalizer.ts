@@ -29,13 +29,23 @@ export function normalizePrice(val: string | null | undefined): string {
   s = s.replace(/\s+/g, "").replace(/'/g, "");
 
   // Fälle:
-  //  - sowohl Komma & Punkt vorhanden -> meistens europäisch: Punkt = Tausender, Komma = Dezimal
+  //  - sowohl Komma & Punkt vorhanden -> prüfe Position: letztes Trennzeichen entscheidet
   //  - nur Komma -> Dezimal-Komma
   //  - nur Punkt -> Dezimal-Punkt
   if (s.includes(",") && s.includes(".")) {
-    // Europäisches Format: Punkt = Tausender, Komma = Dezimal
-    // Entferne Tausenderpunkte, ersetze Dezimalkomma durch Dezimalpunkt
-    s = s.replace(/\./g, "").replace(",", ".");
+    // Entscheide: europäisch oder amerikanisch?
+    // Regel: Wenn das letzte Trennzeichen ein Punkt ist -> amerikanisch (Komma = Tausender)
+    //        Wenn das letzte Trennzeichen ein Komma ist -> europäisch (Punkt = Tausender)
+    const lastComma = s.lastIndexOf(",");
+    const lastDot = s.lastIndexOf(".");
+    
+    if (lastDot > lastComma) {
+      // Amerikanisch: Komma = Tausender, Punkt = Dezimal
+      s = s.replace(/,/g, ""); // Entferne alle Kommas (Tausender-Trennzeichen)
+    } else {
+      // Europäisch: Punkt = Tausender, Komma = Dezimal
+      s = s.replace(/\./g, "").replace(",", "."); // Entferne Punkte, ersetze Komma durch Punkt
+    }
   } else if (s.includes(",") && !s.includes(".")) {
     // Nur Komma -> Dezimal-Komma
     s = s.replace(",", ".");

@@ -3,9 +3,9 @@ import * as path from "path";
 import { fileURLToPath } from "url";
 import { existsSync } from "fs";
 
-// ES-Module: __dirname aus import.meta.url erstellen
-const __filename = fileURLToPath(import.meta.url);
-const dirnamePath = path.dirname(__filename);
+// ES-Module: dirnamePath aus import.meta.url erstellen
+const filename = fileURLToPath(import.meta.url);
+const dirnamePath = path.dirname(filename);
 
 // Keep a global reference of the window object
 let mainWindow: BrowserWindow | null = null;
@@ -15,12 +15,14 @@ let mainWindow: BrowserWindow | null = null;
  */
 function createWindow(): void {
   // Preload-Pfad absolut machen (Electron benötigt absolute Pfade)
-  const preloadPath = path.resolve(dirnamePath, "preload.js");
+  // preload.js liegt in electron/dist/electron/electron/preload.js (doppelt verschachtelt)
+  const preloadPath = path.resolve(dirnamePath, "electron", "preload.js");
   
   // Debug-Logging im Dev-Modus
   if (!app.isPackaged) {
     console.log("[Electron] Preload-Pfad:", preloadPath);
     console.log("[Electron] dirnamePath:", dirnamePath);
+    console.log("[Electron] Preload existiert:", existsSync(preloadPath));
   }
   
   mainWindow = new BrowserWindow({
@@ -186,6 +188,8 @@ app.on("window-all-closed", () => {
 import { registerIpcHandlers } from "./services/ipc-handlers.js";
 import { getSyncEngine } from "./services/sync-engine.js";
 import { getLogger } from "./services/logger.js";
+import { getAutoSyncService } from "./services/auto-sync-service.js";
+import { getAutoSyncConfig } from "./services/config-service.js";
 
 // App-Info Handler
 ipcMain.handle("app:version", () => {
@@ -202,5 +206,21 @@ app.whenReady().then(() => {
   
   // MainWindow wird später in ipc-handlers.ts gesetzt, wenn sync:start aufgerufen wird
   // Logger wird automatisch initialisiert, wenn SyncEngine.setMainWindow() aufgerufen wird
+
+  // Auto-Sync initialisieren und starten wenn enabled
+  try {
+    const autoSyncConfig = getAutoSyncConfig();
+    if (autoSyncConfig.enabled && autoSyncConfig.csvPath && autoSyncConfig.interval) {
+      const autoSyncService = getAutoSyncService();
+      autoSyncService.start({
+        enabled: true,
+        interval: autoSyncConfig.interval,
+        csvPath: autoSyncConfig.csvPath,
+      });
+      logger.info("system", "Auto-Sync beim App-Start gestartet");
+    }
+  } catch (error) {
+    logger.error("system", `Fehler beim Starten des Auto-Sync: ${error instanceof Error ? error.message : String(error)}`);
+  }
 });
 
