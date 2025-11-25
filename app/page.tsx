@@ -2,14 +2,18 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, Package, TrendingUp, AlertCircle } from "lucide-react";
+import { RefreshCw, Package, TrendingUp, AlertCircle, Clock, Play, Square } from "lucide-react";
 import Link from "next/link";
 import { IpcTest } from "@/app/components/ipc-test";
+import { useConfig } from "@/app/hooks/use-config";
+import { Badge } from "@/components/ui/badge";
 
 /**
  * Dashboard-Seite mit Übersicht und Statistiken.
  */
 export default function Dashboard() {
+  const { autoSyncStatus, autoSyncConfig, startAutoSync, stopAutoSync } = useConfig();
+
   // TODO: Echte Daten aus Electron/State holen
   const stats = {
     totalProducts: 0,
@@ -95,6 +99,93 @@ export default function Dashboard() {
 
       {/* IPC-Verbindungstest (Phase 1) */}
       <IpcTest />
+
+      {/* Auto-Sync-Status */}
+      {autoSyncConfig?.enabled && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Automatische Synchronisation</CardTitle>
+            <CardDescription>
+              Status der automatischen Synchronisation
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium">Status:</span>
+                    {autoSyncStatus?.isRunning ? (
+                      <Badge variant="default" className="bg-green-600">
+                        <Clock className="mr-1 h-3 w-3" />
+                        Läuft
+                      </Badge>
+                    ) : (
+                      <Badge variant="secondary">Gestoppt</Badge>
+                    )}
+                  </div>
+                  {autoSyncStatus?.nextRunTime && (
+                    <p className="text-xs text-muted-foreground">
+                      Nächste Ausführung:{" "}
+                      {new Date(autoSyncStatus.nextRunTime).toLocaleString("de-DE")}
+                    </p>
+                  )}
+                  {autoSyncStatus?.lastRunTime && (
+                    <p className="text-xs text-muted-foreground">
+                      Letzte Ausführung:{" "}
+                      {new Date(autoSyncStatus.lastRunTime).toLocaleString("de-DE")}
+                      {autoSyncStatus.lastRunResult === "success" && (
+                        <span className="ml-1 text-green-600">✓ Erfolgreich</span>
+                      )}
+                      {autoSyncStatus.lastRunResult === "failed" && (
+                        <span className="ml-1 text-red-600">✗ Fehlgeschlagen</span>
+                      )}
+                    </p>
+                  )}
+                  {autoSyncConfig.interval && (
+                    <p className="text-xs text-muted-foreground">
+                      Intervall: Alle {autoSyncConfig.interval} Minuten
+                    </p>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  {autoSyncStatus?.isRunning ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={async () => {
+                        try {
+                          await stopAutoSync();
+                        } catch (err) {
+                          console.error("Fehler beim Stoppen des Auto-Sync:", err);
+                        }
+                      }}
+                    >
+                      <Square className="mr-2 h-4 w-4" />
+                      Stoppen
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={async () => {
+                        try {
+                          await startAutoSync();
+                        } catch (err) {
+                          console.error("Fehler beim Starten des Auto-Sync:", err);
+                        }
+                      }}
+                    >
+                      <Play className="mr-2 h-4 w-4" />
+                      Starten
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Letzte Synchronisationen */}
       <Card>

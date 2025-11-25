@@ -273,6 +273,50 @@ export function validateAccessToken(token: string): boolean {
 }
 
 /**
+ * Lädt die Auto-Sync-Konfiguration.
+ * 
+ * @returns Auto-Sync-Konfiguration
+ */
+export function getAutoSyncConfig(): AppConfig["autoSync"] {
+	const config = getConfig();
+	return config.autoSync;
+}
+
+/**
+ * Speichert die Auto-Sync-Konfiguration.
+ * Validiert CSV-Pfad falls vorhanden.
+ * 
+ * @param autoSyncConfig - Auto-Sync-Konfiguration
+ * @throws Error wenn CSV-Pfad ungültig ist
+ */
+export function setAutoSyncConfig(autoSyncConfig: AppConfig["autoSync"]): void {
+	// Validierung: CSV-Pfad muss existieren wenn enabled
+	if (autoSyncConfig.enabled) {
+		if (!autoSyncConfig.csvPath) {
+			throw new Error("CSV-Pfad ist erforderlich wenn Auto-Sync aktiviert ist");
+		}
+
+		if (!autoSyncConfig.interval || autoSyncConfig.interval <= 0) {
+			throw new Error("Intervall muss größer als 0 sein");
+		}
+
+		// Prüfe ob CSV-Datei existiert
+		const { existsSync } = require("fs");
+		if (!existsSync(autoSyncConfig.csvPath)) {
+			throw new Error(`CSV-Datei nicht gefunden: ${autoSyncConfig.csvPath}`);
+		}
+	}
+
+	// Speichere Config
+	const currentConfig = getConfig();
+	const updatedConfig: AppConfig = {
+		...currentConfig,
+		autoSync: autoSyncConfig,
+	};
+	setConfig(updatedConfig);
+}
+
+/**
  * Validiert eine Shop-Konfiguration (mit Zod).
  * 
  * @param config - Shop-Konfiguration zum Validieren

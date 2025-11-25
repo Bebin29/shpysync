@@ -1,0 +1,51 @@
+{
+  "priceNormalization": {
+    "6,5": "6.50",
+    "6.5": "6.50",
+    "1.234,56": "1234.56",
+    "1,234.56": "1234.56",
+    "12 €": "12.00",
+    "EUR 12.50": "12.50",
+    "  12,50 EUR  ": "12.50",
+    "0,01": "0.01",
+    "999999.99": "999999.99",
+    "1.000.000,00": "1000000.00"
+  },
+  "matching": [
+    {
+      "csvRow": {
+        "sku": "SKU-001",
+        "name": "Test Produkt 1"
+      },
+      "expectedMatch": {
+        "variantId": "gid://shopify/ProductVariant/1",
+        "method": "sku",
+        "confidence": "exact"
+      }
+    },
+    {
+      "csvRow": {
+        "sku": "",
+        "name": "Produkt ohne SKU"
+      },
+      "expectedMatch": {
+        "variantId": "gid://shopify/ProductVariant/3",
+        "method": "name",
+        "confidence": "exact"
+      }
+    },
+    {
+      "csvRow": {
+        "sku": "",
+        "name": "987654321"
+      },
+      "expectedMatch": {
+        "variantId": "gid://shopify/ProductVariant/4",
+        "method": "barcode",
+        "confidence": "exact"
+      }
+    }
+  ]
+}
+
+

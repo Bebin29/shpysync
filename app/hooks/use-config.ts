@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import type { ShopConfig, ColumnMapping } from "../../electron/types/ipc";
+import type { ShopConfig, ColumnMapping, AppConfig } from "../../electron/types/ipc";
+import type { AutoSyncStatus } from "../../electron/services/auto-sync-service";
 
 /**
  * Hook für Konfigurations-Management.
@@ -99,6 +100,120 @@ export function useConfig() {
     }
   }, []);
 
+  // Auto-Sync-State
+  const [autoSyncConfig, setAutoSyncConfigState] = useState<AppConfig["autoSync"] | null>(null);
+  const [autoSyncStatus, setAutoSyncStatusState] = useState<AutoSyncStatus | null>(null);
+  const [autoSyncLoading, setAutoSyncLoading] = useState(false);
+
+  // Lade Auto-Sync-Config
+  const loadAutoSyncConfig = useCallback(async () => {
+    try {
+      setAutoSyncLoading(true);
+      setError(null);
+
+      if (typeof window === "undefined" || !window.electron) {
+        setAutoSyncLoading(false);
+        return;
+      }
+
+      const config = await window.electron.autoSync.getConfig();
+      setAutoSyncConfigState(config);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Fehler beim Laden der Auto-Sync-Config");
+    } finally {
+      setAutoSyncLoading(false);
+    }
+  }, []);
+
+  // Lade Auto-Sync-Status
+  const loadAutoSyncStatus = useCallback(async () => {
+    try {
+      if (typeof window === "undefined" || !window.electron) {
+        return;
+      }
+
+      const status = await window.electron.autoSync.getStatus();
+      setAutoSyncStatusState(status);
+    } catch (err) {
+      console.error("Fehler beim Laden des Auto-Sync-Status:", err);
+    }
+  }, []);
+
+  // Lade Auto-Sync-Daten beim Mount
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.electron) {
+      loadAutoSyncConfig();
+      loadAutoSyncStatus();
+      
+      // Aktualisiere Status regelmäßig (alle 5 Sekunden)
+      const interval = setInterval(() => {
+        loadAutoSyncStatus();
+      }, 5000);
+
+      return () => clearInterval(interval);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Speichere Auto-Sync-Config
+  const saveAutoSyncConfig = useCallback(async (config: AppConfig["autoSync"]) => {
+    try {
+      setError(null);
+      if (typeof window !== "undefined" && window.electron) {
+        await window.electron.autoSync.setConfig(config);
+        setAutoSyncConfigState(config);
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Fehler beim Speichern der Auto-Sync-Config";
+      setError(message);
+      throw err;
+    }
+  }, []);
+
+  // Starte Auto-Sync
+  const startAutoSync = useCallback(async () => {
+    try {
+      setError(null);
+      if (typeof window !== "undefined" && window.electron) {
+        await window.electron.autoSync.start();
+        await loadAutoSyncStatus();
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Fehler beim Starten des Auto-Sync";
+      setError(message);
+      throw err;
+    }
+  }, [loadAutoSyncStatus]);
+
+  // Stoppe Auto-Sync
+  const stopAutoSync = useCallback(async () => {
+    try {
+      setError(null);
+      if (typeof window !== "undefined" && window.electron) {
+        await window.electron.autoSync.stop();
+        await loadAutoSyncStatus();
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Fehler beim Stoppen des Auto-Sync";
+      setError(message);
+      throw err;
+    }
+  }, [loadAutoSyncStatus]);
+
+  // Test-Sync
+  const testAutoSync = useCallback(async (csvPath: string) => {
+    try {
+      setError(null);
+      if (typeof window !== "undefined" && window.electron) {
+        await window.electron.autoSync.testSync(csvPath);
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Fehler beim Test-Sync";
+      setError(message);
+      throw err;
+    }
+  }, []);
+
   return {
     shopConfig,
     columnMapping,
@@ -109,6 +224,16 @@ export function useConfig() {
     saveColumnMapping,
     testConnection,
     getLocations,
+    // Auto-Sync
+    autoSyncConfig,
+    autoSyncStatus,
+    autoSyncLoading,
+    loadAutoSyncConfig,
+    loadAutoSyncStatus,
+    saveAutoSyncConfig,
+    startAutoSync,
+    stopAutoSync,
+    testAutoSync,
   };
 }
 

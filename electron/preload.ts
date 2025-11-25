@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from "electron";
-import type { SyncProgress, SyncLog, SyncResult, PlannedOperation, SyncStartConfig, SyncPreviewRequest, SyncPreviewResponse, SyncTestRequest } from "./types/ipc.js";
+import type { SyncProgress, SyncLog, SyncResult, PlannedOperation, SyncStartConfig, SyncPreviewRequest, SyncPreviewResponse, SyncTestRequest, AppConfig } from "./types/ipc.js";
+import type { AutoSyncStatus } from "./services/auto-sync-service.js";
 
 /**
  * Preload Script für sichere IPC-Kommunikation zwischen Renderer und Main Process.
@@ -60,6 +61,16 @@ const electronAPI = {
 			mapping: unknown;
 			maxRows?: number;
 		}) => ipcRenderer.invoke("csv:preview", config),
+	},
+
+	// Auto-Sync-Funktionen
+	autoSync: {
+		getStatus: () => ipcRenderer.invoke("autoSync:getStatus") as Promise<AutoSyncStatus>,
+		start: () => ipcRenderer.invoke("autoSync:start") as Promise<{ success: boolean; error?: string }>,
+		stop: () => ipcRenderer.invoke("autoSync:stop") as Promise<{ success: boolean; error?: string }>,
+		getConfig: () => ipcRenderer.invoke("autoSync:getConfig") as Promise<AppConfig["autoSync"]>,
+		setConfig: (config: AppConfig["autoSync"]) => ipcRenderer.invoke("autoSync:setConfig", config) as Promise<{ success: boolean; error?: string }>,
+		testSync: (csvPath: string) => ipcRenderer.invoke("autoSync:testSync", csvPath) as Promise<{ success: boolean; error?: string }>,
 	},
 };
 

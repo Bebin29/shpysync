@@ -153,8 +153,9 @@ export interface AppConfig {
 	apiVersion?: string; // Shopify API-Version (z.B. "2025-10")
 	autoSync: {
 		enabled: boolean;
-		interval?: number; // in Minuten
-		schedule?: string; // Cron-ähnliche Syntax
+		interval?: number; // in Minuten (15, 30, 60, 120)
+		csvPath?: string; // Pfad zur CSV-Datei
+		schedule?: string; // Cron-ähnliche Syntax (für zukünftige Verwendung)
 	};
 }
 

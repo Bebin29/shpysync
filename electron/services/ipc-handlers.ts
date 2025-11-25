@@ -16,12 +16,15 @@ import {
   getDefaultColumnMapping,
   setDefaultColumnMapping,
   validateShopConfig,
+  getAutoSyncConfig,
+  setAutoSyncConfig,
 } from "./config-service.js";
 import { testConnection, getLocations } from "./shopify-service.js";
 import { previewCsvWithMapping, createColumnNameToLetterMap } from "./csv-service.js";
 import { getSyncEngine } from "./sync-engine.js";
 import { errorToErrorInfo } from "./error-handler.js";
 import { WawiError } from "../../core/domain/errors.js";
+import { getAutoSyncService, type AutoSyncConfig, type AutoSyncStatus } from "./auto-sync-service.js";
 
 /**
  * Registriert alle IPC-Handler für die Electron-App.
@@ -347,5 +350,112 @@ export function registerIpcHandlers(): void {
       };
     }
   });
+
+  // Auto-Sync-Handler
+  ipcMain.handle("autoSync:getStatus", async (): Promise<AutoSyncStatus> => {
+    const autoSyncService = getAutoSyncService();
+    return autoSyncService.getStatus();
+  });
+
+  ipcMain.handle("autoSync:start", async (): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const autoSyncConfig = getAutoSyncConfig();
+      
+      if (!autoSyncConfig.enabled) {
+        return {
+          success: false,
+          error: "Auto-Sync ist nicht aktiviert",
+        };
+      }
+
+      if (!autoSyncConfig.csvPath) {
+        return {
+          success: false,
+          error: "CSV-Pfad ist nicht konfiguriert",
+        };
+      }
+
+      if (!autoSyncConfig.interval || autoSyncConfig.interval <= 0) {
+        return {
+          success: false,
+          error: "Intervall ist nicht konfiguriert",
+        };
+      }
+
+      const autoSyncService = getAutoSyncService();
+      autoSyncService.start({
+        enabled: true,
+        interval: autoSyncConfig.interval,
+        csvPath: autoSyncConfig.csvPath,
+      });
+
+      return {
+        success: true,
+      };
+    } catch (error) {
+      const errorInfo = errorToErrorInfo(error);
+      return {
+        success: false,
+        error: errorInfo.userMessage,
+      };
+    }
+  });
+
+  ipcMain.handle("autoSync:stop", async (): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const autoSyncService = getAutoSyncService();
+      autoSyncService.stop();
+      return {
+        success: true,
+      };
+    } catch (error) {
+      const errorInfo = errorToErrorInfo(error);
+      return {
+        success: false,
+        error: errorInfo.userMessage,
+      };
+    }
+  });
+
+  ipcMain.handle("autoSync:getConfig", async (): Promise<AppConfig["autoSync"]> => {
+    return getAutoSyncConfig();
+  });
+
+  ipcMain.handle(
+    "autoSync:setConfig",
+    async (_event, config: AppConfig["autoSync"]): Promise<{ success: boolean; error?: string }> => {
+      try {
+        setAutoSyncConfig(config);
+        return {
+          success: true,
+        };
+      } catch (error) {
+        const errorInfo = errorToErrorInfo(error);
+        return {
+          success: false,
+          error: errorInfo.userMessage,
+        };
+      }
+    }
+  );
+
+  ipcMain.handle(
+    "autoSync:testSync",
+    async (_event, csvPath: string): Promise<{ success: boolean; error?: string }> => {
+      try {
+        const autoSyncService = getAutoSyncService();
+        await autoSyncService.executeTestSync(csvPath);
+        return {
+          success: true,
+        };
+      } catch (error) {
+        const errorInfo = errorToErrorInfo(error);
+        return {
+          success: false,
+          error: errorInfo.userMessage,
+        };
+      }
+    }
+  );
 }
 

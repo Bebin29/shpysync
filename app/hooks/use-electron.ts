@@ -12,7 +12,9 @@ import type {
 	ColumnMapping,
 	PlannedOperation,
 	SyncTestRequest,
+	AppConfig,
 } from "../../electron/types/ipc";
+import type { AutoSyncStatus } from "../../electron/services/auto-sync-service";
 
 /**
  * Typsichere Wrapper für Electron IPC-Aufrufe.
@@ -172,12 +174,76 @@ export function useElectron() {
 		),
 	};
 
+	// Auto-Sync-Funktionen
+	const autoSync = {
+		getStatus: useCallback(async (): Promise<AutoSyncStatus> => {
+			if (!isAvailable) {
+				throw new Error("Electron API nicht verfügbar");
+			}
+			return window.electron.autoSync.getStatus();
+		}, [isAvailable]),
+
+		start: useCallback(async (): Promise<void> => {
+			if (!isAvailable) {
+				throw new Error("Electron API nicht verfügbar");
+			}
+			const result = await window.electron.autoSync.start();
+			if (!result.success) {
+				throw new Error(result.error || "Fehler beim Starten des Auto-Sync");
+			}
+		}, [isAvailable]),
+
+		stop: useCallback(async (): Promise<void> => {
+			if (!isAvailable) {
+				throw new Error("Electron API nicht verfügbar");
+			}
+			const result = await window.electron.autoSync.stop();
+			if (!result.success) {
+				throw new Error(result.error || "Fehler beim Stoppen des Auto-Sync");
+			}
+		}, [isAvailable]),
+
+		getConfig: useCallback(async (): Promise<AppConfig["autoSync"]> => {
+			if (!isAvailable) {
+				throw new Error("Electron API nicht verfügbar");
+			}
+			return window.electron.autoSync.getConfig();
+		}, [isAvailable]),
+
+		setConfig: useCallback(
+			async (config: AppConfig["autoSync"]): Promise<void> => {
+				if (!isAvailable) {
+					throw new Error("Electron API nicht verfügbar");
+				}
+				const result = await window.electron.autoSync.setConfig(config);
+				if (!result.success) {
+					throw new Error(result.error || "Fehler beim Speichern der Auto-Sync-Config");
+				}
+			},
+			[isAvailable]
+		),
+
+		testSync: useCallback(
+			async (csvPath: string): Promise<void> => {
+				if (!isAvailable) {
+					throw new Error("Electron API nicht verfügbar");
+				}
+				const result = await window.electron.autoSync.testSync(csvPath);
+				if (!result.success) {
+					throw new Error(result.error || "Fehler beim Test-Sync");
+				}
+			},
+			[isAvailable]
+		),
+	};
+
 	return {
 		isAvailable,
 		getVersion,
 		ping,
 		sync,
 		csv,
+		autoSync,
 	};
 }
 
