@@ -1,5 +1,6 @@
 import * as fs from "fs";
 import { parse } from "csv-parse/sync";
+import { parse as parseStream } from "csv-parse";
 import * as iconv from "iconv-lite";
 import type { RawCsvRow, CsvRow } from "../../domain/types";
 import { columnLetterToIndex } from "../../utils/normalization";
@@ -238,5 +239,214 @@ export function convertToCsvRows(extractedRows: ExtractedRow[]): CsvRow[] {
   }
 
   return csvRows;
+}
+
+/**
+ * Erkennt das Encoding einer CSV-Datei anhand der ersten Bytes.
+ * 
+ * @param filePath - Pfad zur CSV-Datei
+ * @returns Encoding-Name und Decode-Funktion
+ */
+function detectEncoding(filePath: string): {
+	name: string;
+	decode: (buf: Buffer) => string;
+} {
+	// Lese erste 1KB für Encoding-Erkennung
+	const fd = fs.openSync(filePath, "r");
+	const buffer = Buffer.alloc(1024);
+	fs.readSync(fd, buffer, 0, 1024, 0);
+	fs.closeSync(fd);
+
+	const encodings: Array<{ name: string; decode: (buf: Buffer) => string }> = [
+		{
+			name: "utf-8-sig",
+			decode: (buf) => {
+				if (buf.length >= 3 && buf[0] === 0xef && buf[1] === 0xbb && buf[2] === 0xbf) {
+					return buf.slice(3).toString("utf-8");
+				}
+				return buf.toString("utf-8");
+			},
+		},
+		{
+			name: "utf-8",
+			decode: (buf) => buf.toString("utf-8"),
+		},
+		{
+			name: "cp1252",
+			decode: (buf) => iconv.decode(buf, "win1252"),
+		},
+		{
+			name: "latin1",
+			decode: (buf) => iconv.decode(buf, "latin1"),
+		},
+	];
+
+	for (const encoding of encodings) {
+		try {
+			encoding.decode(buffer);
+			return encoding;
+		} catch {
+			continue;
+		}
+	}
+
+	// Fallback: UTF-8
+	return encodings[1]; // utf-8
+}
+
+/**
+ * Ergebnis-Typ für Streaming-Parser.
+ */
+export interface CsvStreamResult {
+	headers: string[];
+	encoding: string;
+	rows: AsyncGenerator<RawCsvRow, void, unknown>;
+}
+
+/**
+ * Parst CSV-Datei im Streaming-Modus (für große Dateien).
+ * 
+ * Gibt ein Objekt mit Headers, Encoding und einem AsyncIterator für Rows zurück.
+ * 
+ * @param filePath - Pfad zur CSV-Datei
+ * @param delimiter - Trennzeichen (Standard: ';')
+ * @returns Headers, Encoding und AsyncIterator für Rows
+ */
+export async function parseCsvStream(
+	filePath: string,
+	delimiter: string = ";"
+): Promise<CsvStreamResult> {
+	// Encoding-Erkennung
+	const encoding = detectEncoding(filePath);
+	console.log(`CSV mit Encoding '${encoding.name}' erkannt (Streaming-Modus).`);
+
+	// Datei-Stream erstellen
+	const fileStream = fs.createReadStream(filePath);
+
+	// CSV-Parser-Stream erstellen
+	const parser = parseStream({
+		delimiter,
+		skip_empty_lines: true,
+		trim: true,
+	});
+
+	// Encoding-Decoder-Stream (falls nicht UTF-8)
+	let decodedStream: NodeJS.ReadableStream = fileStream;
+	if (encoding.name === "cp1252") {
+		decodedStream = fileStream.pipe(iconv.decodeStream("win1252"));
+	} else if (encoding.name === "latin1") {
+		decodedStream = fileStream.pipe(iconv.decodeStream("latin1"));
+	} else if (encoding.name === "utf-8-sig") {
+		// UTF-8-SIG: Erste 3 Bytes (BOM) entfernen
+		let bomRemoved = false;
+		const removeBom = new (class extends require("stream").Transform {
+			_transform(chunk: Buffer, _encoding: string, callback: () => void) {
+				if (!bomRemoved && chunk.length >= 3) {
+					if (chunk[0] === 0xef && chunk[1] === 0xbb && chunk[2] === 0xbf) {
+						this.push(chunk.slice(3));
+						bomRemoved = true;
+					} else {
+						this.push(chunk);
+						bomRemoved = true;
+					}
+				} else {
+					this.push(chunk);
+				}
+				callback();
+			}
+		})();
+		decodedStream = fileStream.pipe(removeBom);
+	}
+
+	// Streams verbinden
+	decodedStream.pipe(parser);
+
+	// Warte auf Header (erste Zeile)
+	let headers: string[] | null = null;
+	const headerIterator = parser[Symbol.asyncIterator]();
+	const headerRecord = await headerIterator.next();
+
+	if (headerRecord.done || !headerRecord.value) {
+		return {
+			headers: [],
+			encoding: encoding.name,
+			rows: (async function* () {})(), // Leerer Generator
+		};
+	}
+
+	headers = headerRecord.value as string[];
+
+	// Generator-Funktion für Rows (nach Header)
+	let rowNumber = 2; // Start bei 2 (1 = Header)
+	async function* rowGenerator(): AsyncGenerator<RawCsvRow, void, unknown> {
+		for await (const record of parser) {
+			const rowArray = record as string[];
+
+			// Datenzeile: Konvertiere zu RawCsvRow
+			const rowData: Record<string, string> = {};
+			for (let i = 0; i < headers!.length; i++) {
+				rowData[headers![i]] = rowArray[i] || "";
+			}
+
+			yield {
+				rowNumber,
+				data: rowData,
+			};
+
+			rowNumber++;
+		}
+	}
+
+	return {
+		headers,
+		encoding: encoding.name,
+		rows: rowGenerator(),
+	};
+}
+
+/**
+ * Parst CSV-Datei im Preview-Modus (nur erste N Zeilen).
+ * 
+ * Optimiert für UI-Vorschau, lädt nicht die gesamte Datei.
+ * 
+ * @param filePath - Pfad zur CSV-Datei
+ * @param maxRows - Maximale Anzahl von Datenzeilen (Standard: 200)
+ * @param delimiter - Trennzeichen (Standard: ';')
+ * @returns Parse-Ergebnis mit ersten N Zeilen
+ */
+export async function parseCsvPreview(
+	filePath: string,
+	maxRows: number = 200,
+	delimiter: string = ";"
+): Promise<CsvParseResult> {
+	const rows: RawCsvRow[] = [];
+	let headers: string[] | null = null;
+	let encoding = "utf-8";
+	let rowCount = 0;
+
+	// Encoding-Erkennung
+	const detectedEncoding = detectEncoding(filePath);
+	encoding = detectedEncoding.name;
+
+	// Streaming-Parser verwenden, aber nur maxRows Zeilen lesen
+	const streamResult = await parseCsvStream(filePath, delimiter);
+	headers = streamResult.headers;
+	encoding = streamResult.encoding;
+
+	for await (const row of streamResult.rows) {
+		rows.push(row);
+		rowCount++;
+
+		if (rowCount >= maxRows) {
+			break;
+		}
+	}
+
+	return {
+		rows,
+		headers: headers || [],
+		encoding,
+		totalRows: rowCount, // Nur die Anzahl der geladenen Zeilen
+	};
 }
 

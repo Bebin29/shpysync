@@ -21,11 +21,26 @@ export interface ColumnMapping {
   stock: string;
 }
 
+/**
+ * Shop-Config für Verwendung (mit Access-Token).
+ * Wird verwendet, wenn Token aus dem Store geladen wurde.
+ */
 export interface ShopConfig {
-  shopUrl: string;
-  accessToken: string;
-  locationId: string;
-  locationName: string;
+	shopUrl: string;
+	accessToken: string; // Token wird aus Token-Store geladen
+	locationId: string;
+	locationName: string;
+}
+
+/**
+ * Shop-Config für Persistierung (mit Token-Referenz).
+ * Wird in der Config gespeichert, Token selbst ist im Token-Store.
+ */
+export interface ShopConfigStored {
+	shopUrl: string;
+	accessTokenRef: string; // Referenz auf Token im Token-Store
+	locationId: string;
+	locationName: string;
 }
 
 export interface SyncProgress {
@@ -72,14 +87,14 @@ export interface OperationResult {
 
 // Config-Types
 export interface AppConfig {
-  shop: ShopConfig | null;
-  defaultColumnMapping: ColumnMapping | null;
-  apiVersion?: string; // Shopify API-Version (z.B. "2025-10")
-  autoSync: {
-    enabled: boolean;
-    interval?: number; // in Minuten
-    schedule?: string; // Cron-ähnliche Syntax
-  };
+	shop: ShopConfigStored | null; // Gespeicherte Config mit accessTokenRef
+	defaultColumnMapping: ColumnMapping | null;
+	apiVersion?: string; // Shopify API-Version (z.B. "2025-10")
+	autoSync: {
+		enabled: boolean;
+		interval?: number; // in Minuten
+		schedule?: string; // Cron-ähnliche Syntax
+	};
 }
 
 // CSV-Types

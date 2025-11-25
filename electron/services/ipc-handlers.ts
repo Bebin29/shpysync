@@ -19,6 +19,11 @@ import { testConnection, getLocations } from "./shopify-service";
  * Registriert alle IPC-Handler für die Electron-App.
  */
 export function registerIpcHandlers(): void {
+  // Test-Handler (für Phase 1 - IPC-Verbindungstest)
+  ipcMain.handle("ping", async (): Promise<string> => {
+    return "pong";
+  });
+
   // Config-Handler
   ipcMain.handle("config:get", async (): Promise<AppConfig> => {
     return getConfig();

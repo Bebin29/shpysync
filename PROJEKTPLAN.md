@@ -274,9 +274,12 @@
 ### Struktur
 
 ```
-core/
+electron/core/
 ├── domain/
 │   ├── types.ts              # Domain-Types (Product, Variant, CsvRow, etc.)
+│   ├── config.ts             # Config-Types (ShopConfig, AppConfig)
+│   ├── sync-types.ts         # Sync-Operation-Types (PlannedOperation, etc.)
+│   ├── errors.ts             # Error-Types (WawiError)
 │   ├── matching.ts           # Matching-Logik (SKU, Name, Barcode)
 │   ├── price-normalizer.ts   # Preis-Normalisierung
 │   ├── inventory-coalescing.ts # Inventory-Duplikat-Koaleszierung
@@ -362,21 +365,21 @@ export interface MatchResult {
 ### Core-Domain-Funktionen
 
 ```typescript
-// core/domain/matching.ts
+// electron/core/domain/matching.ts
 export function findVariantId(
   csvRow: CsvRow,
   products: Product[]
 ): MatchResult;
 
-// core/domain/price-normalizer.ts
+// electron/core/domain/price-normalizer.ts
 export function normalizePrice(price: string): string;
 
-// core/domain/inventory-coalescing.ts
+// electron/core/domain/inventory-coalescing.ts
 export function coalesceInventoryUpdates(
   updates: Array<{ inventoryItemId: string; quantity: number }>
 ): Array<{ inventoryItemId: string; quantity: number }>;
 
-// core/domain/sync-pipeline.ts
+// electron/core/domain/sync-pipeline.ts
 export function processCsvToUpdates(
   csvRows: CsvRow[],
   products: Product[],
@@ -547,33 +550,36 @@ wawisync-app/
 │       └── ci.yml
 ├── .vscode/
 │   └── settings.json
+├── electron/                    # Electron App Layer
+│   ├── main.ts                  # Electron Main Process
+│   ├── preload.ts               # Preload Script (getypte IPC)
+│   ├── services/
+│   │   ├── ipc-handlers.ts      # IPC-Handler
+│   │   ├── shopify-service.ts   # Shopify Service (Wrapper für testConnection, getLocations)
+│   │   ├── shopify-product-service.ts # Shopify Domain-Service (Products)
+│   │   ├── shopify-inventory-service.ts # Shopify Domain-Service (Inventory)
+│   │   ├── api-version-manager.ts # API-Version-Verwaltung
+│   │   ├── config-service.ts    # Config-Management (electron-store)
+│   │   ├── sync-engine.ts       # Sync Service (nutzt core/domain) - wird später implementiert
+│   │   ├── cache-service.ts     # Cache-Management (SQLite) - wird später implementiert
+│   │   └── logger.ts            # Logging-Service - wird später implementiert
+│   └── types/
+│       └── ipc.ts                # IPC-Type-Definitionen
 ├── core/                        # Core Domain Layer (pure Business Logic)
 │   ├── domain/
-│   │   ├── types.ts             # Domain-Types
+│   │   ├── types.ts             # Domain-Types (Product, Variant, CsvRow, etc.)
 │   │   ├── matching.ts          # Matching-Logik
 │   │   ├── price-normalizer.ts  # Preis-Normalisierung
 │   │   ├── inventory-coalescing.ts # Inventory-Koaleszierung
 │   │   └── sync-pipeline.ts     # Sync-Pipeline
 │   ├── infra/
 │   │   ├── shopify/
-│   │   │   └── client.ts        # Shopify API Client (abstrahiert)
+│   │   │   ├── client.ts        # Shopify API Client (GraphQL, Retry, Rate-Limit)
+│   │   │   └── queries.ts       # GraphQL Queries/Mutations
 │   │   └── csv/
-│   │       └── parser.ts        # CSV-Parser (abstrahiert)
+│   │       └── parser.ts        # CSV-Parser (sync, streaming, preview)
 │   └── utils/
 │       └── normalization.ts     # String-Normalisierung
-├── electron/                    # Electron App Layer
-│   ├── main.ts                  # Electron Main Process
-│   ├── preload.ts               # Preload Script (getypte IPC)
-│   ├── services/
-│   │   ├── ipc-handlers.ts      # IPC-Handler
-│   │   ├── shopify-service.ts   # Shopify Service (nutzt core/infra)
-│   │   ├── csv-service.ts       # CSV Service (nutzt core/infra)
-│   │   ├── sync-service.ts      # Sync Service (nutzt core/domain)
-│   │   ├── cache-service.ts     # Cache-Management (SQLite)
-│   │   ├── config-service.ts    # Config-Management (electron-store)
-│   │   └── logger.ts            # Logging-Service
-│   └── types/
-│       └── ipc.ts                # IPC-Type-Definitionen
 ├── src/                         # Next.js Renderer (UI)
 │   ├── app/                     # Next.js App Router
 │   │   ├── layout.tsx
@@ -612,8 +618,11 @@ wawisync-app/
 │   └── e2e/                     # E2E-Tests (Post-MVP)
 ├── public/
 │   └── icons/
+├── dist-electron/               # Kompilierte Electron-Dateien (Build-Output)
+├── renderer/                    # Statisch exportierte Next.js App (Build-Output)
 ├── package.json
 ├── tsconfig.json
+├── tsconfig.electron.json       # TypeScript-Config für Electron
 ├── tailwind.config.ts
 ├── next.config.js
 ├── electron-builder.yml
@@ -624,7 +633,9 @@ wawisync-app/
 
 ## 🚀 Detaillierte Implementierungsphasen
 
-### Phase 1: Projekt-Setup (1-2 Tage)
+### Phase 1: Projekt-Setup & Electron-Integration (1-2 Tage)
+
+**Ziel:** Next.js (App Router) und Electron laufen zusammen im Dev-Modus. Electron lädt die Next-Oberfläche, TypeScript wird sauber für Electron kompiliert, IPC funktioniert minimal (Ping/Pong).
 
 #### 1.1 Projekt initialisieren
 ```bash
@@ -632,7 +643,7 @@ wawisync-app/
 npx create-next-app@latest wawisync-app --typescript --tailwind --app
 
 # Electron hinzufügen
-npm install --save-dev electron electron-builder
+npm install --save-dev electron electron-builder concurrently cross-env electron-is-dev @types/node @types/electron
 npm install electron-store
 
 # Dependencies installieren
@@ -643,53 +654,174 @@ npm install csv-parse
 npm install axios
 ```
 
-#### 1.2 Electron-Integration
-- `electron/main.ts` erstellen
-- `electron/preload.ts` erstellen
-- Next.js Dev-Server mit Electron verbinden
-- IPC-Channels definieren
+#### 1.2 Verzeichnisstruktur anlegen
+```
+wawisync-app/
+├── electron/
+│   ├── main.ts
+│   ├── preload.ts
+│   └── types/
+│       └── ipc.ts     # IPC-Type-Definitionen
+├── src/
+│   └── app/
+├── tsconfig.json
+└── tsconfig.electron.json
+```
 
-#### 1.3 Basis-Konfiguration
-- TypeScript-Konfiguration
-- ESLint & Prettier
-- Tailwind CSS Setup
+#### 1.3 TypeScript für Electron konfigurieren
+- `electron/tsconfig.json` anlegen:
+```jsonc
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "module": "ES2020",
+    "target": "ES2020",
+    "lib": ["ES2020"],
+    "noEmit": false,
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "strict": true
+  },
+  "include": ["electron/**/*.ts", "../core/**/*.ts"]
+}
+```
+- **Hinweis:** ES Modules werden verwendet (nicht CommonJS), da der Code `import/export` nutzt
+
+#### 1.4 Electron Main-Prozess (minimal)
+- `electron/main.ts`:
+  - `BrowserWindow` mit:
+    - `contextIsolation: true`
+    - `nodeIntegration: false`
+    - `preload: path.join(__dirname, "preload.js")`
+  - Dev: `mainWindow.loadURL("http://localhost:3000")`
+  - Prod (Platzhalter): `mainWindow.loadFile(path.join(__dirname, "..", "renderer", "index.html"))`
+  - Standard-Lifecycle: `ready`, `window-all-closed`, `activate`
+  - `ipcMain.handle("ping", ...)` implementieren
+
+#### 1.5 Preload-Skript
+- `electron/preload.ts`:
+  - `contextBridge.exposeInMainWorld("electron", { ping: () => ipcRenderer.invoke("ping"), ... })`
+  - Sicherheitsanforderung: Renderer hat keine Node-APIs, nur das explizit exponierte API-Objekt
+  - **Hinweis:** Die API wird als `window.electron` exponiert (nicht `electronAPI`)
+
+#### 1.6 Renderer – einfacher IPC-Test
+- TypeScript-Definitionen in `app/types/electron.d.ts`:
+  ```typescript
+  declare global {
+    interface Window {
+      electron: ElectronAPI;
+    }
+  }
+  ```
+- Test-Komponente `app/components/ipc-test.tsx`:
+  - Client-Komponente, die `window.electron.ping()` aufruft
+  - Zeigt Status (success/error) und Ergebnis (`"pong"`) im UI an
+  - Automatischer Test beim Mount (nur im Electron-Kontext)
+  - Wird im Dashboard angezeigt, um IPC-Verbindung zu verifizieren
+
+#### 1.7 Scripts in `package.json`
+```jsonc
+{
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "electron:build:ts": "tsc -p electron/tsconfig.json",
+    "electron:dev": "npm run electron:build:ts && concurrently \"npm run dev\" \"wait-on http://localhost:3000 && electron .\"",
+    "electron:build": "npm run build && npm run electron:build:ts && electron-builder"
+  },
+  "main": "electron/dist/main.js"
+}
+```
+- **Hinweis:** `wait-on` stellt sicher, dass Next.js läuft, bevor Electron startet
+- Vorbereitung für später: `main` verweist auf das gebaute Electron-Entry (`electron/dist/main.js`)
+
+#### 1.8 ESLint/Prettier/Tailwind
+- ESLint-Konfiguration erweitern (`.eslintrc.json`):
+  - Overrides für `electron/**/*.ts` und `core/**/*.ts` hinzufügen
+  - Electron-spezifische Regeln (z.B. `no-console` als warn statt error)
+- Tailwind bleibt rein im Renderer
 - shadcn/ui initialisieren
 
-**Deliverables:**
-- ✅ Electron-App startet
-- ✅ Next.js UI wird angezeigt
-- ✅ IPC-Kommunikation funktioniert
+**Deliverables Phase 1:**
+- ✅ `npm run electron:dev` startet Next-Dev und Electron
+- ✅ Fenster öffnet deine Next-Seite
+- ✅ IPC-Ping-Test funktioniert (`"pong"` wird angezeigt) - Test-Komponente im Dashboard
+- ✅ Electron-TS wird fehlerfrei nach `electron/dist/` kompiliert
+- ✅ TypeScript-Definitionen für `window.electron` vorhanden
+- ✅ ESLint-Konfiguration für Electron-Dateien erweitert
 
 ---
 
-### Phase 2: UI-Grundgerüst (2-3 Tage)
+### Phase 2: UI-Grundgerüst & State-Modell (2-3 Tage)
+
+**Ziel:** Grundlayout der App steht (Dashboard, Sync, Settings), getrennt in dumb UI-Komponenten und "smarte" Seiten mit IPC-Anbindung. Basis-State für Sync ist definiert.
 
 #### 2.1 Layout & Navigation
-- Sidebar-Navigation
-- Header mit Status-Indikator
-- Responsive Design
+- App-Shell:
+  - Sidebar mit Navigation: Dashboard, Sync, Einstellungen
+  - Header mit Status-Indikator (z. B. aktiver Shop, Verbindung Shopify)
+- Responsives Layout (Tailwind)
 
-#### 2.2 Hauptseiten
-- **Dashboard:** Übersicht, letzte Syncs, Statistiken
-- **Sync:** CSV-Upload, Mapping, Vorschau, Ausführung
-- **Settings:** Shop-Konfiguration, Spalten-Mapping, Einstellungen
+#### 2.2 Seitenstruktur
+- `src/app/page.tsx`: Dashboard
+- `src/app/sync/page.tsx`: Sync-Ansicht
+- `src/app/settings/page.tsx`: Einstellungen
+- Diese Seiten nutzen nur eigene Hooks und Komponenten, keine direkte Electron-Logik
 
-#### 2.3 Basis-Komponenten
+#### 2.3 Trennung UI vs. Backend
+- `src/components/ui/*`: rein visuelle Komponenten (Buttons, Inputs, Cards, Tabellen)
+- "Smarte" Komponenten:
+  - z. B. `SyncPage`, `SettingsPage` greifen ausschließlich über Hooks wie `useElectron`, `useSyncStore`, `useConfig` auf Backend-Daten zu
+  - Renderer enthält keinerlei Shopify-/FS-Code; alles läuft über IPC
+
+#### 2.4 Sync-UI-State definieren
+- In `src/stores/sync-store.ts` (Zustand):
+```typescript
+type SyncStep = "idle" | "mapping" | "preview" | "running" | "completed" | "error";
+
+interface SyncUIState {
+  step: SyncStep;
+  progress: number;          // 0–100
+  currentAction?: string;    // "CSV wird geparst", "Produkte laden", ...
+  logEntries: LogEntry[];
+  previewRows: PreviewRow[]; // z. B. max 200 Zeilen
+  result?: SyncResult;
+}
+```
+- Phase 2: zunächst mit Dummy-Daten befüllen
+
+#### 2.5 Hooks-Grundgerüst
+- `src/hooks/use-electron.ts`:
+  - Stellt typsichere Wrapper für IPC-Aufrufe bereit (z. B. `invoke("sync:start", ...)`)
+- `src/hooks/use-config.ts`:
+  - Greift auf gespeicherte Konfiguration via IPC zu (Platzhalter für später)
+
+#### 2.6 Basis-Komponenten
 - Button, Input, Select (shadcn/ui)
 - Card, Dialog, Alert
 - Table für Datenanzeige
 - Progress-Bar
 
-**Deliverables:**
-- ✅ Vollständiges UI-Layout
-- ✅ Navigation zwischen Seiten
-- ✅ Basis-Komponenten integriert
+**Deliverables Phase 2:**
+- ✅ Navigation funktioniert (Dashboard, Sync, Settings)
+- ✅ Layout ist grob fertig (MainLayout mit Sidebar und Header)
+- ✅ Header mit Status-Indikator (Shop-Verbindung)
+- ✅ `sync-store.ts` existiert mit `SyncStep`-Lifecycle und vollständigem State-Management
+- ✅ `use-electron.ts` Hook existiert mit typsicheren IPC-Wrappern
+- ✅ `use-config.ts` Hook existiert für Konfigurations-Management
+- ✅ UI nutzt nur Hooks (`use-electron`, `use-config`, `useSyncStore`) als Schnittstelle zum Backend, keine Node-/Shopify-Logik im Renderer
+- ✅ Alle Basis-UI-Komponenten vorhanden (shadcn/ui)
 
 ---
 
-### Phase 3: Backend-Services (4-6 Tage) ⚠️ Puffer: +50%
+### Phase 3: Backend-Services (Shopify, CSV, Domain-Layer) (4-6 Tage) ⚠️ Puffer: +50%
 
 **Hinweis:** Diese Phase trägt die meiste Komplexität. Puffer von +50% empfohlen.
+
+**Ziel:** Klare Schichten: Shopify-Client (infra), Domänen-Services (Products/Inventory), CSV-Parser und Domain-Logik (Matching, Preis-Normalisierung) sind getrennt und in TS getypt.
 
 #### 3.0 Shopify API-Vorbereitung
 - GraphiQL Explorer testen (https://shopify.dev/api/usage/api-exploration/admin-graphiql-explorer)
@@ -698,103 +830,174 @@ npm install axios
 - Rate-Limit-Tests durchführen
 - API-Version-Verwaltung implementieren (für zukünftige Updates)
 
-#### 3.1 Shopify GraphQL Admin API Client
+#### 3.1 Shopify-Infra-Layer
+- `electron/services/shopify-client.ts`:
+  - Zentrale Funktion:
 ```typescript
-// electron/services/shopify-client.ts
+    interface ShopifyClientConfig {
+      shopUrl: string;
+      accessToken: string;
+      apiVersion: string;
+      fetchImpl?: typeof fetch;
+    }
+    
+    class ShopifyClient {
+      constructor(config: ShopifyClientConfig, logger: Logger) { ... }
+      request<T>(query: string, variables?: Record<string, unknown>): Promise<T> { ... }
+    }
+    ```
+  - Verantwortlich für:
+    - HTTP-Requests (GraphQL Admin API)
+    - Rate-Limit-Auswertung (`X-Shopify-Shop-Api-Call-Limit`)
+    - Retry-Logik (429, 5xx) mit Exponential Backoff
+    - Error-Parsing (GraphQL Errors, UserErrors)
+    - Cost-Tracking (`X-Request-Cost` Header)
+  - Keine CSV/Mappings, keine Wawi-spezifische Logik
 
-// API-Konfiguration
-const API_VERSION = "2025-10"; // Aktuelle Version (Januar 2025)
-const API_ENDPOINT = `${shopUrl}/admin/api/${API_VERSION}/graphql.json`;
+#### 3.2 Shopify-Domain-Services
+- `electron/services/shopify-product-service.ts`:
+  - Nutzt `core/infra/shopify/client.ts`
+  - Methoden: 
+    - `getAllProductsWithVariants()` (Cursor-Pagination, max 250/Seite)
+    - `updateVariantPrices()` (Bulk-Update pro Produkt)
+  - Paging via Cursor
+  - Lädt API-Version automatisch aus Config
+- `electron/services/shopify-inventory-service.ts`:
+  - Nutzt `core/infra/shopify/client.ts`
+  - Methoden: 
+    - `getLocations()` (Cursor-Pagination)
+    - `setInventoryQuantities(...)` (Batches von 250)
+  - Lädt API-Version automatisch aus Config
+- Domain-Interfaces definieren (Product, Variant, Location etc.) - in `core/domain/types.ts`
 
-// Authentifizierung
-- X-Shopify-Access-Token Header
-- Erforderliche Scopes:
-  * read_products (Produkte lesen)
-  * write_products (Preise aktualisieren)
-  * read_inventory (Bestände lesen)
-  * write_inventory (Bestände aktualisieren)
-  * read_locations (Locations lesen)
+#### 3.3 Domain-Layer (Core)
+- Ordner `electron/core/domain/`:
+  - `types.ts`: `CsvRow`, `MappedRow`, `MatchResult`, `UpdateOperation`, `SyncResult`
+  - `price-normalizer.ts`: Portierung der Python-Logik (`normalize_price_to_money_str`), Tests in Phase 11
+  - `matching.ts`: Matching-Strategie: SKU → Name → Name+Variant → Barcode → Prefix
+  - `inventory-coalescing.ts`: Duplikat-Koaleszierung, Last-write-wins
+  - `sync-pipeline.ts`: Reine Funktionen, die Input/Output-Objekte verarbeiten, ohne Electron/IPC
 
-// Rate-Limit-Handling
-- X-Shopify-Shop-Api-Call-Limit Header auswerten
-- Format: "40/40" (verwendet/limit)
-- Bei 429 (Too Many Requests): Retry-After Header beachten
-- Exponential Backoff implementieren
+#### 3.4 CSV-Parser (Streaming)
+- `core/infra/csv/parser.ts`:
+  - **Synchroner Modus:** `parseCsv()` - für kleine Dateien (lädt gesamte Datei)
+  - **Streaming-Modus:** `parseCsvStream()` - für große Dateien (AsyncIterator)
+  - **Preview-Modus:** `parseCsvPreview()` - erste N Zeilen (max 200 Standard)
+  - Verwendet `csv-parse` (sowohl sync als auch async/streaming)
+  - Erkennt Encoding (UTF-8-SIG, UTF-8, CP1252, Latin1) anhand erster Bytes
+  - Unterstützt Semikolon-Trennung
+  - Liefert:
+    - Für Preview: erste N Zeilen als `RawCsvRow[]` (via `parseCsvPreview`)
+    - Für Sync: AsyncIterator von `RawCsvRow` (via `parseCsvStream`)
+  - Renderer bekommt nie die gesamte Datei, sondern nur eine reduzierte Vorschau
 
-// Cost-Tracking
-- X-Request-Cost Header auswerten
-- GraphQL Query Cost optimieren
-- Batch-Queries verwenden wo möglich
+#### 3.5 Typing der GraphQL-Responses
+- Entweder:
+  - GraphQL-Codegen nutzen, oder
+  - manuelle TS-Interfaces definieren (z. B. `ProductsResponse`, `LocationsResponse`)
+- Ziel: Keine `any` in `shopify-product-service`/`shopify-inventory-service`
 
-// Retry-Logik
-- Exponential Backoff (wie im Python-Skript)
-- Max 5 Retries
-- Backoff-Factor: 1.5
-- Retry bei: 429, 500-599
-
-// GraphQL Queries
-- Produkt-Abruf (Cursor-Pagination, max 250/Seite)
-- Location-Abruf (Cursor-Pagination)
-- Preis-Updates (productVariantsBulkUpdate - Bulk)
-- Inventory-Updates (inventorySetQuantities - Batches von 250)
-
-// Fehlerbehandlung
-- GraphQL Errors auswerten
-- UserErrors von Mutations behandeln
-- Network-Errors retryen
-```
-
-#### 3.2 CSV-Parser
-```typescript
-// electron/services/csv-parser.ts
-- Encoding-Erkennung (UTF-8-SIG, UTF-8, CP1252, Latin1)
-- Semikolon-Trennung
-- Spalten-Mapping
-- Validierung
-- Fehlerbehandlung
-```
-
-#### 3.3 Matching-Logik
-```typescript
-// electron/services/matching-service.ts
-- SKU-Matching
-- Name-Normalisierung (wie _norm)
-- Name-Matching (exakt, Prefix, Kombination)
-- Barcode-Matching
-- Variant-zu-Product-Mapping
-```
-
-#### 3.4 Preis-Normalisierung
-```typescript
-// electron/services/price-normalizer.ts
-- normalize_price_to_money_str portieren
-- Verschiedene Formate unterstützen
-- Währungszeichen entfernen
-- 2 Dezimalstellen formatieren
-```
-
-**Deliverables:**
-- ✅ Shopify API Client funktioniert mit Version `2025-10`
-- ✅ Rate-Limit-Handling implementiert
-- ✅ Cost-Tracking implementiert
-- ✅ CSV wird korrekt geparst
-- ✅ Matching-Logik identisch zum Python-Skript
-- ✅ API-Scopes dokumentiert und validiert
+**Deliverables Phase 3:**
+- ✅ `core/infra/shopify/client.ts` funktioniert mit Dev-Credentials
+- ✅ `shopify-product-service.ts` kann alle Produkte/Varianten lesen und Preise aktualisieren
+- ✅ `shopify-inventory-service.ts` kann Locations lesen und Inventar setzen (Batches von 250)
+- ✅ `price-normalizer`, `matching`, `inventory-coalescing`, `sync-pipeline` implementiert
+- ✅ CSV kann im Main-Prozess geparst werden:
+  - Synchron (`parseCsv`) für kleine Dateien
+  - Streaming (`parseCsvStream`) für große Dateien
+  - Preview (`parseCsvPreview`) für UI-Vorschau (erste N Zeilen)
+- ✅ GraphQL-Responses sind vollständig getypt (keine `any`)
+- ✅ Separate Domain-Services für Products und Inventory (getrennt von Client)
 
 ---
 
 ### Phase 4: Konfigurations-Management (2 Tage)
 
-#### 4.1 Config Manager
-```typescript
-// electron/services/config-manager.ts
-- Shop-Konfigurationen speichern
-- Spalten-Mapping speichern
-- Standardwerte setzen
-- Validierung
-```
+**Ziel:** Versionierte, validierte Konfigurationen (Shops, Mapping, Location) werden im Main-Prozess verwaltet und über IPC vom Renderer genutzt.
 
-#### 4.2 Settings-UI
+#### 4.1 Config-Schema
+- `electron/types/ipc.ts`:
+```typescript
+  // Shop-Config für Verwendung (mit Access-Token)
+  interface ShopConfig {
+    shopUrl: string;
+    accessToken: string; // Token wird aus Token-Store geladen
+    locationId: string;
+    locationName: string;
+  }
+  
+  // Shop-Config für Persistierung (mit Token-Referenz)
+  interface ShopConfigStored {
+    shopUrl: string;
+    accessTokenRef: string; // Referenz auf Token im Token-Store
+    locationId: string;
+    locationName: string;
+  }
+  
+  interface AppConfig {
+    shop: ShopConfigStored | null; // Gespeicherte Config mit accessTokenRef
+    defaultColumnMapping: ColumnMapping | null;
+    apiVersion?: string;
+    autoSync: {
+      enabled: boolean;
+      interval?: number;
+      schedule?: string;
+    };
+  }
+  ```
+- **Hinweis:** MVP unterstützt nur einen Shop. Multi-Shop-Management kommt in v1.2.
+
+#### 4.2 Zod-Validierung
+- `electron/lib/validators.ts`:
+  - Zod-Schemas für `ShopConfig`, `ShopConfigStored`, `AppConfig`, `ColumnMapping`
+  - Type-safe Validierung mit automatischer Fehlerbehandlung
+- `config-service` validiert beim Laden und Speichern die Configs gegen Zod-Schema
+- Fallback auf Defaults bei ungültiger Config
+
+#### 4.3 Config-Manager
+- `electron/services/config-service.ts`:
+  - Nutzt `electron-store` für verschlüsselte Speicherung
+  - Methoden:
+    - `getConfig(): AppConfig` - lädt und validiert Config
+    - `setConfig(AppConfig): void` - speichert und validiert Config
+    - `getShopConfig(): ShopConfig | null` - lädt Shop-Config mit Token (aus Token-Store)
+    - `setShopConfig(ShopConfig | null): void` - speichert Shop-Config (Token → Token-Store)
+    - `getDefaultColumnMapping(): ColumnMapping | null`
+    - `setDefaultColumnMapping(ColumnMapping | null): void`
+    - `validateShopConfig(ShopConfig): { valid, errors }`
+  - Migrationslogik:
+    - Automatische Migration von alter Struktur (accessToken → accessTokenRef)
+    - Validierung gegen Zod-Schema mit Fallback
+
+#### 4.4 IPC-Endpunkte für Config
+- Im Main-Prozess (`electron/services/ipc-handlers.ts`):
+  - `ipcMain.handle("config:get", ...)` - lädt gesamte App-Config
+  - `ipcMain.handle("config:set", ...)` - speichert gesamte App-Config
+  - `ipcMain.handle("config:get-shop", ...)` - lädt Shop-Config mit Token
+  - `ipcMain.handle("config:set-shop", ...)` - speichert Shop-Config (Token → Token-Store)
+  - `ipcMain.handle("config:get-column-mapping", ...)`
+  - `ipcMain.handle("config:set-column-mapping", ...)`
+  - `ipcMain.handle("config:test-connection", ...)` - testet Shopify-Verbindung
+  - `ipcMain.handle("config:get-locations", ...)` - lädt Locations von Shopify
+- Renderer nutzt `use-config` Hook, der diese IPC-Aufrufe kapselt
+- **Hinweis:** MVP unterstützt nur einen Shop. Multi-Shop-Endpunkte (`getAllShops`, `deleteShop`) kommen in v1.2.
+
+#### 4.5 Token-Speicherung
+- Access-Token wird nicht im Klartext in `AppConfig` gespeichert
+- Implementierung: `electron/services/token-store.ts`
+  - Separater `electron-store` nur für Tokens (zusätzliche Sicherheitsschicht)
+  - Tokens werden mit AES-256-GCM verschlüsselt
+  - `accessTokenRef` (eindeutige ID) in `ShopConfigStored`
+  - Token selbst im verschlüsselten Token-Store
+  - Methoden:
+    - `storeToken(token): tokenRef` - speichert Token, gibt Referenz zurück
+    - `loadToken(tokenRef): token | null` - lädt Token anhand Referenz
+    - `updateToken(tokenRef, token): void` - aktualisiert Token
+    - `deleteToken(tokenRef): void` - löscht Token
+- **Sicherheit:** Tokens werden niemals im Klartext im Config-JSON gespeichert
+- **Optional (zukünftig):** OS-Keychain-Integration via `keytar` für zusätzliche Sicherheit
+
+#### 4.6 Settings-UI
 - Shop-Konfiguration (URL, Token)
   - URL-Validierung (`.myshopify.com` Domain)
   - Token-Format-Validierung (`shpat_` oder `shpca_`)
@@ -805,30 +1008,53 @@ const API_ENDPOINT = `${shopUrl}/admin/api/${API_VERSION}/graphql.json`;
 - Auto-Sync-Einstellungen
 - API-Version-Anzeige (Info)
 
-**Deliverables:**
-- ✅ Konfigurationen werden persistiert
-- ✅ Settings-UI vollständig funktional
+**Deliverables Phase 4:**
+- ✅ App kann einen Shop verwalten (MVP: ein Shop pro Installation)
+- ✅ Konfiguration wird persistiert und beim Start geladen
+- ✅ Zod-Validierung für alle Config-Types (type-safe)
+- ✅ Validierungsfehler führen zu klaren Fehlermeldungen im UI
+- ✅ Tokens sind verschlüsselt im separaten Token-Store gespeichert (nicht im Config-JSON)
+- ✅ Automatische Migration von alter Config-Struktur (accessToken → accessTokenRef)
+- ✅ Settings-UI vollständig funktionsfähig (Shop-Config, Mapping, Location-Auswahl, Verbindungstest)
 
 ---
 
 ### Phase 5: CSV-Upload & Mapping (2-3 Tage)
 
-#### 5.1 CSV-Upload-Komponente
-- Drag & Drop
-- Datei-Auswahl
-- Encoding-Erkennung anzeigen
-- Vorschau der ersten Zeilen
+**Ziel:** CSV-Datei wird über UI ausgewählt, Pfad an den Main-Prozess übergeben, Mapping konfiguriert, Vorschau generiert. Mapping ist pro Shop konfigurierbar.
 
-#### 5.2 Spalten-Mapping
-- Automatische Spalten-Erkennung
-- Dropdown-Auswahl für jede Spalte
-- Validierung (alle erforderlichen Spalten)
-- Vorschau der gemappten Daten
+#### 5.1 CSV-Upload im Renderer
+- `csv-upload.tsx`:
+  - `<input type="file">` oder Drag&Drop
+  - Nur Datei-Metadaten im Renderer nutzen
+- **Wichtig:** Über IPC an Main-Prozess wird nur der **Dateipfad** übergeben (keine Datei-Inhalte)
 
-**Deliverables:**
-- ✅ CSV kann hochgeladen werden
-- ✅ Spalten können gemappt werden
-- ✅ Mapping wird validiert
+#### 5.2 IPC: CSV-Preview
+- `ipcMain.handle("csv:preview", ...)`:
+  - Input: `{ filePath, mapping, maxRows }`
+  - Nutzt `csv-parser` im Preview-Modus
+  - Gibt die ersten N normalisierten Zeilen zurück (mit angewandtem Mapping)
+- Renderer zeigt Vorschau-Tabelle anhand dieser Daten
+
+#### 5.3 Spalten-Mapping UI
+- `column-mapping.tsx`:
+  - Dropdowns mit Spaltennamen (aus CSV-Header)
+  - Zuordnung zu logischen Feldern (SKU, Name, Preis, Bestand)
+  - Validierung:
+    - Pflichtfelder kontrollieren (z. B. mindestens SKU oder Name)
+  - Mapping wird:
+    - im `SyncUIState` gehalten
+    - beim Speichern in `ShopConfig.columnMapping` persistiert (per `config:saveShop`)
+
+#### 5.4 Shop-spezifisches Mapping
+- Beim Wechsel des aktiven Shops:
+  - Mapping aus der entsprechenden `ShopConfig` laden und UI vorbelegen
+
+**Deliverables Phase 5:**
+- ✅ CSV-Datei kann ausgewählt werden
+- ✅ Spalten-Mapping kann definiert und gespeichert werden
+- ✅ Vorschau (z. B. erste 100–200 Zeilen) wird angezeigt
+- ✅ Keine großen CSV-Inhalte im Renderer, alles Parsing im Main-Prozess
 
 ---
 
@@ -836,161 +1062,362 @@ const API_ENDPOINT = `${shopUrl}/admin/api/${API_VERSION}/graphql.json`;
 
 **Hinweis:** Kritische Phase mit komplexer Business-Logik. Puffer empfohlen.
 
-#### 6.1 Sync-Engine
-```typescript
-// electron/services/sync-engine.ts
-- CSV verarbeiten
-- Produkte von Shopify laden
-- Matching durchführen
-- Updates sammeln
-- Koaleszierung (Inventory)
-- Bulk-Updates ausführen
-- Fortschritt via IPC senden
-```
+**Ziel:** Die Sync-Engine im Main-Prozess setzt den vollständigen Pipeline-Flow um. Fortschritt und Logs werden über IPC an den Renderer gesendet.
 
-#### 6.2 IPC-Handlers
-- `sync:start` - Sync starten
-- `sync:progress` - Fortschritt senden
-- `sync:log` - Log-Nachrichten
-- `sync:complete` - Sync abgeschlossen
-- `sync:cancel` - Sync abbrechen
+#### 6.1 Pipeline-Definition
+- `electron/services/sync-engine.ts`:
+  - Schritte:
+    1. CSV → `ParsedRow` (Streaming)
+    2. `ParsedRow + ColumnMapping` → `NormalizedRow`
+    3. Shopify-Produkte/Varianten laden (ggf. mit lokalem Cache)
+    4. `Matching(NormalizedRow, Products)` → `MatchResult[]`
+    5. `MatchResult[]` → `UpdateOperations[]` (Preis & Bestand)
+    6. Koaleszierung von Inventar-Updates
+    7. Planung (PlannedOperations) → Vorschau
+    8. Ausführung in Batches (nach Bestätigung)
 
-**Deliverables:**
-- ✅ Sync-Engine funktioniert
-- ✅ Fortschritt wird in Echtzeit angezeigt
-- ✅ Logs werden angezeigt
+#### 6.2 Fortschrittsberechnung
+- Definiere "Work Units":
+  - z. B.:
+    - `CSV_ROWS` (Anzahl Zeilen)
+    - `PRODUCT_PAGES` (Anzahl API-Seiten beim Produktladen)
+    - `INVENTORY_BATCHES`, `PRICE_BATCHES`
+- Fortschritt:
+  - `progress = erledigteWorkUnits / GesamtWorkUnits * 100`
+- Sync-Engine sendet regelmäßig `sync:progress` Events via IPC
+
+#### 6.3 IPC-Schnittstellen
+- `ipcMain.handle("sync:start", ...)`:
+  - Input: `{ filePath, mapping, shopId, mode }` (z. B. `mode` = "prices+stock", "only-prices", "only-stock")
+  - Startet die Pipeline
+- `ipcMain.on("sync:cancel", ...)`:
+  - Setzt ein Abbruch-Flag, das in den Schleifen geprüft wird
+- Events zum Renderer:
+  - `sync:progress` (aktueller Fortschritt, Text)
+  - `sync:log` (Log-Einträge)
+  - `sync:previewReady` (PlannedOperations für Vorschau)
+  - `sync:complete` (SyncResult)
+
+#### 6.4 Modus-Auswahl (Preis/Bestand)
+- In der Pipeline:
+  - Branching je nach `mode`:
+    - Nur Preis-Updates generieren
+    - Nur Inventory-Updates generieren
+    - Beides
+
+**Deliverables Phase 6:**
+- ✅ Manuelles Starten des Sync (ohne UI-Feinheiten) funktioniert
+- ✅ Fortschritt und Logs kommen im Renderer an
+- ✅ Vorschau-Daten (PlannedOperations) werden erzeugt
 
 ---
 
 ### Phase 7: Vorschau & Bestätigung (2-3 Tage)
 
-#### 7.1 Vorschau-Tabelle
-- Alle Updates anzeigen
-- Filterung (Preise, Bestände, Erfolgreich, Fehlgeschlagen)
-- Suche (nach SKU, Name)
-- Sortierung
-- **Nicht gematchte Zeilen prominent anzeigen**
-  - Eigener Tab/Filter "Nicht gematcht (X Zeilen)"
-  - Export-Funktion: CSV mit nur nicht-gematchten Zeilen
+**Ziel:** Alle geplanten Änderungen werden strukturiert angezeigt, filterbar, und die Ausführung erfolgt erst nach expliziter Bestätigung.
 
-#### 7.2 Bestätigungs-Dialog
-- Zusammenfassung (Anzahl Updates)
-- Warnungen (Duplikate, Fehler)
-- Bestätigung erforderlich
-- **Trockenlauf-Option:** Checkbox "Dry Run" (nur Vorschau, keine Mutation)
+#### 7.1 Datenmodell für geplante/ausgeführte Updates
+- `electron/core/domain/sync-types.ts`:
+  ```typescript
+  type OperationType = "price" | "inventory";
+  
+  interface PlannedOperation {
+    id: string;
+    type: OperationType;
+    sku?: string;
+    productTitle?: string;
+    variantTitle?: string;
+    oldValue?: string | number | null;
+    newValue: string | number;
+  }
+  
+  type OperationStatus = "planned" | "success" | "failed" | "skipped";
+  
+  interface OperationExecution extends PlannedOperation {
+    status: OperationStatus;
+    message?: string;
+  }
+  
+  interface SyncResult {
+    planned: PlannedOperation[];
+    executed?: OperationExecution[];
+  }
+  ```
+- Vorschau zeigt `planned`
+- Nach Ausführung füllt Engine `executed`
 
-#### 7.3 Export-Funktionen
+#### 7.2 Vorschau-UI
+- `preview-table.tsx`:
+  - Tabellen-Ansicht mit Filter:
+    - nach OperationType (Preis / Bestand)
+    - nach Status (bei bereits ausgeführten Operationen)
+  - Sortierung nach SKU, Produktname, usw.
+  - Tab/Filter für "Nicht gematchte Zeilen" (eigene Liste)
+
+#### 7.3 Bestätigungs-Dialog
+- Zusammenfassung:
+  - "X Preis-Updates, Y Inventory-Updates"
+  - "Z nicht-gematchte Zeilen"
+- Checkbox oder explizite Bestätigungsaktion:
+  - "Ich bestätige, dass diese Änderungen in Shopify angewendet werden sollen"
+- Buttons:
+  - "Abbrechen"
+  - "Sync ausführen"
+
+#### 7.4 Export-Funktionen
 - Sync-Ergebnisse als CSV exportieren
   - Spalten: Zeit, SKU, Name, Alter Wert, Neuer Wert, Status, Fehlermeldung
 - Nicht-gematchte Zeilen als CSV exportieren
 - Logs exportieren (Text-Datei)
 
-**Deliverables:**
-- ✅ Vorschau zeigt alle Updates
-- ✅ Nicht-gematchte Zeilen prominent
-- ✅ Bestätigung vor Ausführung
-- ✅ Export-Funktionen implementiert
+**Deliverables Phase 7:**
+- ✅ Vorschau zeigt alle geplanten Änderungen strukturiert
+- ✅ Benutzer muss vor tatsächlichen API-Calls bestätigen
+- ✅ Nicht-gematchte Zeilen sind sichtbar und separat exportierbar
 
 ---
 
 ### Phase 8: Fortschrittsanzeige & Logging (2 Tage)
 
-#### 8.1 Fortschrittsanzeige
-- Progress-Bar
-- Aktuelle Aktion anzeigen
-- Geschätzte Zeit
-- Abbrechen-Button
+**Ziel:** Sync-Fortschritt und Logs sind transparent, filterbar und exportierbar.
 
-#### 8.2 Log-Viewer
-- Echtzeit-Logs
-- Filterung (Info, Warning, Error)
-- Export-Funktion
-- Farbcodierung
+#### 8.1 Log-Modell
+- `LogEntry`:
+  ```typescript
+  type LogLevel = "debug" | "info" | "warn" | "error";
+  type LogCategory = "csv" | "shopify" | "matching" | "inventory" | "price" | "system";
+  
+  interface LogEntry {
+    id: string;
+    timestamp: string;
+    level: LogLevel;
+    category: LogCategory;
+    message: string;
+    context?: Record<string, unknown>;
+  }
+  ```
 
-**Deliverables:**
-- ✅ Fortschritt wird angezeigt
-- ✅ Logs werden in Echtzeit angezeigt
+#### 8.2 Logger-Service
+- `electron/services/logger.ts`:
+  - Stellt Methoden bereit: `log(level, category, message, context?)`
+  - Schreibt:
+    - in eine Log-Datei (optional)
+    - broadcastet über IPC an Renderer (`sync:log`)
+
+#### 8.3 UI für Fortschritt
+- `progress-view.tsx`:
+  - Fortschrittsbalken (0–100 %)
+  - Text "Aktuelle Aktion" (`currentAction` aus `SyncUIState`)
+  - Optional: geschätzte Restzeit (WorkUnits / Rate)
+
+#### 8.4 Log-Viewer-UI
+- `log-viewer.tsx`:
+  - Live-Stream der LogEntries
+  - Filter nach:
+    - Level
+    - Kategorie
+  - Export-Button:
+    - Export als Text/CSV
+
+**Deliverables Phase 8:**
+- ✅ Während des Syncs wird Fortschritt klar angezeigt
+- ✅ Logs werden in Echtzeit angezeigt und bei Bedarf gefiltert/exportiert
+- ✅ Abbruch des Syncs über UI ist möglich
 
 ---
 
-### Phase 9: Fehlerbehandlung & Validierung (3-4 Tage) ⚠️ Puffer: +50%
+### Phase 9: Validierung & Fehlerbehandlung (3-4 Tage) ⚠️ Puffer: +50%
 
 **Hinweis:** Fehlerbehandlung ist komplex. Puffer empfohlen.
 
-#### 9.1 Validierung
-- CSV-Format prüfen
-- Spalten-Existenz prüfen
-- Shop-Verbindung testen
-- Location-Existenz prüfen
+**Ziel:** Eindeutige Fehlertypen, saubere Darstellung in der UI, klare Unterscheidung zwischen User- und Systemfehlern.
 
-#### 9.2 Fehlerbehandlung
-- Fehler-Messages anzeigen
-- Retry-Mechanismen
-- Fehler-Logging
-- Benutzerfreundliche Fehlermeldungen
+#### 9.1 Zentraler Error-Typ
+- `electron/core/domain/errors.ts`:
+  ```typescript
+  type ErrorSeverity = "info" | "warning" | "error" | "fatal";
+  
+  type ErrorCode =
+    | "CSV_INVALID_FORMAT"
+    | "CSV_MISSING_COLUMN"
+    | "CSV_EMPTY"
+    | "SHOPIFY_UNAUTHORIZED"
+    | "SHOPIFY_FORBIDDEN"
+    | "SHOPIFY_RATE_LIMIT"
+    | "SHOPIFY_SERVER_ERROR"
+    | "NETWORK_ERROR"
+    | "CONFIG_INVALID"
+    | "INTERNAL_UNEXPECTED";
+  
+  interface WawiError extends Error {
+    code: ErrorCode;
+    severity: ErrorSeverity;
+    details?: unknown;
+  }
+  ```
+- Alle internen Fehler werden in `WawiError` gewrappt
 
-**Deliverables:**
-- ✅ Alle Validierungen implementiert
-- ✅ Fehler werden benutzerfreundlich angezeigt
+#### 9.2 Validierungspunkte
+- CSV:
+  - Datei existiert
+  - Header vorhanden
+  - Mapping referenziert existierende Spalten
+- Config:
+  - Shop-URL-Format (`.myshopify.com`)
+  - Token-Format (z. B. `shpat_`, `shpca_`)
+- Shopify:
+  - Token gültig
+  - Scopes ausreichend
+
+#### 9.3 UI-Fehlerdarstellung
+- Eigenes Fehler-Panel:
+  - Zusammenfassende Meldungen mit konkreten Hinweisen
+- Fehler-Level:
+  - `warning`: z. B. einige Zeilen nicht gematcht, Sync aber insgesamt erfolgreich
+  - `error`/`fatal`: Sync abgebrochen, Benutzer sieht klare Ursache
+
+**Deliverables Phase 9:**
+- ✅ Fehler werden konsistent als `WawiError` behandelt
+- ✅ UI zeigt eindeutige und verständliche Fehlermeldungen
+- ✅ Validierungen verhindern typische Benutzerfehler frühzeitig
 
 ---
 
 ### Phase 10: Automatische Synchronisation (optional, 2-3 Tage)
 
-#### 10.1 Scheduler
-- Intervall-basierte Syncs
-- Cron-ähnliche Syntax
-- Aktivierung/Deaktivierung
+**Ziel:** Zeitgesteuerte Syncs für fortgeschrittene Nutzer, rein im Main-Prozess, ohne versteckte Hintergrundprozesse außerhalb der App.
 
-#### 10.2 Background-Sync
-- Sync im Hintergrund
-- Benachrichtigungen
-- Status-Indikator
+#### 10.1 Scheduler im Main-Prozess
+- Einfacher Intervall-Scheduler (z. B. `node-cron` oder eigener Timer)
+- Konfigurierbare Intervalle:
+  - alle X Minuten
+  - bestimmte Uhrzeit pro Tag
 
-**Deliverables:**
-- ✅ Automatische Syncs funktionieren
-- ✅ Benachrichtigungen werden angezeigt
+#### 10.2 Konfiguration
+- Felder in `ShopConfig` oder `AppConfig`:
+  - `autoSyncEnabled`, `autoSyncSchedule` (z. B. Cron-String oder vordefinierte Intervalle)
+
+#### 10.3 UI
+- In Settings:
+  - Checkbox "Automatische Synchronisation aktivieren"
+  - Auswahlfeld für Intervall
+- **Klarer Hinweis:** Auto-Sync läuft nur, solange die App offen ist
+
+#### 10.4 Ergebnisdarstellung
+- Auto-Sync-Sessions werden im Dashboard gelistet ("letzte Syncs")
+- Fehler / Warnungen aus Auto-Syncs erscheinen im Log
+
+**Deliverables Phase 10:**
+- ✅ Auto-Sync kann pro Shop aktiviert/deaktiviert werden
+- ✅ Zeitgesteuerter Sync läuft, solange die App geöffnet ist
+- ✅ Ergebnisse sind im Dashboard und Log ersichtlich
 
 ---
 
 ### Phase 11: Testing & Qualitätssicherung (3-4 Tage)
 
-#### 11.1 Unit-Tests
-- Services testen
-- Matching-Logik testen
-- Preis-Normalisierung testen
+**Ziel:** Hohe Testabdeckung der Domain-Logik, Integrationstests für die Pipeline, E2E-Tests des wichtigsten Workflows. Parität zum Python-Skript wird geprüft.
 
-#### 11.2 Integration-Tests
-- CSV-Parsing testen
-- Shopify API-Integration testen
-- Sync-Engine testen
+#### 11.1 Unit-Tests (Vitest)
+- `core/domain`:
+  - `price-normalizer` (verschiedene Preisformate)
+  - `matching` (verschiedene Kombinationen von SKU/Name/Barcode)
+  - `inventory-coalescing`
+- `shopify-product-service` und `shopify-inventory-service` mit gemocktem `ShopifyClient`
 
-#### 11.3 E2E-Tests
-- Vollständiger Sync-Workflow
-- UI-Interaktionen
+#### 11.2 Paritäts-Tests zum Python-Skript
+- `tests/fixtures/`:
+  - Beispiel-CSV-Dateien
+  - Erwartete Match-/Update-Ergebnisse (JSON), idealerweise aus Python-Skript generiert
+- Integrationstests:
+  - Gleiche CSV → Domain-Layer → `UpdateOperations` → Vergleich mit erwarteten JSONs
 
-**Deliverables:**
-- ✅ Test-Coverage > 80%
-- ✅ Alle kritischen Pfade getestet
+#### 11.3 Integrationstests
+- `sync-engine`:
+  - Full-Run mit:
+    - CSV-Fixture
+    - Shopify-Mock, der definierte Produkte zurückgibt
+  - Erwartung:
+    - korrekte Anzahl geplanter Updates
+    - richtige Zuordnung
+
+#### 11.4 E2E-Tests (Playwright)
+- Setup:
+  - Playwright nutzt dein Electron-Build oder dev-Electron
+- Szenario:
+  - App starten → Shop konfigurieren → CSV auswählen → Mapping → Vorschau → Sync → Ergebnis prüfen
+
+**Deliverables Phase 11:**
+- ✅ Unit-Test-Coverage der Domain-Logik > 80%
+- ✅ Integrationstests für die Sync-Pipeline vorhanden
+- ✅ Mindestens ein E2E-Workflow testet den kompletten Weg
 
 ---
 
 ### Phase 12: Build & Distribution (2 Tage)
 
-#### 12.1 Electron Builder
-- Windows-Build konfigurieren
-- macOS-Build konfigurieren
-- Linux-Build konfigurieren
-- Icons & Assets
+**Ziel:** Erzeugung von lauffähigen `.exe` (und optional `.dmg`/`.AppImage`), bei denen Electron die statisch exportierte Next-App lädt.
 
-#### 12.2 Auto-Updates
-- Update-Server konfigurieren
-- Update-Check implementieren
-- Update-Installation
+#### 12.1 Renderer-Build-Strategie
+- Entscheidung: Static Export
+- Scripts:
+  ```jsonc
+  {
+    "scripts": {
+      "build:renderer": "next build && next export -o renderer",
+      "build:electron": "tsc -p tsconfig.electron.json",
+      "build:desktop": "npm run build:renderer && npm run build:electron && electron-builder"
+    }
+  }
+  ```
+- `renderer/` enthält dann `index.html` + Assets
 
-**Deliverables:**
-- ✅ Installer für alle Plattformen
-- ✅ Auto-Updates funktionieren
+#### 12.2 Main-Prozess Prod-Path
+- In `main.ts` (Prod-Zweig):
+  ```typescript
+  const prodIndex = path.join(__dirname, "..", "renderer", "index.html");
+  mainWindow.loadFile(prodIndex);
+  ```
+
+#### 12.3 electron-builder Konfiguration
+- In `package.json`:
+  ```jsonc
+  {
+    "build": {
+      "appId": "com.deinname.wawisync",
+      "productName": "WAWISync",
+      "directories": {
+        "buildResources": "build",
+        "output": "dist"
+      },
+      "files": [
+        "dist-electron/**/*",
+        "renderer/**/*",
+        "package.json"
+      ],
+      "win": {
+        "target": "nsis"
+      },
+      "mac": {
+        "target": "dmg"
+      },
+      "linux": {
+        "target": "AppImage"
+      }
+    }
+  }
+  ```
+
+#### 12.4 Test der Installer
+- Auf Windows:
+  - `.exe` installieren, Startmenü-Eintrag prüfen
+- Optional macOS/Linux:
+  - `.dmg`/`.AppImage` testen
+
+**Deliverables Phase 12:**
+- ✅ `npm run build:desktop` erzeugt lauffähige Installer
+- ✅ Electron lädt die statische Next-App im Prod-Modus
+- ✅ `.exe` startet sauber und verhält sich identisch zum Dev-Setup (abzüglich DevTools)
 
 ---
 
