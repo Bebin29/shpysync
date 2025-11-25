@@ -2,6 +2,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { RefreshCw, Package, TrendingUp, AlertCircle } from "lucide-react";
 import Link from "next/link";
+import { IpcTest } from "@/app/components/ipc-test";
 
 /**
  * Dashboard-Seite mit Übersicht und Statistiken.
@@ -89,6 +90,9 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* IPC-Verbindungstest (Phase 1) */}
+      <IpcTest />
 
       {/* Letzte Synchronisationen */}
       <Card>

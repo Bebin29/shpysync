@@ -1,12 +1,15 @@
 import Store from "electron-store";
-import type { ShopConfig, AppConfig, ColumnMapping } from "../types/ipc";
+import type { ShopConfig, ShopConfigStored, AppConfig, ColumnMapping } from "../types/ipc";
+import { storeToken, loadToken, updateToken, deleteToken, tokenExists } from "./token-store";
+import { appConfigSchema, shopConfigStoredSchema, shopConfigSchema } from "../lib/validators";
+import { SHOPIFY_API_VERSION } from "./api-version-manager";
 
 /**
  * Config Service für Persistierung von App-Einstellungen.
  * 
  * Nutzt electron-store für sichere Speicherung (verschlüsselt).
+ * Tokens werden separat im Token-Store gespeichert.
  */
-import { SHOPIFY_API_VERSION } from "./api-version-manager";
 
 const store = new Store<AppConfig>({
   name: "config",
@@ -22,31 +25,170 @@ const store = new Store<AppConfig>({
 });
 
 /**
+ * Migriert alte Config-Struktur (mit accessToken) zu neuer Struktur (mit accessTokenRef).
+ * 
+ * @param config - Alte Config-Struktur
+ * @returns Migrierte Config oder null bei Fehler
+ */
+function migrateOldConfig(config: any): AppConfig | null {
+	if (!config.shop) {
+		return config as AppConfig;
+	}
+
+	// Prüfe ob alte Struktur (mit accessToken direkt)
+	const shop = config.shop;
+	if (shop.accessToken && !shop.accessTokenRef) {
+		console.log("Migriere alte Config-Struktur (accessToken → accessTokenRef)");
+		
+		try {
+			// Token in Token-Store verschieben
+			const tokenRef = storeToken(shop.accessToken);
+			
+			// Neue Struktur erstellen
+			const migrated: AppConfig = {
+				...config,
+				shop: {
+					shopUrl: shop.shopUrl,
+					accessTokenRef: tokenRef,
+					locationId: shop.locationId,
+					locationName: shop.locationName,
+				},
+			};
+			
+			// Migrierte Config speichern
+			Object.assign(store.store, migrated);
+			
+			return migrated;
+		} catch (error) {
+			console.error("Fehler bei Config-Migration:", error);
+			return null;
+		}
+	}
+
+	return config as AppConfig;
+}
+
+/**
  * Lädt die gesamte App-Konfiguration.
+ * Validiert gegen Zod-Schema und migriert alte Strukturen.
  */
 export function getConfig(): AppConfig {
-  return store.store as AppConfig;
+	const config = store.store as any;
+	
+	// Migration von alter Struktur
+	const migrated = migrateOldConfig(config);
+	const configToValidate = migrated || config;
+	
+	// Validierung gegen Zod-Schema
+	const result = appConfigSchema.safeParse(configToValidate);
+	if (!result.success) {
+		console.error("Config-Validierungsfehler:", result.error);
+		// Fallback auf Defaults bei ungültiger Config
+		return {
+			shop: null,
+			defaultColumnMapping: null,
+			apiVersion: SHOPIFY_API_VERSION,
+			autoSync: { enabled: false },
+		};
+	}
+	
+	return result.data;
 }
 
 /**
  * Speichert die gesamte App-Konfiguration.
+ * Validiert gegen Zod-Schema.
  */
 export function setConfig(config: AppConfig): void {
-  Object.assign(store.store, config);
+	// Validierung gegen Zod-Schema
+	const result = appConfigSchema.safeParse(config);
+	if (!result.success) {
+		throw new Error(`Ungültige Config: ${result.error.message}`);
+	}
+	
+	Object.assign(store.store, result.data);
 }
 
 /**
- * Lädt die Shop-Konfiguration.
+ * Lädt die Shop-Konfiguration mit Access-Token.
+ * Lädt Token aus Token-Store basierend auf accessTokenRef.
+ * 
+ * @returns ShopConfig mit accessToken oder null
  */
 export function getShopConfig(): ShopConfig | null {
-  return (store.get("shop") as ShopConfig | null) ?? null;
+	const stored = store.get("shop") as ShopConfigStored | null;
+	if (!stored) {
+		return null;
+	}
+
+	// Validierung gegen Zod-Schema
+	const validationResult = shopConfigStoredSchema.safeParse(stored);
+	if (!validationResult.success) {
+		console.error("Shop-Config-Validierungsfehler:", validationResult.error);
+		return null;
+	}
+
+	// Token aus Token-Store laden
+	const token = loadToken(stored.accessTokenRef);
+	if (!token) {
+		console.error(`Token nicht gefunden für Referenz: ${stored.accessTokenRef}`);
+		return null;
+	}
+
+	// ShopConfig mit Token zurückgeben
+	return {
+		shopUrl: stored.shopUrl,
+		accessToken: token,
+		locationId: stored.locationId,
+		locationName: stored.locationName,
+	};
 }
 
 /**
  * Speichert die Shop-Konfiguration.
+ * Speichert Token im Token-Store und erstellt/aktualisiert accessTokenRef.
+ * 
+ * @param shopConfig - ShopConfig mit accessToken (wird in Token-Store verschoben)
  */
 export function setShopConfig(shopConfig: ShopConfig | null): void {
-  store.set("shop", shopConfig);
+	if (!shopConfig) {
+		// Beim Löschen: Token auch löschen falls vorhanden
+		const stored = store.get("shop") as ShopConfigStored | null;
+		if (stored?.accessTokenRef) {
+			deleteToken(stored.accessTokenRef);
+		}
+		store.set("shop", null);
+		return;
+	}
+
+	// Validierung gegen Zod-Schema
+	const validationResult = shopConfigSchema.safeParse(shopConfig);
+	if (!validationResult.success) {
+		throw new Error(`Ungültige Shop-Config: ${validationResult.error.message}`);
+	}
+
+	// Prüfe ob bereits eine Config existiert
+	const existing = store.get("shop") as ShopConfigStored | null;
+	let tokenRef: string;
+
+	if (existing?.accessTokenRef && tokenExists(existing.accessTokenRef)) {
+		// Token aktualisieren
+		tokenRef = existing.accessTokenRef;
+		updateToken(tokenRef, shopConfig.accessToken);
+	} else {
+		// Neuen Token speichern
+		tokenRef = storeToken(shopConfig.accessToken);
+	}
+
+	// ShopConfigStored speichern (ohne Token)
+	const stored: ShopConfigStored = {
+		shopUrl: shopConfig.shopUrl,
+		accessTokenRef: tokenRef,
+		locationId: shopConfig.locationId,
+		locationName: shopConfig.locationName,
+	};
+
+	store.set("shop", stored);
 }
 
 /**
@@ -109,32 +251,29 @@ export function validateAccessToken(token: string): boolean {
 }
 
 /**
- * Validiert eine Shop-Konfiguration.
+ * Validiert eine Shop-Konfiguration (mit Zod).
  * 
  * @param config - Shop-Konfiguration zum Validieren
  * @returns Validierungs-Ergebnis
  */
 export function validateShopConfig(config: ShopConfig): {
-  valid: boolean;
-  errors: string[];
+	valid: boolean;
+	errors: string[];
 } {
-  const errors: string[] = [];
+	const result = shopConfigSchema.safeParse(config);
+	
+	if (result.success) {
+		return { valid: true, errors: [] };
+	}
 
-  if (!validateShopUrl(config.shopUrl)) {
-    errors.push("Shop-URL muss auf .myshopify.com enden");
-  }
+	const errors = result.error.errors.map((err) => {
+		const path = err.path.join(".");
+		return `${path}: ${err.message}`;
+	});
 
-  if (!validateAccessToken(config.accessToken)) {
-    errors.push("Access-Token muss mit 'shpat_' oder 'shpca_' beginnen");
-  }
-
-  if (!config.locationId || !config.locationName) {
-    errors.push("Location-ID und Name müssen angegeben werden");
-  }
-
-  return {
-    valid: errors.length === 0,
-    errors,
-  };
+	return {
+		valid: false,
+		errors,
+	};
 }
 
