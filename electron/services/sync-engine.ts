@@ -1,10 +1,11 @@
 import type { BrowserWindow } from "electron";
-import type { ShopConfig, ColumnMapping, SyncStartConfig, SyncPreviewRequest, SyncProgress, SyncLog, SyncResult, OperationResult } from "../types/ipc.js";
+import type { ShopConfig, ColumnMapping, SyncStartConfig, SyncPreviewRequest, SyncProgress, SyncLog, SyncResult, OperationResult, PlannedOperation } from "../types/ipc.js";
 import type { CsvRow, Product, MappedRow } from "../../core/domain/types.js";
 import { parseCsvStream, extractRowValues, convertToCsvRows, type ColumnMapping as CoreColumnMapping } from "../../core/infra/csv/parser.js";
 import { processCsvToUpdates, groupPriceUpdatesByProduct } from "../../core/domain/sync-pipeline.js";
 import { getAllProductsWithVariants, updateVariantPrices } from "./shopify-product-service.js";
 import { setInventoryQuantities } from "./shopify-inventory-service.js";
+import { getLogger } from "./logger.js";
 
 /**
  * Sync-Engine für die vollständige Synchronisation von CSV-Daten zu Shopify.
@@ -77,12 +78,14 @@ export class SyncEngine {
 	private currentProgress = 0;
 	private completedWorkUnits = 0;
 	private totalWorkUnits = 0;
+	private logger = getLogger();
 
 	/**
 	 * Setzt das BrowserWindow für Event-Versand.
 	 */
 	setMainWindow(window: BrowserWindow | null): void {
 		this.mainWindow = window;
+		this.logger.setMainWindow(window);
 	}
 
 	/**
@@ -96,8 +99,10 @@ export class SyncEngine {
 
 	/**
 	 * Sendet Log-Event zum Renderer.
+	 * @deprecated Verwende stattdessen this.logger.info/warn/error()
 	 */
 	private sendLog(log: SyncLog): void {
+		// Legacy-Methode für Kompatibilität, wird durch Logger ersetzt
 		if (this.mainWindow) {
 			this.mainWindow.webContents.send("sync:log", log);
 		}
@@ -133,11 +138,7 @@ export class SyncEngine {
 	 */
 	cancel(): void {
 		this.isCancelled = true;
-		this.sendLog({
-			level: "warn",
-			message: "Synchronisation wurde abgebrochen.",
-			timestamp: new Date().toISOString(),
-		});
+		this.logger.warn("system", "Synchronisation wurde abgebrochen.");
 	}
 
 	/**
@@ -177,11 +178,7 @@ export class SyncEngine {
 				throw new Error("Sync wurde abgebrochen");
 			}
 
-			this.sendLog({
-				level: "info",
-				message: `${csvRows.length} Zeilen aus CSV geladen.`,
-				timestamp: new Date().toISOString(),
-			});
+			this.logger.info("csv", `${csvRows.length} Zeilen aus CSV geladen.`, { rowCount: csvRows.length });
 
 			// Schritt 2: Shopify-Produkte/Varianten laden
 			this.sendProgress({
@@ -197,11 +194,7 @@ export class SyncEngine {
 				throw new Error("Sync wurde abgebrochen");
 			}
 
-			this.sendLog({
-				level: "info",
-				message: `${products.length} Produkte mit Varianten geladen.`,
-				timestamp: new Date().toISOString(),
-			});
+			this.logger.info("shopify", `${products.length} Produkte mit Varianten geladen.`, { productCount: products.length });
 
 			// Schritt 3-6: Matching und Update-Planung
 			this.sendProgress({
@@ -230,16 +223,14 @@ export class SyncEngine {
 
 			totalPlanned = plannedOperations.length;
 
-			this.sendLog({
-				level: "info",
-				message: `${updateResult.mappedRows.length} Zeilen gematcht, ${updateResult.unmatchedRows.length} nicht gematcht.`,
-				timestamp: new Date().toISOString(),
+			this.logger.info("matching", `${updateResult.mappedRows.length} Zeilen gematcht, ${updateResult.unmatchedRows.length} nicht gematcht.`, {
+				matched: updateResult.mappedRows.length,
+				unmatched: updateResult.unmatchedRows.length,
 			});
 
-			this.sendLog({
-				level: "info",
-				message: `${updateResult.priceUpdates.length} Preis-Updates geplant, ${updateResult.inventoryUpdates.length} Inventory-Updates geplant.`,
-				timestamp: new Date().toISOString(),
+			this.logger.info("system", `${updateResult.priceUpdates.length} Preis-Updates geplant, ${updateResult.inventoryUpdates.length} Inventory-Updates geplant.`, {
+				priceUpdates: updateResult.priceUpdates.length,
+				inventoryUpdates: updateResult.inventoryUpdates.length,
 			});
 
 			// Vorschau senden
@@ -247,11 +238,7 @@ export class SyncEngine {
 
 			// Wenn Dry-Run: Keine Ausführung
 			if (config.options.dryRun) {
-				this.sendLog({
-					level: "info",
-					message: "Dry-Run-Modus: Keine Updates werden ausgeführt.",
-					timestamp: new Date().toISOString(),
-				});
+				this.logger.info("system", "Dry-Run-Modus: Keine Updates werden ausgeführt.");
 
 				const endTime = new Date();
 				const result: SyncResult = {
@@ -315,10 +302,9 @@ export class SyncEngine {
 			return result;
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : "Unbekannter Fehler";
-			this.sendLog({
-				level: "error",
-				message: `Fehler während der Synchronisation: ${errorMessage}`,
-				timestamp: new Date().toISOString(),
+			this.logger.error("system", `Fehler während der Synchronisation: ${errorMessage}`, {
+				error: errorMessage,
+				stack: error instanceof Error ? error.stack : undefined,
 			});
 
 			const endTime = new Date();
@@ -453,11 +439,12 @@ export class SyncEngine {
 
 		// Preis-Updates
 		if (mode === "prices+stock" || mode === "only-prices") {
+			let priceIndex = 0;
 			for (const update of updateResult.priceUpdates) {
 				const variantData = variantMap.get(update.variantId);
 				if (variantData) {
 					operations.push({
-						id: `price-${update.variantId}`,
+						id: `price-${update.variantId}-${priceIndex++}`, // Eindeutige ID mit Index
 						type: "price",
 						sku: variantData.variant.sku || null,
 						productTitle: products.find((p) => p.id === update.productId)?.title || null,
@@ -471,6 +458,7 @@ export class SyncEngine {
 
 		// Inventory-Updates
 		if (mode === "prices+stock" || mode === "only-stock") {
+			let inventoryIndex = 0;
 			for (const update of updateResult.inventoryUpdates) {
 				// Finde Variant zu inventoryItemId
 				let variantData: { productId: string; variant: any } | null = null;
@@ -486,7 +474,7 @@ export class SyncEngine {
 
 				if (variantData) {
 					operations.push({
-						id: `inventory-${update.inventoryItemId}`,
+						id: `inventory-${update.inventoryItemId}-${inventoryIndex++}`, // Eindeutige ID mit Index
 						type: "inventory",
 						sku: variantData.variant.sku || null,
 						productTitle: products.find((p) => p.id === variantData!.productId)?.title || null,
@@ -644,10 +632,10 @@ export class SyncEngine {
 					});
 				} catch (error) {
 					const errorMessage = error instanceof Error ? error.message : "Unbekannter Fehler";
-					this.sendLog({
-						level: "error",
-						message: `Fehler beim Aktualisieren der Preise für Produkt ${productId}: ${errorMessage}`,
-						timestamp: new Date().toISOString(),
+					this.logger.error("price", `Fehler beim Aktualisieren der Preise für Produkt ${productId}: ${errorMessage}`, {
+						productId,
+						error: errorMessage,
+						updateCount: updates.length,
 					});
 
 					// Alle Updates als fehlgeschlagen markieren
@@ -772,10 +760,9 @@ export class SyncEngine {
 					});
 				} catch (error) {
 					const errorMessage = error instanceof Error ? error.message : "Unbekannter Fehler";
-					this.sendLog({
-						level: "error",
-						message: `Fehler beim Aktualisieren der Bestände: ${errorMessage}`,
-						timestamp: new Date().toISOString(),
+					this.logger.error("inventory", `Fehler beim Aktualisieren der Bestände: ${errorMessage}`, {
+						error: errorMessage,
+						batchSize: batch.length,
 					});
 
 					// Alle Updates als fehlgeschlagen markieren
@@ -811,19 +798,199 @@ export class SyncEngine {
 			operations,
 		};
 	}
-}
 
-/**
- * Geplante Operation für Vorschau.
- */
-export interface PlannedOperation {
-	id: string;
-	type: "price" | "inventory";
-	sku?: string | null;
-	productTitle?: string | null;
-	variantTitle?: string | null;
-	oldValue?: string | number | null;
-	newValue: string | number;
+	/**
+	 * Führt einen Test-Sync durch: Aktualisiert nur einen Artikel mit Bestand > 0.
+	 * 
+	 * Wählt einen Artikel aus der Vorschau aus, der:
+	 * - type === "inventory" ist
+	 * - oldValue > 0 hat
+	 * - newValue > 0 hat
+	 * 
+	 * @param shopConfig - Shop-Konfiguration
+	 * @param plannedOperations - Geplante Operationen aus der Vorschau
+	 * @returns Sync-Ergebnis mit nur einem Update
+	 */
+	async testSync(
+		shopConfig: ShopConfig,
+		plannedOperations: PlannedOperation[]
+	): Promise<SyncResult> {
+		const startTime = new Date();
+		const operations: OperationResult[] = [];
+
+		// Finde einen geeigneten Artikel für den Test
+		// Wichtig: oldValue kann null sein (wird nicht in Vorschau geladen), daher nur newValue prüfen
+		const testOperation = plannedOperations.find(
+			(op) =>
+				op.type === "inventory" &&
+				typeof op.newValue === "number" &&
+				op.newValue > 0
+		);
+
+		if (!testOperation) {
+			throw new Error(
+				"Kein geeigneter Artikel für Test gefunden. Bitte stelle sicher, dass mindestens ein Artikel mit Bestand > 0 in der Vorschau vorhanden ist."
+			);
+		}
+
+		this.logger.info("system", `Test-Sync: Artikel "${testOperation.productTitle || testOperation.variantTitle || testOperation.sku}" wird getestet (Bestand: ${testOperation.oldValue} → ${testOperation.newValue})`, {
+			sku: testOperation.sku,
+			oldValue: testOperation.oldValue,
+			newValue: testOperation.newValue,
+		});
+
+		// Lade Produkte, um inventoryItemId zu finden
+		this.sendProgress({
+			current: 10,
+			total: 100,
+			stage: "matching",
+			message: "Produkte werden geladen...",
+		});
+
+		const products = await this.loadProducts(shopConfig);
+
+		// Finde Variante mit inventoryItemId
+		let inventoryItemId: string | null = null;
+		let variantId: string | null = null;
+		let csvRow: CsvRow | null = null;
+
+		for (const product of products) {
+			for (const variant of product.variants) {
+				// Suche nach SKU (Priorität 1)
+				if (testOperation.sku && variant.sku === testOperation.sku) {
+					variantId = variant.id;
+					inventoryItemId = variant.inventoryItemId;
+					// Erstelle CsvRow für OperationResult
+					csvRow = {
+						rowNumber: 0,
+						sku: variant.sku || "",
+						name: product.title,
+						price: variant.price,
+						stock: testOperation.newValue as number,
+						rawData: {}, // Leeres rawData für Test
+					};
+					break;
+				}
+				// Suche nach Name (Priorität 2)
+				if (
+					testOperation.variantTitle &&
+					testOperation.productTitle &&
+					variant.title === testOperation.variantTitle &&
+					product.title === testOperation.productTitle
+				) {
+					variantId = variant.id;
+					inventoryItemId = variant.inventoryItemId;
+					// Erstelle CsvRow für OperationResult
+					csvRow = {
+						rowNumber: 0,
+						sku: variant.sku || "",
+						name: product.title,
+						price: variant.price,
+						stock: testOperation.newValue as number,
+						rawData: {}, // Leeres rawData für Test
+					};
+					break;
+				}
+			}
+			if (inventoryItemId) break;
+		}
+
+		if (!inventoryItemId || !variantId) {
+			throw new Error(
+				`Artikel "${testOperation.productTitle || testOperation.variantTitle}" konnte nicht in Shopify gefunden werden.`
+			);
+		}
+
+		// Führe Test-Update durch
+		this.sendProgress({
+			current: 50,
+			total: 100,
+			stage: "updating-inventory",
+			message: "Test-Update wird ausgeführt...",
+		});
+
+		try {
+			const result = await setInventoryQuantities(
+				{
+					shopUrl: shopConfig.shopUrl,
+					accessToken: shopConfig.accessToken,
+				},
+				shopConfig.locationId,
+				[
+					{
+						inventoryItemId,
+						quantity: testOperation.newValue as number,
+					},
+				]
+			);
+
+			if (result.success && result.userErrors.length === 0) {
+				operations.push({
+					type: "inventory",
+					csvRow: csvRow!,
+					variantId,
+					status: "success",
+					oldValue: testOperation.oldValue as number,
+					newValue: testOperation.newValue as number,
+				});
+
+				this.logger.info("inventory", `Test-Sync erfolgreich! Bestand wurde von ${testOperation.oldValue} auf ${testOperation.newValue} aktualisiert.`, {
+					oldValue: testOperation.oldValue,
+					newValue: testOperation.newValue,
+				});
+
+				// Fortschritt auf 100% setzen
+				this.sendProgress({
+					current: 100,
+					total: 100,
+					stage: "complete",
+					message: "Test-Sync abgeschlossen",
+				});
+			} else {
+				const errorMessage =
+					result.userErrors.map((e) => e.message).join(", ") || "Unbekannter Fehler";
+				operations.push({
+					type: "inventory",
+					csvRow: csvRow!,
+					variantId,
+					status: "failed",
+					oldValue: testOperation.oldValue as number,
+					newValue: testOperation.newValue as number,
+					message: errorMessage,
+				});
+
+				throw new Error(`Test-Sync fehlgeschlagen: ${errorMessage}`);
+			}
+		} catch (error) {
+			const errorMessage = error instanceof Error ? error.message : "Unbekannter Fehler";
+			operations.push({
+				type: "inventory",
+				csvRow: csvRow!,
+				variantId: variantId!,
+				status: "failed",
+				oldValue: testOperation.oldValue as number,
+				newValue: testOperation.newValue as number,
+				message: errorMessage,
+			});
+			throw error;
+		}
+
+		const endTime = new Date();
+		const result: SyncResult = {
+			totalPlanned: 1,
+			totalExecuted: 1,
+			totalSuccess: operations[0]?.status === "success" ? 1 : 0,
+			totalFailed: operations[0]?.status === "failed" ? 1 : 0,
+			totalSkipped: 0,
+			operations,
+			startTime: startTime.toISOString(),
+			endTime: endTime.toISOString(),
+			duration: endTime.getTime() - startTime.getTime(),
+		};
+
+		this.sendComplete(result);
+		return result;
+	}
 }
 
 // Singleton-Instanz

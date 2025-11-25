@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from "electron";
-import type { SyncProgress, SyncLog, SyncResult, PlannedOperation, SyncStartConfig, SyncPreviewRequest, SyncPreviewResponse } from "./types/ipc.js";
+import type { SyncProgress, SyncLog, SyncResult, PlannedOperation, SyncStartConfig, SyncPreviewRequest, SyncPreviewResponse, SyncTestRequest } from "./types/ipc.js";
 
 /**
  * Preload Script für sichere IPC-Kommunikation zwischen Renderer und Main Process.
@@ -19,6 +19,7 @@ const electronAPI = {
 	sync: {
 		preview: (config: SyncPreviewRequest) => ipcRenderer.invoke("sync:preview", config) as Promise<SyncPreviewResponse>,
 		start: (config: SyncStartConfig) => ipcRenderer.invoke("sync:start", config) as Promise<{ success: boolean; message?: string; error?: string }>,
+		test: (config: SyncTestRequest) => ipcRenderer.invoke("sync:test", config) as Promise<{ success: boolean; message?: string; error?: string }>,
 		cancel: () => ipcRenderer.invoke("sync:cancel") as Promise<{ success: boolean; message?: string; error?: string }>,
 		onProgress: (callback: (progress: SyncProgress) => void) => {
 			ipcRenderer.on("sync:progress", (_event, data: SyncProgress) => callback(data));

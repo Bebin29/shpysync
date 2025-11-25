@@ -70,7 +70,9 @@ export function exportLogsToText(logs: SyncLog[]): string {
 	const lines = logs.map((log) => {
 		const timestamp = new Date(log.timestamp).toLocaleString("de-DE");
 		const level = log.level.toUpperCase().padEnd(5);
-		return `[${timestamp}] ${level} ${log.message}`;
+		const category = `[${log.category}]`.padEnd(12);
+		const contextStr = log.context ? ` ${JSON.stringify(log.context)}` : "";
+		return `[${timestamp}] ${level} ${category} ${log.message}${contextStr}`;
 	});
 
 	return lines.join("\n");
