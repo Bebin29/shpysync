@@ -1588,6 +1588,161 @@ interface SyncUIState {
 - ✅ Electron lädt die statische Next-App im Prod-Modus
 - ✅ `.exe` startet sauber und verhält sich identisch zum Dev-Setup (abzüglich DevTools)
 
+#### 12.5 Production Build - Bekannte Probleme & Lösungen
+
+**⚠️ WICHTIG:** Diese Probleme traten beim Production Build auf und wurden behoben. Bei zukünftigen Builds beachten!
+
+##### Problem 1: ES Module vs CommonJS Konflikt
+
+**Symptom:**
+```
+ReferenceError: require is not defined in ES module scope
+```
+
+**Ursache:**
+- `"type": "module"` in `package.json` macht alle `.js` Dateien zu ES Modules
+- Build-Scripts (`scripts/build-with-signing.js`) nutzen `require()` (CommonJS)
+- Konflikt zwischen ES Modules und CommonJS
+
+**Lösung:**
+- ❌ **NICHT:** `"type": "module"` in Haupt-`package.json` setzen
+- ✅ **Richtig:** `extraMetadata: { type: 'module' }` in `electron-builder.yml` setzen
+- Dadurch wird ES Module nur für die gepackte Electron-App verwendet, nicht für Build-Scripts
+
+**Konfiguration:**
+```yaml
+# electron-builder.yml
+extraMetadata:
+  type: module
+```
+
+##### Problem 2: Asset-Pfade im `file://` Protokoll
+
+**Symptom:**
+```
+Failed to load resource: net::ERR_FILE_NOT_FOUND
+```
+- CSS/JS Assets werden nicht geladen
+- Pfade wie `/_next/static/...` funktionieren nicht im `file://` Kontext
+
+**Ursache:**
+- Next.js generiert standardmäßig absolute Pfade (`/_next/static/...`)
+- Electron lädt HTML über `file://` Protokoll
+- Relative Pfade werden falsch aufgelöst ohne `<base>` Tag
+
+**Lösung:**
+1. **Next.js Config:** Relative Asset-Pfade aktivieren
+   ```javascript
+   // next.config.js
+   const nextConfig = {
+     output: 'export',
+     assetPrefix: './',  // ✅ Relative Pfade
+     trailingSlash: true, // ✅ Trailing Slash für Routen
+   };
+   ```
+
+2. **Base-Tag Script:** Statisches Script nach Build ausführen
+   - `scripts/fix-html-base-tag.js` fügt `<base>` Tag zu allen HTML-Dateien hinzu
+   - Berechnet korrekten relativen Pfad basierend auf Datei-Tiefe:
+     - `out/index.html` → `<base href="./">`
+     - `out/sync/index.html` → `<base href="../">`
+   - Script wird in Build-Prozess integriert:
+     ```json
+     {
+       "scripts": {
+         "fix:html": "node scripts/fix-html-base-tag.js",
+         "electron:build": "npm run build && npm run fix:html && npm run electron:build:ts && ..."
+       }
+     }
+     ```
+
+**Wichtig:** Base-Tag muss **statisch** in HTML eingefügt werden, nicht dynamisch via JavaScript (zu spät für Asset-Loading).
+
+##### Problem 3: Navigation im `file://` Kontext
+
+**Symptom:**
+```
+Not allowed to load local resource: file:///C:/sync/
+```
+
+**Ursache:**
+- Next.js generiert Links wie `/sync` (absolute Pfade)
+- Im `file://` Kontext wird das zu `file:///C:/sync` (falsch)
+- Electron blockiert Navigation zu nicht-existierenden Dateien
+
+**Lösung:**
+1. **Next.js Config:** `trailingSlash: true` aktivieren
+   - Generiert Routen wie `/sync/index.html` statt `/sync`
+   - Bessere Kompatibilität mit `file://` Protokoll
+
+2. **Navigation Handler:** `will-navigate` Event in `electron/main.ts`
+   ```typescript
+   mainWindow.webContents.on("will-navigate", (event, navigationUrl) => {
+     const parsedUrl = new URL(navigationUrl);
+     if (parsedUrl.protocol === "file:") {
+       // Route zu entsprechender HTML-Datei umleiten
+       // z.B. /sync/ → out/sync/index.html
+       const htmlPath = path.join(outDir, routePath, "index.html");
+       if (existsSync(htmlPath) && mainWindow) {
+         event.preventDefault();
+         mainWindow.loadURL(`file://${htmlPath.replace(/\\/g, "/")}`);
+       }
+     }
+   });
+   ```
+
+##### Problem 4: Pfad-Auflösung im Production Build
+
+**Symptom:**
+```
+Not allowed to load local resource: file:///C:/.../out/index.html
+```
+
+**Ursache:**
+- `app.getAppPath()` gibt unterschiedliche Pfade in Dev vs. Production
+- Im Production Build ist die Struktur anders (app.asar)
+
+**Lösung:**
+```typescript
+// electron/main.ts
+const isDev = !app.isPackaged;
+
+if (isDev) {
+  mainWindow.loadURL("http://localhost:3000");
+} else {
+  // Production: Verwende app.getAppPath() für korrekte Pfad-Auflösung
+  const outDir = path.join(app.getAppPath(), "out");
+  const indexPath = path.join(outDir, "index.html");
+  const fileUrl = `file://${indexPath.replace(/\\/g, "/")}`;
+  mainWindow.loadURL(fileUrl);
+}
+```
+
+##### Zusammenfassung der Build-Konfiguration
+
+**Erforderliche Dateien:**
+1. `scripts/fix-html-base-tag.js` - Base-Tag Injection Script
+2. `next.config.js` - Mit `assetPrefix: './'` und `trailingSlash: true`
+3. `electron-builder.yml` - Mit `extraMetadata: { type: 'module' }`
+4. `electron/main.ts` - Mit Navigation Handler und korrekter Pfad-Auflösung
+
+**Build-Prozess:**
+```bash
+npm run build              # Next.js Build
+npm run fix:html          # Base-Tag Injection
+npm run electron:build:ts # TypeScript Kompilierung
+electron-builder --win    # Electron Packaging
+```
+
+**Checkliste für zukünftige Builds:**
+- ✅ `extraMetadata.type` in `electron-builder.yml` gesetzt (nicht in `package.json`)
+- ✅ `assetPrefix: './'` in `next.config.js`
+- ✅ `trailingSlash: true` in `next.config.js`
+- ✅ `fix:html` Script im Build-Prozess integriert
+- ✅ Navigation Handler in `electron/main.ts` vorhanden
+- ✅ `app.getAppPath()` für Production-Pfade verwendet
+- ✅ `file://` URLs mit korrekter Pfad-Normalisierung (`replace(/\\/g, "/")`)
+
 ---
 
 ## 🔌 Shopify GraphQL Admin API - Detaillierte Integration
@@ -2635,6 +2790,7 @@ const mainWindow = new BrowserWindow({
 **Erstellt:** 2025-01-15
 **Aktualisiert:** 2025-01-15 (Feedback-Integration)
 **Aktualisiert:** 2025-01-XX (Phase 7 Implementierung - sync:preview Endpunkt, SyncResult.planned optional)
-**Version:** 2.1
-**Status:** Phase 7 implementiert, Phase 8-12 geplant
+**Aktualisiert:** 2025-01-XX (Production Build Probleme & Lösungen dokumentiert - Phase 12.5)
+**Version:** 2.2
+**Status:** Phase 7 implementiert, Phase 8-12 geplant, Production Build Probleme behoben
 
