@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from "vitest";
-import { processCsvToUpdates } from "../../../core/domain/sync-pipeline.js";
-import type { CsvRow, Product } from "../../../core/domain/types.js";
+import { processCsvToUpdates, type ProcessCsvToUpdatesResult } from "../../../core/domain/sync-pipeline.js";
+import type { CsvRow, Product, MappedRow } from "../../../core/domain/types.js";
 import { loadFixture } from "../helpers/test-utils.js";
 
 describe("Sync Result Parity", () => {
@@ -67,7 +67,7 @@ describe("Sync Result Parity", () => {
       
       // Prüfe, dass Preise normalisiert wurden
       const priceUpdate = result.priceUpdates.find(
-        (u) => u.variantId === "gid://shopify/ProductVariant/1"
+        (u: { productId: string; variantId: string; price: string }) => u.variantId === "gid://shopify/ProductVariant/1"
       );
       expect(priceUpdate).toBeDefined();
       expect(priceUpdate?.price).toBe("12.50"); // Normalisiert von "12,50"
@@ -97,7 +97,7 @@ describe("Sync Result Parity", () => {
       
       // Prüfe, dass Inventory-Updates korrekte Quantitäten haben
       const inventoryUpdate = result.inventoryUpdates.find(
-        (u) => u.inventoryItemId === "gid://shopify/InventoryItem/1"
+        (u: { inventoryItemId: string; quantity: number }) => u.inventoryItemId === "gid://shopify/InventoryItem/1"
       );
       expect(inventoryUpdate).toBeDefined();
       expect(inventoryUpdate?.quantity).toBe(10);
@@ -146,7 +146,7 @@ describe("Sync Result Parity", () => {
       
       // Prüfe, dass gematchte Zeilen korrekte Variant-IDs haben
       const mappedRow = result.mappedRows.find(
-        (m) => m.csvRow.sku === "SKU-001"
+        (m: MappedRow) => m.csvRow.sku === "SKU-001"
       );
       expect(mappedRow).toBeDefined();
       expect(mappedRow?.variantId).toBe("gid://shopify/ProductVariant/1");
@@ -212,18 +212,18 @@ describe("Sync Result Parity", () => {
     });
 
     it("sollte Zeilen ohne Bestand als unmatchedRows markieren (wenn updateInventory true)", () => {
-      const rowsWithoutStock: CsvRow[] = [
+      const rowsWithoutStock: Array<Omit<CsvRow, "stock"> & { stock?: number }> = [
         {
           rowNumber: 1,
           sku: "SKU-001",
           name: "Test Produkt 1",
           price: "12.50",
-          stock: undefined as any, // Kein Bestand
+          stock: undefined, // Kein Bestand
           rawData: {},
         },
       ];
 
-      const result = processCsvToUpdates(rowsWithoutStock, products, {
+      const result = processCsvToUpdates(rowsWithoutStock as CsvRow[], products, {
         updatePrices: false,
         updateInventory: true,
       });

@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
+import type { BrowserWindow } from "electron";
 import { SyncEngine } from "../../../../electron/services/sync-engine.js";
 import type { ShopConfig, ColumnMapping, SyncPreviewRequest, SyncStartConfig } from "../../../../electron/types/ipc.js";
 import { createMockProduct, createMockVariant } from "../../../helpers/test-utils.js";
@@ -183,7 +184,7 @@ describe("SyncEngine", () => {
         webContents: {
           send: vi.fn(),
         },
-      } as any;
+      } as unknown as BrowserWindow;
 
       expect(() => syncEngine.setMainWindow(mockWindow)).not.toThrow();
     });

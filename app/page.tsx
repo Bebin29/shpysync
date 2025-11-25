@@ -2,10 +2,11 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, Package, TrendingUp, AlertCircle, Clock, Play, Square } from "lucide-react";
+import { RefreshCw, Package, TrendingUp, AlertCircle, Clock, Play, Square, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { IpcTest } from "@/app/components/ipc-test";
 import { useConfig } from "@/app/hooks/use-config";
+import { useDashboard } from "@/app/hooks/use-dashboard";
 import { Badge } from "@/components/ui/badge";
 
 /**
@@ -13,29 +14,24 @@ import { Badge } from "@/components/ui/badge";
  */
 export default function Dashboard() {
   const { autoSyncStatus, autoSyncConfig, startAutoSync, stopAutoSync } = useConfig();
-
-  // TODO: Echte Daten aus Electron/State holen
-  const stats = {
-    totalProducts: 0,
-    lastSync: null as Date | null,
-    syncSuccess: 0,
-    syncFailed: 0,
-  };
-
-  const recentSyncs = [
-    // TODO: Echte Sync-Historie laden
-  ];
+  const { stats, history, loading, error, refresh } = useDashboard();
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Dashboard</h1>
-        <Link href="/sync">
-          <Button>
-            <RefreshCw className="mr-2 h-4 w-4" />
-            Synchronisation starten
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={refresh} disabled={loading}>
+            <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            Aktualisieren
           </Button>
-        </Link>
+          <Link href="/sync">
+            <Button>
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Synchronisation starten
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Statistik-Karten */}
@@ -46,8 +42,16 @@ export default function Dashboard() {
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.totalProducts}</div>
-            <p className="text-xs text-muted-foreground">Gesamt im Cache</p>
+            {loading ? (
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            ) : error ? (
+              <div className="text-sm text-red-600">{error}</div>
+            ) : (
+              <>
+                <div className="text-2xl font-bold">{stats?.totalProducts ?? 0}</div>
+                <p className="text-xs text-muted-foreground">Gesamt im Cache</p>
+              </>
+            )}
           </CardContent>
         </Card>
 
@@ -57,16 +61,24 @@ export default function Dashboard() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {stats.lastSync
-                ? new Date(stats.lastSync).toLocaleDateString("de-DE")
-                : "Nie"}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {stats.lastSync
-                ? new Date(stats.lastSync).toLocaleTimeString("de-DE")
-                : "Noch keine Synchronisation"}
-            </p>
+            {loading ? (
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            ) : error ? (
+              <div className="text-sm text-red-600">{error}</div>
+            ) : (
+              <>
+                <div className="text-2xl font-bold">
+                  {stats?.lastSync
+                    ? new Date(stats.lastSync).toLocaleDateString("de-DE")
+                    : "Nie"}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {stats?.lastSync
+                    ? new Date(stats.lastSync).toLocaleTimeString("de-DE")
+                    : "Noch keine Synchronisation"}
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
 
@@ -76,10 +88,18 @@ export default function Dashboard() {
             <TrendingUp className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              {stats.syncSuccess}
-            </div>
-            <p className="text-xs text-muted-foreground">Letzte 10 Syncs</p>
+            {loading ? (
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            ) : error ? (
+              <div className="text-sm text-red-600">{error}</div>
+            ) : (
+              <>
+                <div className="text-2xl font-bold text-green-600">
+                  {stats?.syncSuccess ?? 0}
+                </div>
+                <p className="text-xs text-muted-foreground">Letzte 10 Syncs</p>
+              </>
+            )}
           </CardContent>
         </Card>
 
@@ -89,10 +109,18 @@ export default function Dashboard() {
             <AlertCircle className="h-4 w-4 text-red-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">
-              {stats.syncFailed}
-            </div>
-            <p className="text-xs text-muted-foreground">Letzte 10 Syncs</p>
+            {loading ? (
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            ) : error ? (
+              <div className="text-sm text-red-600">{error}</div>
+            ) : (
+              <>
+                <div className="text-2xl font-bold text-red-600">
+                  {stats?.syncFailed ?? 0}
+                </div>
+                <p className="text-xs text-muted-foreground">Letzte 10 Syncs</p>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -196,7 +224,13 @@ export default function Dashboard() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {recentSyncs.length === 0 ? (
+          {loading ? (
+            <div className="py-8 text-center">
+              <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : error ? (
+            <div className="py-8 text-center text-red-600">{error}</div>
+          ) : history.length === 0 ? (
             <div className="py-8 text-center text-muted-foreground">
               Noch keine Synchronisationen durchgeführt.
               <br />
@@ -206,7 +240,39 @@ export default function Dashboard() {
             </div>
           ) : (
             <div className="space-y-2">
-              {/* TODO: Sync-Liste rendern */}
+              {history.map((entry) => {
+                const isSuccess = entry.result.totalFailed === 0 && entry.result.totalSuccess > 0;
+                const isFailed = entry.result.totalFailed > 0;
+                const date = new Date(entry.timestamp);
+
+                return (
+                  <div
+                    key={entry.id}
+                    className="flex items-center justify-between rounded-lg border p-4"
+                  >
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{entry.csvFileName}</span>
+                        {isSuccess && (
+                          <Badge variant="default" className="bg-green-600">
+                            Erfolgreich
+                          </Badge>
+                        )}
+                        {isFailed && (
+                          <Badge variant="destructive">Fehlgeschlagen</Badge>
+                        )}
+                      </div>
+                      <div className="mt-1 text-sm text-muted-foreground">
+                        {date.toLocaleString("de-DE")} • {entry.config.shopUrl} • {entry.config.locationName}
+                      </div>
+                      <div className="mt-1 text-xs text-muted-foreground">
+                        {entry.result.totalSuccess} erfolgreich, {entry.result.totalFailed} fehlgeschlagen
+                        {entry.result.duration && ` • ${Math.round(entry.result.duration / 1000)}s`}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </CardContent>

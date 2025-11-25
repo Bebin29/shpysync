@@ -27,49 +27,99 @@ const store = new Store<AppConfig>({
 });
 
 /**
+ * Type Guard: Prüft, ob ein Wert ein Objekt ist.
+ */
+function isObject(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/**
+ * Type Guard: Prüft, ob ein Wert ein ColumnMapping ist.
+ */
+function isColumnMapping(value: unknown): value is ColumnMapping {
+	if (!isObject(value)) {
+		return false;
+	}
+	return (
+		typeof value.sku === "string" &&
+		typeof value.name === "string" &&
+		typeof value.price === "string" &&
+		typeof value.stock === "string"
+	);
+}
+
+/**
  * Migriert alte Config-Struktur (mit accessToken) zu neuer Struktur (mit accessTokenRef).
  * 
  * @param config - Alte Config-Struktur
  * @returns Migrierte Config oder null bei Fehler
  */
-function migrateOldConfig(config: any): AppConfig | null {
-	if (!config.shop) {
-		return config as AppConfig;
+function migrateOldConfig(config: unknown): AppConfig | null {
+	// Prüfe, ob config ein Objekt ist
+	if (!isObject(config)) {
+		return null;
 	}
 
-	// Prüfe ob alte Struktur (mit accessToken direkt)
-	const shop = config.shop;
-	if (shop.accessToken && !shop.accessTokenRef) {
-		console.log("Migriere alte Config-Struktur (accessToken → accessTokenRef)");
+	// Erstelle eine vollständige AppConfig-Struktur
+	const appConfig: AppConfig = {
+		shop: null,
+		defaultColumnMapping: null,
+		apiVersion: typeof config.apiVersion === "string" ? config.apiVersion : SHOPIFY_API_VERSION,
+		autoSync: isObject(config.autoSync) ? (config.autoSync as AppConfig["autoSync"]) : { enabled: false },
+	};
+
+	// Prüfe, ob shop vorhanden ist
+	if (config.shop && isObject(config.shop)) {
+		const shop = config.shop as Record<string, unknown>;
 		
-		try {
-			// Token in Token-Store verschieben
-			const tokenRef = storeToken(shop.accessToken);
+		// Prüfe ob alte Struktur (mit accessToken direkt)
+		if (typeof shop.accessToken === "string" && !shop.accessTokenRef) {
+			console.log("Migriere alte Config-Struktur (accessToken → accessTokenRef)");
 			
-			// Neue Struktur erstellen
-			const migrated: AppConfig = {
-				...config,
-				shop: {
-					shopUrl: shop.shopUrl,
+			try {
+				// Token in Token-Store verschieben
+				const tokenRef = storeToken(shop.accessToken);
+				
+				// Neue Struktur erstellen
+				appConfig.shop = {
+					shopUrl: typeof shop.shopUrl === "string" ? shop.shopUrl : "",
 					accessTokenRef: tokenRef,
-					locationId: shop.locationId,
-					locationName: shop.locationName,
-				},
-			};
-			
-			// Migrierte Config speichern
-			for (const [key, value] of Object.entries(migrated)) {
-				(store as any).set(key, value);
+					locationId: typeof shop.locationId === "string" ? shop.locationId : "",
+					locationName: typeof shop.locationName === "string" ? shop.locationName : "",
+				};
+				
+				// Migrierte Config speichern
+				(store as unknown as { set: (key: string, value: unknown) => void }).set("shop", appConfig.shop);
+				(store as unknown as { set: (key: string, value: unknown) => void }).set("defaultColumnMapping", appConfig.defaultColumnMapping);
+				if (appConfig.apiVersion) {
+					(store as unknown as { set: (key: string, value: unknown) => void }).set("apiVersion", appConfig.apiVersion);
+				}
+				(store as unknown as { set: (key: string, value: unknown) => void }).set("autoSync", appConfig.autoSync);
+				
+				return appConfig;
+			} catch (error) {
+				console.error("Fehler bei Config-Migration:", error);
+				return null;
 			}
-			
-			return migrated;
-		} catch (error) {
-			console.error("Fehler bei Config-Migration:", error);
-			return null;
+		} else if (typeof shop.shopUrl === "string" && typeof shop.accessTokenRef === "string") {
+			// Neue Struktur (mit accessTokenRef)
+			appConfig.shop = {
+				shopUrl: shop.shopUrl,
+				accessTokenRef: shop.accessTokenRef,
+				locationId: typeof shop.locationId === "string" ? shop.locationId : "",
+				locationName: typeof shop.locationName === "string" ? shop.locationName : "",
+			};
 		}
 	}
 
-	return config as AppConfig;
+	// DefaultColumnMapping setzen
+	if (isColumnMapping(config.defaultColumnMapping)) {
+		appConfig.defaultColumnMapping = config.defaultColumnMapping;
+	} else if (config.defaultColumnMapping === null) {
+		appConfig.defaultColumnMapping = null;
+	}
+
+	return appConfig;
 }
 
 /**
@@ -77,7 +127,14 @@ function migrateOldConfig(config: any): AppConfig | null {
  * Validiert gegen Zod-Schema und migriert alte Strukturen.
  */
 export function getConfig(): AppConfig {
-	const config = (store as any).store as any;
+	// Lade alle Config-Werte
+	const storeTyped = store as unknown as { get: (key: string) => unknown };
+	const config: unknown = {
+		shop: storeTyped.get("shop"),
+		defaultColumnMapping: storeTyped.get("defaultColumnMapping"),
+		apiVersion: storeTyped.get("apiVersion"),
+		autoSync: storeTyped.get("autoSync"),
+	};
 	
 	// Migration von alter Struktur
 	const migrated = migrateOldConfig(config);
@@ -110,9 +167,13 @@ export function setConfig(config: AppConfig): void {
 		throw new Error(`Ungültige Config: ${result.error.message}`);
 	}
 	
-	for (const [key, value] of Object.entries(result.data)) {
-		(store as any).set(key, value);
+	const storeTyped = store as unknown as { set: (key: string, value: unknown) => void };
+	storeTyped.set("shop", result.data.shop);
+	storeTyped.set("defaultColumnMapping", result.data.defaultColumnMapping);
+	if (result.data.apiVersion) {
+		storeTyped.set("apiVersion", result.data.apiVersion);
 	}
+	storeTyped.set("autoSync", result.data.autoSync);
 }
 
 /**
@@ -122,7 +183,7 @@ export function setConfig(config: AppConfig): void {
  * @returns ShopConfig mit accessToken oder null
  */
 export function getShopConfig(): ShopConfig | null {
-	const stored = (store as any).get("shop") as ShopConfigStored | null;
+	const stored = (store as unknown as { get: (key: string) => unknown }).get("shop") as ShopConfigStored | null;
 	if (!stored) {
 		return null;
 	}
@@ -159,11 +220,11 @@ export function getShopConfig(): ShopConfig | null {
 export function setShopConfig(shopConfig: ShopConfig | null): void {
 	if (!shopConfig) {
 		// Beim Löschen: Token auch löschen falls vorhanden
-		const stored = (store as any).get("shop") as ShopConfigStored | null;
+		const stored = (store as unknown as { get: (key: string) => unknown }).get("shop") as ShopConfigStored | null;
 		if (stored?.accessTokenRef) {
 			deleteToken(stored.accessTokenRef);
 		}
-		(store as any).set("shop", null);
+		(store as unknown as { set: (key: string, value: unknown) => void }).set("shop", null);
 		return;
 	}
 
@@ -190,7 +251,7 @@ export function setShopConfig(shopConfig: ShopConfig | null): void {
 	}
 
 	// Prüfe ob bereits eine Config existiert
-	const existing = (store as any).get("shop") as ShopConfigStored | null;
+	const existing = (store as unknown as { get: (key: string) => unknown }).get("shop") as ShopConfigStored | null;
 	let tokenRef: string;
 
 	if (existing?.accessTokenRef && tokenExists(existing.accessTokenRef)) {
@@ -210,21 +271,21 @@ export function setShopConfig(shopConfig: ShopConfig | null): void {
 		locationName: shopConfig.locationName,
 	};
 
-	(store as any).set("shop", stored);
+	(store as unknown as { set: (key: string, value: unknown) => void }).set("shop", stored);
 }
 
 /**
  * Lädt das Standard-Spalten-Mapping.
  */
 export function getDefaultColumnMapping(): ColumnMapping | null {
-  return ((store as any).get("defaultColumnMapping") as ColumnMapping | null) ?? null;
+  return ((store as unknown as { get: (key: string) => unknown }).get("defaultColumnMapping") as ColumnMapping | null) ?? null;
 }
 
 /**
  * Speichert das Standard-Spalten-Mapping.
  */
 export function setDefaultColumnMapping(mapping: ColumnMapping | null): void {
-  (store as any).set("defaultColumnMapping", mapping);
+  (store as unknown as { set: (key: string, value: unknown) => void }).set("defaultColumnMapping", mapping);
 }
 
 /**

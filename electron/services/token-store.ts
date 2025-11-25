@@ -8,7 +8,7 @@ import * as crypto from "crypto";
  */
 
 // Separater Store nur für Tokens (zusätzliche Sicherheitsschicht)
-const tokenStore = new Store<Record<string, string>>({
+const tokenStore: Store<Record<string, string>> = new Store<Record<string, string>>({
 	name: "tokens",
 	defaults: {},
 	encryptionKey: "wawisync-token-key", // TODO: In Produktion aus sicherer Quelle laden
@@ -92,7 +92,7 @@ const MASTER_KEY = process.env.WAWISYNC_TOKEN_KEY || "wawisync-master-key-change
 export function storeToken(token: string): string {
 	const tokenRef = generateTokenRef();
 	const encrypted = encryptToken(token, MASTER_KEY);
-	(tokenStore as any).set(tokenRef, encrypted);
+	(tokenStore as unknown as { set: (key: string, value: string) => void }).set(tokenRef, encrypted);
 	return tokenRef;
 }
 
@@ -103,7 +103,7 @@ export function storeToken(token: string): string {
  * @returns Access-Token oder null wenn nicht gefunden
  */
 export function loadToken(tokenRef: string): string | null {
-	const encrypted = (tokenStore as any).get(tokenRef);
+	const encrypted = (tokenStore as unknown as { get: (key: string) => string | undefined }).get(tokenRef);
 	if (!encrypted) {
 		return null;
 	}
@@ -124,7 +124,7 @@ export function loadToken(tokenRef: string): string | null {
  */
 export function updateToken(tokenRef: string, token: string): void {
 	const encrypted = encryptToken(token, MASTER_KEY);
-	(tokenStore as any).set(tokenRef, encrypted);
+	(tokenStore as unknown as { set: (key: string, value: string) => void }).set(tokenRef, encrypted);
 }
 
 /**
@@ -133,7 +133,7 @@ export function updateToken(tokenRef: string, token: string): void {
  * @param tokenRef - Token-Referenz-ID
  */
 export function deleteToken(tokenRef: string): void {
-	(tokenStore as any).delete(tokenRef);
+	(tokenStore as unknown as { delete: (key: string) => void }).delete(tokenRef);
 }
 
 /**
@@ -143,6 +143,6 @@ export function deleteToken(tokenRef: string): void {
  * @returns true wenn Token existiert
  */
 export function tokenExists(tokenRef: string): boolean {
-	return (tokenStore as any).has(tokenRef);
+	return (tokenStore as unknown as { has: (key: string) => boolean }).has(tokenRef);
 }
 

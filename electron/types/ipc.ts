@@ -105,7 +105,7 @@ export interface PlannedOperation {
 }
 
 export type LogLevel = "debug" | "info" | "warn" | "error";
-export type LogCategory = "csv" | "shopify" | "matching" | "inventory" | "price" | "system";
+export type LogCategory = "csv" | "shopify" | "matching" | "inventory" | "price" | "system" | "cache" | "history" | "sync";
 
 export interface SyncLog {
   id: string;
@@ -203,5 +203,44 @@ export interface ErrorInfo {
   severity: "info" | "warning" | "error" | "fatal";
   details?: unknown;
   userMessage: string;
+}
+
+// Cache-Types
+export interface CacheStats {
+	productCount: number;
+	variantCount: number;
+	lastUpdate: string | null;
+	schemaVersion: number;
+	dbPath: string;
+}
+
+// Dashboard-Types
+export interface DashboardStats {
+	totalProducts: number; // Aus Cache
+	totalVariants: number; // Aus Cache
+	lastSync: string | null; // Aus Historie
+	syncSuccess: number; // Letzte 10 Syncs
+	syncFailed: number; // Letzte 10 Syncs
+	cacheLastUpdate: string | null; // Aus Cache
+}
+
+export interface HistoryStats {
+	total: number;
+	success: number;
+	failed: number;
+	lastSync: string | null;
+}
+
+// Sync-Historie-Types
+export interface SyncHistoryEntry {
+	id: string;
+	timestamp: string;
+	csvFileName: string;
+	result: SyncResult;
+	config: {
+		shopUrl: string;
+		locationName: string;
+		columnMapping: ColumnMapping;
+	};
 }
 

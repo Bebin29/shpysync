@@ -25,6 +25,10 @@ import { getSyncEngine } from "./sync-engine.js";
 import { errorToErrorInfo } from "./error-handler.js";
 import { WawiError } from "../../core/domain/errors.js";
 import { getAutoSyncService, type AutoSyncConfig, type AutoSyncStatus } from "./auto-sync-service.js";
+import { getCacheService } from "./cache-service.js";
+import { getSyncHistoryService } from "./sync-history-service.js";
+import { getAllProductsWithVariants } from "./shopify-product-service.js";
+import type { CacheStats, DashboardStats, SyncHistoryEntry } from "../types/ipc.js";
 
 /**
  * Registriert alle IPC-Handler für die Electron-App.
@@ -457,5 +461,99 @@ export function registerIpcHandlers(): void {
       }
     }
   );
+
+  // Cache-Handler
+  ipcMain.handle("cache:get-stats", async (): Promise<CacheStats> => {
+    try {
+      const cacheService = getCacheService();
+      cacheService.initialize();
+      return cacheService.getCacheStats();
+    } catch (error) {
+      const errorInfo = errorToErrorInfo(error);
+      throw new Error(errorInfo.userMessage);
+    }
+  });
+
+  ipcMain.handle("cache:rebuild", async (): Promise<void> => {
+    try {
+      const shopConfig = getShopConfig();
+      if (!shopConfig) {
+        throw new Error("Keine Shop-Konfiguration vorhanden");
+      }
+
+      // Alle Produkte von Shopify laden
+      const products = await getAllProductsWithVariants({
+        shopUrl: shopConfig.shopUrl,
+        accessToken: shopConfig.accessToken,
+      });
+
+      // Cache aktualisieren
+      const cacheService = getCacheService();
+      cacheService.initialize();
+      cacheService.saveProducts(products);
+    } catch (error) {
+      const errorInfo = errorToErrorInfo(error);
+      throw new Error(errorInfo.userMessage);
+    }
+  });
+
+  ipcMain.handle("cache:clear", async (): Promise<void> => {
+    try {
+      const cacheService = getCacheService();
+      cacheService.initialize();
+      cacheService.clearCache();
+    } catch (error) {
+      const errorInfo = errorToErrorInfo(error);
+      throw new Error(errorInfo.userMessage);
+    }
+  });
+
+  // Dashboard-Handler
+  ipcMain.handle("dashboard:get-stats", async (): Promise<DashboardStats> => {
+    try {
+      const cacheService = getCacheService();
+      const historyService = getSyncHistoryService();
+
+      // Cache initialisieren und Stats laden
+      let cacheStats: CacheStats = {
+        productCount: 0,
+        variantCount: 0,
+        lastUpdate: null,
+        schemaVersion: 1,
+        dbPath: "nicht initialisiert",
+      };
+      try {
+        cacheService.initialize();
+        cacheStats = cacheService.getCacheStats();
+      } catch (error) {
+        // Cache-Initialisierung kann fehlschlagen, wenn app nicht ready ist
+        // Verwende Standardwerte
+      }
+
+      const historyStats = historyService.getHistoryStats();
+
+      return {
+        totalProducts: cacheStats.productCount,
+        totalVariants: cacheStats.variantCount,
+        lastSync: historyStats.lastSync,
+        syncSuccess: historyStats.success,
+        syncFailed: historyStats.failed,
+        cacheLastUpdate: cacheStats.lastUpdate,
+      };
+    } catch (error) {
+      const errorInfo = errorToErrorInfo(error);
+      throw new Error(errorInfo.userMessage);
+    }
+  });
+
+  ipcMain.handle("dashboard:get-history", async (_event, limit?: number): Promise<SyncHistoryEntry[]> => {
+    try {
+      const historyService = getSyncHistoryService();
+      return historyService.getSyncHistory(limit);
+    } catch (error) {
+      const errorInfo = errorToErrorInfo(error);
+      throw new Error(errorInfo.userMessage);
+    }
+  });
 }
 
