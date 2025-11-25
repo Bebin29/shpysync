@@ -41,9 +41,16 @@ const electronAPI = {
     getLocations: (shopConfig: unknown) => ipcRenderer.invoke("config:get-locations", shopConfig),
   },
 
-  // CSV-Funktionen (werden später implementiert)
+  // CSV-Funktionen
   csv: {
     parse: (filePath: string) => ipcRenderer.invoke("csv:parse", filePath),
+    selectFile: () => ipcRenderer.invoke("csv:select-file"),
+    getHeaders: (filePath: string) => ipcRenderer.invoke("csv:get-headers", filePath),
+    preview: (config: {
+      filePath: string;
+      mapping: unknown;
+      maxRows?: number;
+    }) => ipcRenderer.invoke("csv:preview", config),
   },
 };
 

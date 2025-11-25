@@ -110,3 +110,23 @@ export interface CsvRow {
   data: Record<string, string>;
 }
 
+export interface CsvPreviewResponse {
+  success: boolean;
+  data?: {
+    headers: string[];
+    encoding: string;
+    totalRows: number;
+    previewRows: Array<{
+      rowNumber: number;
+      sku: string;
+      name: string;
+      price: string;
+      stock: number;
+      rawData: Record<string, string>;
+    }>;
+    columnMapping: ColumnMapping;
+    columnNameToLetter: Record<string, string>;
+  };
+  error?: string;
+}
+
