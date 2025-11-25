@@ -3,6 +3,8 @@ import type { ShopConfig, ShopConfigStored, AppConfig, ColumnMapping } from "../
 import { storeToken, loadToken, updateToken, deleteToken, tokenExists } from "./token-store.js";
 import { appConfigSchema, shopConfigStoredSchema, shopConfigSchema } from "../lib/validators.js";
 import { SHOPIFY_API_VERSION } from "./api-version-manager.js";
+import { WawiError } from "../../core/domain/errors.js";
+import { validateShopConfig as validateShopConfigCore } from "../../core/domain/validators.js";
 
 /**
  * Config Service für Persistierung von App-Einstellungen.
@@ -168,7 +170,23 @@ export function setShopConfig(shopConfig: ShopConfig | null): void {
 	// Validierung gegen Zod-Schema
 	const validationResult = shopConfigSchema.safeParse(shopConfig);
 	if (!validationResult.success) {
-		throw new Error(`Ungültige Shop-Config: ${validationResult.error.message}`);
+		const errors = validationResult.error.errors.map((err) => {
+			const path = err.path.join(".");
+			return `${path}: ${err.message}`;
+		});
+		throw WawiError.configError("CONFIG_INVALID", `Ungültige Shop-Config: ${errors.join(", ")}`, {
+			errors,
+		});
+	}
+
+	// Zusätzliche Validierung mit Core-Validatoren (nicht-strikt für Token-Format)
+	try {
+		validateShopConfigCore(shopConfig, false); // false = nicht-strikt für Token-Format
+	} catch (error) {
+		if (error instanceof WawiError) {
+			throw error;
+		}
+		throw WawiError.configError("CONFIG_INVALID", `Validierungsfehler: ${error instanceof Error ? error.message : String(error)}`);
 	}
 
 	// Prüfe ob bereits eine Config existiert
@@ -264,20 +282,36 @@ export function validateShopConfig(config: ShopConfig): {
 	valid: boolean;
 	errors: string[];
 } {
-	const result = shopConfigSchema.safeParse(config);
-	
-	if (result.success) {
+	try {
+		// Zod-Validierung
+		const result = shopConfigSchema.safeParse(config);
+		
+		if (!result.success) {
+			const errors = result.error.errors.map((err) => {
+				const path = err.path.join(".");
+				return `${path}: ${err.message}`;
+			});
+			return {
+				valid: false,
+				errors,
+			};
+		}
+
+		// Core-Validierung (nicht-strikt für Token-Format, da API-Verbindung der beste Test ist)
+		validateShopConfigCore(config, false); // false = nicht-strikt für Token-Format
+		
 		return { valid: true, errors: [] };
+	} catch (error) {
+		if (error instanceof WawiError) {
+			return {
+				valid: false,
+				errors: [error.getUserMessage()],
+			};
+		}
+		return {
+			valid: false,
+			errors: [error instanceof Error ? error.message : String(error)],
+		};
 	}
-
-	const errors = result.error.errors.map((err) => {
-		const path = err.path.join(".");
-		return `${path}: ${err.message}`;
-	});
-
-	return {
-		valid: false,
-		errors,
-	};
 }
 

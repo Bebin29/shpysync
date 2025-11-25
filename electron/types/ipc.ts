@@ -51,6 +51,8 @@ export interface SyncPreviewResponse {
     }>;
   };
   error?: string;
+  errorCode?: string;
+  errorSeverity?: "info" | "warning" | "error" | "fatal";
 }
 
 export interface ColumnMapping {
@@ -187,5 +189,18 @@ export interface CsvPreviewResponse {
     columnNameToLetter: Record<string, string>;
   };
   error?: string;
+  errorCode?: string;
+  errorSeverity?: "info" | "warning" | "error" | "fatal";
+}
+
+/**
+ * Fehler-Information für IPC-Kommunikation.
+ */
+export interface ErrorInfo {
+  code: string;
+  message: string;
+  severity: "info" | "warning" | "error" | "fatal";
+  details?: unknown;
+  userMessage: string;
 }
 

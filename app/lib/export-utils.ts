@@ -2,7 +2,7 @@
  * Export-Utilities für Sync-Ergebnisse, nicht-gematchte Zeilen und Logs.
  */
 
-import type { SyncResult, OperationResult, SyncLog } from "../../electron/types/ipc";
+import type { SyncResult, SyncLog } from "../../electron/types/ipc";
 
 /**
  * Konvertiert Sync-Ergebnisse zu CSV-Format.

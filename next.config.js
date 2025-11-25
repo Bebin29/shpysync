@@ -1,6 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'export',
+  // Asset-Pfade relativ machen für Electron file:// Protokoll
+  assetPrefix: './',
+  // Trailing Slash für korrekte Routen im file:// Kontext
+  trailingSlash: true,
   images: {
     unoptimized: true,
   },

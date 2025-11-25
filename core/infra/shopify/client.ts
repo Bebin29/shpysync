@@ -5,7 +5,9 @@ import {
   GQL_LOCATIONS,
   GQL_VARIANTS_BULK_UPDATE,
   GQL_INVENTORY_SET,
+  GQL_SHOP_ACCESS_SCOPES,
 } from "./queries.js";
+import { WawiError } from "../../domain/errors.js";
 
 /**
  * Shopify GraphQL Admin API Client.
@@ -183,22 +185,92 @@ async function executeGraphQL<T = unknown>(
 
       if (response.status !== 200) {
         const preview = JSON.stringify(response.data).substring(0, 800);
-        throw new Error(`GraphQL HTTP ${response.status} | preview: ${preview}`);
+        
+        // Konvertiere HTTP-Status zu WawiError
+        if (response.status === 401) {
+          throw WawiError.shopifyError("SHOPIFY_UNAUTHORIZED", "Authentifizierung fehlgeschlagen", {
+            status: response.status,
+            preview,
+          });
+        } else if (response.status === 403) {
+          throw WawiError.shopifyError("SHOPIFY_FORBIDDEN", "Zugriff verweigert", {
+            status: response.status,
+            preview,
+          });
+        } else if (response.status >= 500 && response.status < 600) {
+          throw WawiError.shopifyError("SHOPIFY_SERVER_ERROR", `Server-Fehler: ${response.status}`, {
+            status: response.status,
+            preview,
+          });
+        } else {
+          throw WawiError.shopifyError("SHOPIFY_SERVER_ERROR", `HTTP ${response.status}`, {
+            status: response.status,
+            preview,
+          });
+        }
       }
 
       const data = response.data;
 
       if (data.errors) {
         console.error("GraphQL top-level errors:", data.errors);
-        throw new Error("GraphQL top-level errors");
+        
+        // Prüfe auf spezifische Fehlercodes
+        const firstError = data.errors[0];
+        const errorCode = firstError?.extensions?.code;
+        
+        if (errorCode === "UNAUTHORIZED" || errorCode === "UNAUTHENTICATED") {
+          throw WawiError.shopifyError("SHOPIFY_UNAUTHORIZED", firstError.message || "Authentifizierung fehlgeschlagen", {
+            errors: data.errors,
+          });
+        } else if (errorCode === "FORBIDDEN") {
+          throw WawiError.shopifyError("SHOPIFY_FORBIDDEN", firstError.message || "Zugriff verweigert", {
+            errors: data.errors,
+          });
+        } else {
+          throw WawiError.shopifyError("SHOPIFY_SERVER_ERROR", "GraphQL-Fehler", {
+            errors: data.errors,
+          });
+        }
       }
 
       if (!data.data) {
-        throw new Error("GraphQL response has no data");
+        throw WawiError.shopifyError("SHOPIFY_SERVER_ERROR", "GraphQL-Response enthält keine Daten");
       }
 
       return data.data;
     } catch (error) {
+      // Wenn bereits ein WawiError, weiterwerfen
+      if (error instanceof WawiError) {
+        // Rate-Limit-Fehler können retryt werden
+        if (error.code === "SHOPIFY_RATE_LIMIT" || error.code === "SHOPIFY_SERVER_ERROR") {
+          if (attempt >= MAX_RETRIES) {
+            throw error;
+          }
+
+          const axiosError = error.details as { status?: number; retryAfter?: string } | undefined;
+          const retryAfter = axiosError?.retryAfter;
+          let waitTime: number;
+
+          if (retryAfter) {
+            waitTime = Math.max(parseFloat(retryAfter) * 1000, 1000); // in ms
+          } else {
+            waitTime = 1000 * Math.pow(BACKOFF_FACTOR, attempt); // Exponential Backoff
+          }
+
+          console.warn(
+            `${error.code} – Retry in ${waitTime / 1000}s (Versuch ${attempt + 1}/${MAX_RETRIES})`
+          );
+
+          await new Promise((resolve) => setTimeout(resolve, waitTime));
+          attempt++;
+          continue;
+        }
+        
+        // Andere Fehler: nicht retryen
+        throw error;
+      }
+
       const axiosError = error as AxiosError<GraphQLResponse>;
 
       // Retry-Logik für 429 (Rate-Limit) und 5xx (Server-Fehler)
@@ -208,7 +280,17 @@ async function executeGraphQL<T = unknown>(
           (axiosError.response.status >= 500 && axiosError.response.status < 600))
       ) {
         if (attempt >= MAX_RETRIES) {
-          throw error;
+          // Konvertiere zu WawiError
+          if (axiosError.response.status === 429) {
+            throw WawiError.shopifyError("SHOPIFY_RATE_LIMIT", "Rate-Limit überschritten", {
+              status: axiosError.response.status,
+              retryAfter: axiosError.response.headers["retry-after"],
+            });
+          } else {
+            throw WawiError.shopifyError("SHOPIFY_SERVER_ERROR", `Server-Fehler: ${axiosError.response.status}`, {
+              status: axiosError.response.status,
+            });
+          }
         }
 
         const retryAfter = axiosError.response.headers["retry-after"];
@@ -229,8 +311,16 @@ async function executeGraphQL<T = unknown>(
         continue;
       }
 
-      // Andere Fehler: nicht retryen
-      throw error;
+      // Netzwerk-Fehler
+      if (axiosError.code === "ECONNREFUSED" || axiosError.code === "ETIMEDOUT" || axiosError.code === "ENOTFOUND") {
+        throw WawiError.networkError(`Netzwerk-Fehler: ${axiosError.message}`, {
+          code: axiosError.code,
+          message: axiosError.message,
+        });
+      }
+
+      // Andere Fehler: zu WawiError konvertieren
+      throw WawiError.fromError(error, "SHOPIFY_SERVER_ERROR");
     }
   }
 }
@@ -415,8 +505,43 @@ export async function getLocationId(
     after = connection.pageInfo.endCursor;
   }
 
-  console.error(`Keine Location-ID für '${locationName}' gefunden.`);
-  return null;
+  // Location nicht gefunden - werfe Fehler
+  throw WawiError.shopifyError("SHOPIFY_LOCATION_NOT_FOUND", `Location '${locationName}' nicht gefunden`, {
+    locationName,
+  });
+}
+
+/**
+ * Ruft die Access-Scopes des aktuellen Tokens ab.
+ * 
+ * @param config - Shopify-Konfiguration
+ * @returns Liste von Scope-Handles (z.B. ["read_products", "write_products"])
+ */
+export async function getAccessScopes(
+  config: ShopifyConfig
+): Promise<string[]> {
+  try {
+    const data = await executeGraphQL<{
+      shop: {
+        accessScopes: Array<{
+          handle: string;
+        }>;
+      };
+    }>(config, GQL_SHOP_ACCESS_SCOPES);
+
+    return data.shop.accessScopes.map((scope) => scope.handle);
+  } catch (error) {
+    // Wenn die Query fehlschlägt (z.B. weil der Scope nicht verfügbar ist),
+    // werfen wir einen Fehler
+    if (error instanceof WawiError) {
+      throw error;
+    }
+    throw WawiError.shopifyError(
+      "SHOPIFY_INSUFFICIENT_SCOPES",
+      "Konnte Access-Scopes nicht abrufen",
+      { originalError: error instanceof Error ? error.message : String(error) }
+    );
+  }
 }
 
 /**

@@ -23,7 +23,7 @@ import { useSyncStore } from "@/app/stores/sync-store";
 import { useElectron } from "@/app/hooks/use-electron";
 import { useConfig } from "@/app/hooks/use-config";
 import { exportSyncResults, exportUnmatchedRows, exportLogs } from "@/app/lib/export-utils";
-import type { ColumnMapping, SyncProgress, SyncLog, SyncResult, PlannedOperation, SyncTestRequest } from "../../electron/types/ipc";
+import type { ColumnMapping, SyncProgress, SyncLog, SyncResult, PlannedOperation } from "../../electron/types/ipc";
 
 type WizardStep = 1 | 2 | 3 | 4;
 
@@ -91,6 +91,23 @@ export default function SyncPage() {
 		message: "",
 	});
 	const [syncLogs, setSyncLogs] = useState<SyncLog[]>([]);
+
+	// Helper-Funktion zum Erstellen von SyncLog-Objekten
+	const createLog = useCallback((
+		level: SyncLog["level"],
+		category: SyncLog["category"],
+		message: string,
+		context?: Record<string, unknown>
+	): SyncLog => {
+		return {
+			id: `log-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+			level,
+			category,
+			message,
+			timestamp: new Date().toISOString(),
+			context,
+		};
+	}, []);
 	const [syncResult, setSyncResult] = useState<SyncResult | undefined>();
 	const [updatePrices, setUpdatePrices] = useState(true);
 	const [updateInventory, setUpdateInventory] = useState(true);
@@ -246,7 +263,7 @@ export default function SyncPage() {
 
 		// handlePreviewReady wird nicht mehr benötigt, da Vorschau jetzt über sync.preview kommt
 		// Behalten für Kompatibilität, falls sync:previewReady Event noch verwendet wird
-		const handlePreviewReady = (operations: PlannedOperation[]) => {
+		const handlePreviewReady = (_operations: PlannedOperation[]) => {
 			// Wird nicht mehr verwendet, da Vorschau jetzt über sync.preview kommt
 			// Kann später entfernt werden
 		};
@@ -308,13 +325,14 @@ export default function SyncPage() {
 			setIsSyncRunning(false);
 			setStep("error");
 			setCurrentStep(3); // Zurück zu Vorschau bei Fehler
-			addLog({
-				level: "error",
-				message: `Fehler beim Starten: ${error instanceof Error ? error.message : "Unbekannter Fehler"}`,
-				timestamp: new Date().toISOString(),
-			});
+			const errorLog = createLog(
+				"error",
+				"system",
+				`Fehler beim Starten: ${error instanceof Error ? error.message : "Unbekannter Fehler"}`
+			);
+			addLog(errorLog);
 		}
-	}, [csvFilePath, shopConfig, columnMapping, updatePrices, updateInventory, sync, setStep, addLog]);
+	}, [csvFilePath, shopConfig, columnMapping, updatePrices, updateInventory, sync, setStep, addLog, createLog]);
 
 	const handleConfirmSync = useCallback(() => {
 		setShowConfirmationDialog(false);
@@ -371,13 +389,14 @@ export default function SyncPage() {
 			setIsTestRunning(false);
 			setStep("error");
 			setCurrentStep(3);
-			addLog({
-				level: "error",
-				message: `Fehler beim Test-Sync: ${error instanceof Error ? error.message : "Unbekannter Fehler"}`,
-				timestamp: new Date().toISOString(),
-			});
+			const errorLog = createLog(
+				"error",
+				"system",
+				`Fehler beim Test-Sync: ${error instanceof Error ? error.message : "Unbekannter Fehler"}`
+			);
+			addLog(errorLog);
 		}
-	}, [shopConfig, selectedTestOperationId, plannedOperations, sync, setStep, addLog]);
+	}, [shopConfig, selectedTestOperationId, plannedOperations, sync, setStep, addLog, createLog]);
 
 	const handleCancelSync = useCallback(async () => {
 		try {
