@@ -6,12 +6,16 @@
  */
 
 import type { ElectronAPI } from "../../electron/preload";
+import type { DashboardStats, SyncHistoryEntry, CacheStats } from "../../electron/types/ipc";
 
 declare global {
   interface Window {
     electron: ElectronAPI;
   }
 }
+
+// Re-export Types für Verwendung in React-Komponenten
+export type { DashboardStats, SyncHistoryEntry, CacheStats };
 
 export {};
 

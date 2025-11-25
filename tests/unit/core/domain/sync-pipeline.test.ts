@@ -242,18 +242,19 @@ describe("processCsvToUpdates", () => {
     });
 
     it("sollte Zeilen ohne Bestand als unmatchedRows markieren (wenn updateInventory true)", () => {
-      const csvRows: CsvRow[] = [
-        createMockCsvRow({
+      const csvRows: Array<Omit<CsvRow, "stock"> & { stock?: number }> = [
+        {
           rowNumber: 1,
           sku: "SKU-001",
           name: "Test Produkt 1",
           price: "12.50",
-          stock: undefined as any, // Kein Bestand
-        }),
+          stock: undefined, // Kein Bestand
+          rawData: {},
+        },
       ];
 
       const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-      const result = processCsvToUpdates(csvRows, products, {
+      const result = processCsvToUpdates(csvRows as CsvRow[], products, {
         updatePrices: false,
         updateInventory: true,
       });

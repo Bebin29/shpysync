@@ -1,11 +1,14 @@
 import type { BrowserWindow } from "electron";
 import type { ShopConfig, ColumnMapping, SyncStartConfig, SyncPreviewRequest, SyncProgress, SyncLog, SyncResult, OperationResult, PlannedOperation } from "../types/ipc.js";
-import type { CsvRow, Product, MappedRow } from "../../core/domain/types.js";
+import type { CsvRow, Product, MappedRow, Variant } from "../../core/domain/types.js";
 import { parseCsvStream, extractRowValues, convertToCsvRows, type ColumnMapping as CoreColumnMapping } from "../../core/infra/csv/parser.js";
 import { processCsvToUpdates, groupPriceUpdatesByProduct } from "../../core/domain/sync-pipeline.js";
 import { getAllProductsWithVariants, updateVariantPrices } from "./shopify-product-service.js";
 import { setInventoryQuantities } from "./shopify-inventory-service.js";
 import { getLogger } from "./logger.js";
+import { getCacheService } from "./cache-service.js";
+import { getSyncHistoryService } from "./sync-history-service.js";
+import * as path from "path";
 
 /**
  * Sync-Engine für die vollständige Synchronisation von CSV-Daten zu Shopify.
@@ -188,7 +191,7 @@ export class SyncEngine {
 				message: "Produkte von Shopify werden geladen...",
 			});
 
-			const products = await this.loadProducts(config.shopConfig);
+			const products = await this.loadProducts(config.shopConfig, true);
 			
 			if (this.checkCancelled()) {
 				throw new Error("Sync wurde abgebrochen");
@@ -299,6 +302,27 @@ export class SyncEngine {
 			};
 
 			this.sendComplete(result);
+
+			// Historie speichern
+			try {
+				const { getSyncHistoryService } = await import("./sync-history-service.js");
+				const historyService = getSyncHistoryService();
+				const historyEntry = {
+					id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+					timestamp: result.endTime || new Date().toISOString(),
+					csvFileName: path.basename(config.csvPath),
+					result,
+					config: {
+						shopUrl: config.shopConfig.shopUrl,
+						locationName: config.shopConfig.locationName,
+						columnMapping: config.columnMapping,
+					},
+				};
+				historyService.saveSyncHistory(historyEntry);
+			} catch (error) {
+				this.logger.warn("history", "Fehler beim Speichern der Historie", { error: error instanceof Error ? error.message : String(error) });
+			}
+
 			return result;
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : "Unbekannter Fehler";
@@ -322,6 +346,26 @@ export class SyncEngine {
 			};
 
 			this.sendComplete(result);
+
+			// Historie speichern (auch bei Fehlern)
+			try {
+				const historyService = getSyncHistoryService();
+				const historyEntry = {
+					id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+					timestamp: result.endTime || new Date().toISOString(),
+					csvFileName: path.basename(config.csvPath),
+					result,
+					config: {
+						shopUrl: config.shopConfig.shopUrl,
+						locationName: config.shopConfig.locationName,
+						columnMapping: config.columnMapping,
+					},
+				};
+				historyService.saveSyncHistory(historyEntry);
+			} catch (historyError) {
+				this.logger.warn("history", "Fehler beim Speichern der Historie", { error: historyError instanceof Error ? historyError.message : String(historyError) });
+			}
+
 			throw error;
 		}
 	}
@@ -359,13 +403,48 @@ export class SyncEngine {
 	}
 
 	/**
-	 * Lädt alle Produkte von Shopify.
+	 * Lädt alle Produkte von Shopify (mit Cache-Unterstützung).
+	 * 
+	 * Strategie:
+	 * 1. Zuerst Cache prüfen (falls vorhanden und gültig)
+	 * 2. Falls Cache veraltet/fehlt: Shopify abfragen
+	 * 3. Nach erfolgreichem Laden: Cache aktualisieren
 	 */
-	private async loadProducts(shopConfig: ShopConfig): Promise<Product[]> {
-		return getAllProductsWithVariants({
+	private async loadProducts(shopConfig: ShopConfig, useCache: boolean = true): Promise<Product[]> {
+		const cacheService = getCacheService();
+
+		// Cache initialisieren (lazy)
+		try {
+			cacheService.initialize();
+		} catch (error) {
+			this.logger.warn("cache", "Cache-Initialisierung fehlgeschlagen, verwende Shopify direkt", { error: error instanceof Error ? error.message : String(error) });
+			useCache = false;
+		}
+
+		if (useCache) {
+			const cached = cacheService.getProducts();
+			if (cached.length > 0 && cacheService.isCacheValid()) {
+				this.logger.info("sync", "Produkte aus Cache geladen", { count: cached.length });
+				return cached;
+			}
+		}
+
+		// Shopify abfragen
+		this.logger.info("sync", "Lade Produkte von Shopify...");
+		const products = await getAllProductsWithVariants({
 			shopUrl: shopConfig.shopUrl,
 			accessToken: shopConfig.accessToken,
 		});
+
+		// Cache aktualisieren
+		try {
+			cacheService.saveProducts(products);
+			this.logger.info("sync", "Cache aktualisiert", { count: products.length });
+		} catch (error) {
+			this.logger.warn("cache", "Fehler beim Aktualisieren des Caches", { error: error instanceof Error ? error.message : String(error) });
+		}
+
+		return products;
 	}
 
 	/**
@@ -387,8 +466,8 @@ export class SyncEngine {
 		// Schritt 1: CSV parsen
 		const csvRows = await this.parseCsvWithMapping(config.csvPath, config.columnMapping);
 
-		// Schritt 2: Shopify-Produkte/Varianten laden
-		const products = await this.loadProducts(config.shopConfig);
+		// Schritt 2: Shopify-Produkte/Varianten laden (mit Cache)
+		const products = await this.loadProducts(config.shopConfig, true);
 
 		// Schritt 3-6: Matching und Update-Planung
 		const syncMode = getSyncMode(config.options);
@@ -430,7 +509,7 @@ export class SyncEngine {
 		const operations: PlannedOperation[] = [];
 
 		// Variant-Map für schnellen Zugriff
-		const variantMap = new Map<string, { productId: string; variant: any }>();
+		const variantMap = new Map<string, { productId: string; variant: Variant }>();
 		for (const product of products) {
 			for (const variant of product.variants) {
 				variantMap.set(variant.id, { productId: product.id, variant });
@@ -461,7 +540,7 @@ export class SyncEngine {
 			let inventoryIndex = 0;
 			for (const update of updateResult.inventoryUpdates) {
 				// Finde Variant zu inventoryItemId
-				let variantData: { productId: string; variant: any } | null = null;
+				let variantData: { productId: string; variant: Variant } | null = null;
 				for (const product of products) {
 					for (const variant of product.variants) {
 						if (variant.inventoryItemId === update.inventoryItemId) {
@@ -511,9 +590,9 @@ export class SyncEngine {
 		let totalSkipped = 0;
 
 		// Variant-Map für schnellen Zugriff (Variant-ID -> Daten)
-		const variantMap = new Map<string, { productId: string; variant: any; csvRow?: CsvRow }>();
+		const variantMap = new Map<string, { productId: string; variant: Variant; csvRow?: CsvRow }>();
 		// Inventory-Item-ID -> CSV-Row Map für Inventory-Updates
-		const inventoryItemToCsvRowMap = new Map<string, { productId: string; variant: any; csvRow: CsvRow }>();
+		const inventoryItemToCsvRowMap = new Map<string, { productId: string; variant: Variant; csvRow: CsvRow }>();
 
 		for (const mappedRow of updateResult.mappedRows) {
 			if (mappedRow.variantId) {

@@ -49,7 +49,7 @@ export function errorToErrorInfo(error: unknown): ErrorInfo {
  * @param handler - Async Handler-Funktion
  * @returns Wrapped Handler mit Error-Handling
  */
-export function withErrorHandling<T extends (...args: any[]) => Promise<any>>(
+export function withErrorHandling<T extends (...args: unknown[]) => Promise<unknown>>(
 	handler: T
 ): T {
 	return (async (...args: Parameters<T>) => {
