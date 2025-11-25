@@ -1,8 +1,8 @@
 import Store from "electron-store";
-import type { ShopConfig, ShopConfigStored, AppConfig, ColumnMapping } from "../types/ipc";
-import { storeToken, loadToken, updateToken, deleteToken, tokenExists } from "./token-store";
-import { appConfigSchema, shopConfigStoredSchema, shopConfigSchema } from "../lib/validators";
-import { SHOPIFY_API_VERSION } from "./api-version-manager";
+import type { ShopConfig, ShopConfigStored, AppConfig, ColumnMapping } from "../types/ipc.js";
+import { storeToken, loadToken, updateToken, deleteToken, tokenExists } from "./token-store.js";
+import { appConfigSchema, shopConfigStoredSchema, shopConfigSchema } from "../lib/validators.js";
+import { SHOPIFY_API_VERSION } from "./api-version-manager.js";
 
 /**
  * Config Service für Persistierung von App-Einstellungen.
@@ -56,7 +56,9 @@ function migrateOldConfig(config: any): AppConfig | null {
 			};
 			
 			// Migrierte Config speichern
-			Object.assign(store.store, migrated);
+			for (const [key, value] of Object.entries(migrated)) {
+				(store as any).set(key, value);
+			}
 			
 			return migrated;
 		} catch (error) {
@@ -73,7 +75,7 @@ function migrateOldConfig(config: any): AppConfig | null {
  * Validiert gegen Zod-Schema und migriert alte Strukturen.
  */
 export function getConfig(): AppConfig {
-	const config = store.store as any;
+	const config = (store as any).store as any;
 	
 	// Migration von alter Struktur
 	const migrated = migrateOldConfig(config);
@@ -106,7 +108,9 @@ export function setConfig(config: AppConfig): void {
 		throw new Error(`Ungültige Config: ${result.error.message}`);
 	}
 	
-	Object.assign(store.store, result.data);
+	for (const [key, value] of Object.entries(result.data)) {
+		(store as any).set(key, value);
+	}
 }
 
 /**
@@ -116,7 +120,7 @@ export function setConfig(config: AppConfig): void {
  * @returns ShopConfig mit accessToken oder null
  */
 export function getShopConfig(): ShopConfig | null {
-	const stored = store.get("shop") as ShopConfigStored | null;
+	const stored = (store as any).get("shop") as ShopConfigStored | null;
 	if (!stored) {
 		return null;
 	}
@@ -153,11 +157,11 @@ export function getShopConfig(): ShopConfig | null {
 export function setShopConfig(shopConfig: ShopConfig | null): void {
 	if (!shopConfig) {
 		// Beim Löschen: Token auch löschen falls vorhanden
-		const stored = store.get("shop") as ShopConfigStored | null;
+		const stored = (store as any).get("shop") as ShopConfigStored | null;
 		if (stored?.accessTokenRef) {
 			deleteToken(stored.accessTokenRef);
 		}
-		store.set("shop", null);
+		(store as any).set("shop", null);
 		return;
 	}
 
@@ -168,7 +172,7 @@ export function setShopConfig(shopConfig: ShopConfig | null): void {
 	}
 
 	// Prüfe ob bereits eine Config existiert
-	const existing = store.get("shop") as ShopConfigStored | null;
+	const existing = (store as any).get("shop") as ShopConfigStored | null;
 	let tokenRef: string;
 
 	if (existing?.accessTokenRef && tokenExists(existing.accessTokenRef)) {
@@ -188,21 +192,21 @@ export function setShopConfig(shopConfig: ShopConfig | null): void {
 		locationName: shopConfig.locationName,
 	};
 
-	store.set("shop", stored);
+	(store as any).set("shop", stored);
 }
 
 /**
  * Lädt das Standard-Spalten-Mapping.
  */
 export function getDefaultColumnMapping(): ColumnMapping | null {
-  return (store.get("defaultColumnMapping") as ColumnMapping | null) ?? null;
+  return ((store as any).get("defaultColumnMapping") as ColumnMapping | null) ?? null;
 }
 
 /**
  * Speichert das Standard-Spalten-Mapping.
  */
 export function setDefaultColumnMapping(mapping: ColumnMapping | null): void {
-  store.set("defaultColumnMapping", mapping);
+  (store as any).set("defaultColumnMapping", mapping);
 }
 
 /**

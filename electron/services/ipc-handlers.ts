@@ -1,9 +1,12 @@
-import { ipcMain, dialog } from "electron";
+import { ipcMain, dialog, BrowserWindow } from "electron";
 import type {
   ShopConfig,
   AppConfig,
   ColumnMapping,
-} from "../types/ipc";
+  SyncStartConfig,
+  SyncPreviewRequest,
+  SyncPreviewResponse,
+} from "../types/ipc.js";
 import {
   getConfig,
   setConfig,
@@ -12,9 +15,10 @@ import {
   getDefaultColumnMapping,
   setDefaultColumnMapping,
   validateShopConfig,
-} from "./config-service";
-import { testConnection, getLocations } from "./shopify-service";
-import { previewCsvWithMapping, createColumnNameToLetterMap } from "./csv-service";
+} from "./config-service.js";
+import { testConnection, getLocations } from "./shopify-service.js";
+import { previewCsvWithMapping, createColumnNameToLetterMap } from "./csv-service.js";
+import { getSyncEngine } from "./sync-engine.js";
 
 /**
  * Registriert alle IPC-Handler für die Electron-App.
@@ -121,7 +125,7 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle("csv:get-headers", async (_event, filePath: string) => {
     try {
-      const { parseCsvPreview } = await import("../../core/infra/csv/parser");
+      const { parseCsvPreview } = await import("../../core/infra/csv/parser.js");
       const result = await parseCsvPreview(filePath, 1); // Nur erste Zeile für Header
       return {
         success: true,
@@ -182,5 +186,91 @@ export function registerIpcHandlers(): void {
       }
     }
   );
+
+  // Sync-Handler
+  ipcMain.handle("sync:preview", async (_event, config: SyncPreviewRequest): Promise<SyncPreviewResponse> => {
+    try {
+      // Validiere Konfiguration
+      const validation = validateShopConfig(config.shopConfig);
+      if (!validation.valid) {
+        return {
+          success: false,
+          error: `Konfiguration ungültig: ${validation.errors.join(", ")}`,
+        };
+      }
+
+      // Hole Sync-Engine
+      const syncEngine = getSyncEngine();
+
+      // Generiere Vorschau (ohne Ausführung)
+      const preview = await syncEngine.generatePreview(config);
+
+      return {
+        success: true,
+        data: {
+          planned: preview.planned,
+          unmatchedRows: preview.unmatchedRows,
+        },
+      };
+    } catch (error) {
+      console.error("Fehler beim Generieren der Vorschau:", error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Unbekannter Fehler",
+      };
+    }
+  });
+
+  ipcMain.handle("sync:start", async (event, config: SyncStartConfig) => {
+    try {
+      // Validiere Konfiguration
+      const validation = validateShopConfig(config.shopConfig);
+      if (!validation.valid) {
+        return {
+          success: false,
+          error: `Konfiguration ungültig: ${validation.errors.join(", ")}`,
+        };
+      }
+
+      // Hole Sync-Engine und setze MainWindow
+      const syncEngine = getSyncEngine();
+      const window = BrowserWindow.fromWebContents(event.sender);
+      syncEngine.setMainWindow(window);
+
+      // Starte Sync (asynchron, Events werden über IPC gesendet)
+      syncEngine.startSync(config).catch((error) => {
+        console.error("Fehler beim Sync:", error);
+        // Fehler wird bereits über sync:complete Event gesendet
+      });
+
+      return {
+        success: true,
+        message: "Synchronisation gestartet",
+      };
+    } catch (error) {
+      console.error("Fehler beim Starten des Syncs:", error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Unbekannter Fehler",
+      };
+    }
+  });
+
+  ipcMain.handle("sync:cancel", async () => {
+    try {
+      const syncEngine = getSyncEngine();
+      syncEngine.cancel();
+      return {
+        success: true,
+        message: "Synchronisation abgebrochen",
+      };
+    } catch (error) {
+      console.error("Fehler beim Abbrechen des Syncs:", error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Unbekannter Fehler",
+      };
+    }
+  });
 }
 

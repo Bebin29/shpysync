@@ -1,11 +1,11 @@
 import axios, { AxiosError, AxiosResponse } from "axios";
-import type { Product, Variant } from "../../domain/types";
+import type { Product, Variant } from "../../domain/types.js";
 import {
   GQL_PRODUCTS,
   GQL_LOCATIONS,
   GQL_VARIANTS_BULK_UPDATE,
   GQL_INVENTORY_SET,
-} from "./queries";
+} from "./queries.js";
 
 /**
  * Shopify GraphQL Admin API Client.

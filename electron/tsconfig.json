@@ -5,7 +5,6 @@
     "module": "ES2020",
     "lib": ["ES2020"],
     "outDir": "./dist",
-    "rootDir": "../",
     "noEmit": false,
     "strict": true,
     "esModuleInterop": true,
@@ -15,7 +14,7 @@
     "moduleResolution": "node",
     "types": ["node"]
   },
-  "include": ["electron/**/*.ts", "../core/**/*.ts"],
-  "exclude": ["node_modules", "dist"]
+  "include": ["**/*.ts", "../core/**/*.ts"],
+  "exclude": ["node_modules", "dist", "preload.ts"]
 }
 

@@ -1,5 +1,9 @@
-import type { Product, Variant, VariantMaps, MatchResult } from "./types";
-import { normalizeString } from "../utils/normalization";
+import type { Product, Variant, MatchResult } from "./types.js";
+import type { VariantMaps } from "./types.js";
+import { normalizeString } from "../utils/normalization.js";
+
+// Export VariantMaps für Verwendung in anderen Modulen
+export type { VariantMaps };
 
 /**
  * Erstellt Variant-Maps für effizientes Matching.

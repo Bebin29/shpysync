@@ -5,10 +5,73 @@ import { GQL_PRODUCTS, GQL_LOCATIONS, GQL_VARIANTS_BULK_UPDATE, GQL_INVENTORY_SE
  *
  * Portiert von Python `gql()` und verwandten Funktionen.
  */
-const API_VERSION = "2025-10"; // TODO: Bei Implementierung neueste Version prüfen
+// API-Version wird als Parameter übergeben oder aus Config geladen
+// Standard-Version für Fallback
+const DEFAULT_API_VERSION = "2025-10";
 const DEFAULT_SLEEP_MS = 200;
 const MAX_RETRIES = 5;
 const BACKOFF_FACTOR = 1.5;
+/**
+ * Parst Rate-Limit-Header-String zu RateLimitInfo.
+ *
+ * @param rateLimitHeader - Header-String im Format "40/40" (used/limit)
+ * @returns RateLimitInfo oder null bei ungültigem Format
+ */
+export function parseRateLimitHeader(rateLimitHeader) {
+    if (!rateLimitHeader) {
+        return null;
+    }
+    const parts = rateLimitHeader.split("/");
+    if (parts.length !== 2) {
+        return null;
+    }
+    const used = parseInt(parts[0], 10);
+    const limit = parseInt(parts[1], 10);
+    if (isNaN(used) || isNaN(limit) || limit === 0) {
+        return null;
+    }
+    return {
+        used,
+        limit,
+        remaining: limit - used,
+        percentage: (used / limit) * 100,
+    };
+}
+/**
+ * Ruft die letzte Rate-Limit-Info ab (von der letzten GraphQL-Anfrage).
+ *
+ * @returns RateLimitInfo oder null
+ */
+export function getLastRateLimitInfo() {
+    const header = globalThis.__lastRateLimitInfo;
+    return parseRateLimitHeader(header);
+}
+/**
+ * Ruft die letzte Request-Cost ab (von der letzten GraphQL-Anfrage).
+ *
+ * @returns Cost als Number oder null
+ */
+export function getLastRequestCost() {
+    const costHeader = globalThis.__lastRequestCost;
+    if (!costHeader) {
+        return null;
+    }
+    const cost = parseFloat(costHeader);
+    if (isNaN(cost)) {
+        return null;
+    }
+    return cost;
+}
+/**
+ * Ruft Cost-Tracking-Info ab.
+ *
+ * @returns Cost-Tracking-Info
+ */
+export function getCostTrackingInfo() {
+    return {
+        lastRequestCost: getLastRequestCost(),
+    };
+}
 /**
  * Führt GraphQL-Query/Mutation mit Retry-Logik aus.
  *
@@ -18,7 +81,8 @@ const BACKOFF_FACTOR = 1.5;
  * @returns GraphQL Response Data
  */
 async function executeGraphQL(config, query, variables = {}) {
-    const url = `${config.shopUrl}/admin/api/${API_VERSION}/graphql.json`;
+    const apiVersion = config.apiVersion || DEFAULT_API_VERSION;
+    const url = `${config.shopUrl}/admin/api/${apiVersion}/graphql.json`;
     const headers = {
         "X-Shopify-Access-Token": config.accessToken,
         "Content-Type": "application/json",
@@ -29,6 +93,14 @@ async function executeGraphQL(config, query, variables = {}) {
             const response = await axios.post(url, { query, variables }, { headers });
             const rateLimitHeader = response.headers["x-shopify-shop-api-call-limit"];
             const costHeader = response.headers["x-request-cost"];
+            // Rate-Limit-Info für spätere Verwendung speichern (global)
+            if (rateLimitHeader) {
+                globalThis.__lastRateLimitInfo = rateLimitHeader;
+            }
+            // Cost-Info für spätere Verwendung speichern (global)
+            if (costHeader) {
+                globalThis.__lastRequestCost = costHeader;
+            }
             console.debug(`GraphQL Response: status=${response.status} | rate=${rateLimitHeader} | cost=${costHeader}`);
             // Rate-Limit-Sleep (wie im Python-Skript)
             await new Promise((resolve) => setTimeout(resolve, DEFAULT_SLEEP_MS));

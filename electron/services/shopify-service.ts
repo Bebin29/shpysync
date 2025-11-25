@@ -1,13 +1,13 @@
-import type { ShopifyConfig } from "../../core/infra/shopify/client";
+import type { ShopifyConfig } from "../../core/infra/shopify/client.js";
 import {
   getAllProducts,
   getAllLocations,
   getLocationId,
   getLastRateLimitInfo,
-} from "../../core/infra/shopify/client";
-import type { Product } from "../../core/domain/types";
-import { getApiVersionFromConfig } from "./api-version-manager";
-import { getConfig } from "./config-service";
+} from "../../core/infra/shopify/client.js";
+import type { Product } from "../../core/domain/types.js";
+import { getApiVersionFromConfig } from "./api-version-manager.js";
+import { getConfig } from "./config-service.js";
 
 /**
  * Shopify Service für Electron Main Process.

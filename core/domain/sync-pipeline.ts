@@ -1,7 +1,7 @@
-import type { CsvRow, Product, Variant, MatchResult, MappedRow } from "./types";
-import { buildVariantMaps, findVariantId, type VariantMaps } from "./matching";
-import { normalizePrice } from "./price-normalizer";
-import { coalesceInventoryUpdates } from "./inventory-coalescing";
+import type { CsvRow, Product, Variant, MatchResult, MappedRow } from "./types.js";
+import { buildVariantMaps, findVariantId, type VariantMaps } from "./matching.js";
+import { normalizePrice } from "./price-normalizer.js";
+import { coalesceInventoryUpdates } from "./inventory-coalescing.js";
 
 /**
  * Verarbeitet CSV-Zeilen zu Preis- und Inventory-Updates.

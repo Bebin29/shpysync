@@ -1,9 +1,9 @@
-import type { ShopifyConfig } from "../../core/infra/shopify/client";
-import { getAllProducts, updatePricesBulk } from "../../core/infra/shopify/client";
-import type { Product } from "../../core/domain/types";
-import type { UserError } from "../../core/infra/shopify/client";
-import { getApiVersionFromConfig } from "./api-version-manager";
-import { getConfig } from "./config-service";
+import type { ShopifyConfig } from "../../core/infra/shopify/client.js";
+import { getAllProducts, updatePricesBulk } from "../../core/infra/shopify/client.js";
+import type { Product } from "../../core/domain/types.js";
+import type { UserError } from "../../core/infra/shopify/client.js";
+import { getApiVersionFromConfig } from "./api-version-manager.js";
+import { getConfig } from "./config-service.js";
 
 /**
  * Shopify Product Service für Electron Main Process.

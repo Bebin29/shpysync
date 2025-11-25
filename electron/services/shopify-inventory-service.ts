@@ -1,8 +1,8 @@
-import type { ShopifyConfig } from "../../core/infra/shopify/client";
-import { getAllLocations, setInventory } from "../../core/infra/shopify/client";
-import type { UserError } from "../../core/infra/shopify/client";
-import { getApiVersionFromConfig } from "./api-version-manager";
-import { getConfig } from "./config-service";
+import type { ShopifyConfig } from "../../core/infra/shopify/client.js";
+import { getAllLocations, setInventory } from "../../core/infra/shopify/client.js";
+import type { UserError } from "../../core/infra/shopify/client.js";
+import { getApiVersionFromConfig } from "./api-version-manager.js";
+import { getConfig } from "./config-service.js";
 
 /**
  * Shopify Inventory Service für Electron Main Process.

@@ -38,9 +38,11 @@ export function ColumnMappingComponent({
 
 	const handleFieldChange = useCallback(
 		(field: keyof ColumnMapping, columnLetter: string) => {
+			// Konvertiere "__none__" zu leerem String (Radix UI erlaubt keine leeren Strings als value)
+			const normalizedValue = columnLetter === "__none__" ? "" : columnLetter;
 			onMappingChange({
 				...mapping,
-				[field]: columnLetter,
+				[field]: normalizedValue,
 			});
 		},
 		[mapping, onMappingChange]
@@ -105,7 +107,7 @@ export function ColumnMappingComponent({
 							SKU <span className="text-red-500">*</span>
 						</Label>
 						<Select
-							value={mapping.sku}
+							value={mapping.sku || "__none__"}
 							onValueChange={(value) => handleFieldChange("sku", value)}
 							disabled={disabled}
 						>
@@ -113,7 +115,7 @@ export function ColumnMappingComponent({
 								<SelectValue placeholder="Spalte auswählen" />
 							</SelectTrigger>
 							<SelectContent>
-								<SelectItem value="">Keine</SelectItem>
+								<SelectItem value="__none__">Keine</SelectItem>
 								{columnOptions.map((option) => (
 									<SelectItem key={option.value} value={option.value}>
 										{option.label}
@@ -128,7 +130,7 @@ export function ColumnMappingComponent({
 							Name <span className="text-red-500">*</span>
 						</Label>
 						<Select
-							value={mapping.name}
+							value={mapping.name || "__none__"}
 							onValueChange={(value) => handleFieldChange("name", value)}
 							disabled={disabled}
 						>
@@ -136,7 +138,7 @@ export function ColumnMappingComponent({
 								<SelectValue placeholder="Spalte auswählen" />
 							</SelectTrigger>
 							<SelectContent>
-								<SelectItem value="">Keine</SelectItem>
+								<SelectItem value="__none__">Keine</SelectItem>
 								{columnOptions.map((option) => (
 									<SelectItem key={option.value} value={option.value}>
 										{option.label}
@@ -149,7 +151,7 @@ export function ColumnMappingComponent({
 					<div className="space-y-2">
 						<Label htmlFor="price-column">Preis</Label>
 						<Select
-							value={mapping.price}
+							value={mapping.price || "__none__"}
 							onValueChange={(value) => handleFieldChange("price", value)}
 							disabled={disabled}
 						>
@@ -157,7 +159,7 @@ export function ColumnMappingComponent({
 								<SelectValue placeholder="Spalte auswählen" />
 							</SelectTrigger>
 							<SelectContent>
-								<SelectItem value="">Keine</SelectItem>
+								<SelectItem value="__none__">Keine</SelectItem>
 								{columnOptions.map((option) => (
 									<SelectItem key={option.value} value={option.value}>
 										{option.label}
@@ -170,7 +172,7 @@ export function ColumnMappingComponent({
 					<div className="space-y-2">
 						<Label htmlFor="stock-column">Bestand</Label>
 						<Select
-							value={mapping.stock}
+							value={mapping.stock || "__none__"}
 							onValueChange={(value) => handleFieldChange("stock", value)}
 							disabled={disabled}
 						>
@@ -178,7 +180,7 @@ export function ColumnMappingComponent({
 								<SelectValue placeholder="Spalte auswählen" />
 							</SelectTrigger>
 							<SelectContent>
-								<SelectItem value="">Keine</SelectItem>
+								<SelectItem value="__none__">Keine</SelectItem>
 								{columnOptions.map((option) => (
 									<SelectItem key={option.value} value={option.value}>
 										{option.label}

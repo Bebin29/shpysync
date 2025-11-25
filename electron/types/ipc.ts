@@ -14,6 +14,37 @@ export interface SyncStartConfig {
   };
 }
 
+/**
+ * Request für Sync-Vorschau (ohne Ausführung).
+ */
+export interface SyncPreviewRequest {
+  csvPath: string;
+  columnMapping: ColumnMapping;
+  shopConfig: ShopConfig;
+  options: {
+    updatePrices: boolean;
+    updateInventory: boolean;
+  };
+}
+
+/**
+ * Response für Sync-Vorschau.
+ */
+export interface SyncPreviewResponse {
+  success: boolean;
+  data?: {
+    planned: PlannedOperation[];
+    unmatchedRows: Array<{
+      rowNumber: number;
+      sku: string;
+      name: string;
+      price?: string;
+      stock?: number;
+    }>;
+  };
+  error?: string;
+}
+
 export interface ColumnMapping {
   sku: string; // Spaltenbuchstabe (z.B. "A", "B", "AB")
   name: string;
@@ -50,6 +81,19 @@ export interface SyncProgress {
   message: string;
 }
 
+/**
+ * Geplante Operation für Vorschau.
+ */
+export interface PlannedOperation {
+  id: string;
+  type: "price" | "inventory";
+  sku?: string | null;
+  productTitle?: string | null;
+  variantTitle?: string | null;
+  oldValue?: string | number | null;
+  newValue: string | number;
+}
+
 export interface SyncLog {
   level: "info" | "warn" | "error";
   message: string;
@@ -63,6 +107,7 @@ export interface SyncResult {
   totalFailed: number;
   totalSkipped: number;
   operations: OperationResult[];
+  planned?: PlannedOperation[]; // Geplante Operationen (für Vergleich/Vorschau)
   startTime: string;
   endTime?: string;
   duration?: number;
