@@ -19,7 +19,9 @@ function fixHtmlFile(filePath) {
   
   // Berechne relative Pfad-Tiefe relativ zu out/
   const relativePath = path.relative(OUT_DIR, filePath);
-  const pathDepth = relativePath.split(path.sep).filter(p => p && !p.endsWith('.html')).length - 1;
+  // Zähle Verzeichnisse im Pfad (ohne Dateiname)
+  const pathParts = path.dirname(relativePath).split(path.sep).filter(p => p && p !== '.');
+  const pathDepth = pathParts.length;
   const basePath = pathDepth > 0 ? '../'.repeat(pathDepth) : './';
   
   // Prüfe ob bereits ein Base-Tag existiert
