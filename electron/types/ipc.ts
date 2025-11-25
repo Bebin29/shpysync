@@ -28,6 +28,14 @@ export interface SyncPreviewRequest {
 }
 
 /**
+ * Request für Test-Sync (nur ein Artikel mit Bestand > 0).
+ */
+export interface SyncTestRequest {
+  shopConfig: ShopConfig;
+  plannedOperations: PlannedOperation[];
+}
+
+/**
  * Response für Sync-Vorschau.
  */
 export interface SyncPreviewResponse {
@@ -94,10 +102,16 @@ export interface PlannedOperation {
   newValue: string | number;
 }
 
+export type LogLevel = "debug" | "info" | "warn" | "error";
+export type LogCategory = "csv" | "shopify" | "matching" | "inventory" | "price" | "system";
+
 export interface SyncLog {
-  level: "info" | "warn" | "error";
+  id: string;
+  level: LogLevel;
+  category: LogCategory;
   message: string;
   timestamp: string;
+  context?: Record<string, unknown>;
 }
 
 export interface SyncResult {

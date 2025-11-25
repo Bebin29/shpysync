@@ -1,9 +1,19 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
+import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Label } from "@/components/ui/label";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
+import { ChevronLeft, ChevronRight, Loader2, AlertCircle } from "lucide-react";
 import { CsvUpload } from "@/app/components/csv-upload";
 import { ColumnMappingComponent } from "@/app/components/column-mapping";
 import { PreviewTable } from "@/app/components/preview-table";
@@ -13,7 +23,7 @@ import { useSyncStore } from "@/app/stores/sync-store";
 import { useElectron } from "@/app/hooks/use-electron";
 import { useConfig } from "@/app/hooks/use-config";
 import { exportSyncResults, exportUnmatchedRows, exportLogs } from "@/app/lib/export-utils";
-import type { ColumnMapping, SyncProgress, SyncLog, SyncResult, PlannedOperation } from "../../electron/types/ipc";
+import type { ColumnMapping, SyncProgress, SyncLog, SyncResult, PlannedOperation, SyncTestRequest } from "../../electron/types/ipc";
 
 type WizardStep = 1 | 2 | 3 | 4;
 
@@ -84,6 +94,10 @@ export default function SyncPage() {
 	const [syncResult, setSyncResult] = useState<SyncResult | undefined>();
 	const [updatePrices, setUpdatePrices] = useState(true);
 	const [updateInventory, setUpdateInventory] = useState(true);
+	const [csvError, setCsvError] = useState<string | null>(null);
+	const [previewError, setPreviewError] = useState<string | null>(null);
+	const [isTestRunning, setIsTestRunning] = useState(false);
+	const [selectedTestOperationId, setSelectedTestOperationId] = useState<string | null>(null);
 
 	const { csv, sync } = useElectron();
 	const { columnMapping: savedMapping, saveColumnMapping, shopConfig } = useConfig();
@@ -104,6 +118,7 @@ export default function SyncPage() {
 	}, [csvFilePath, setStoreCsvPath]);
 
 	const handleFileSelected = useCallback(async (filePath: string) => {
+		setCsvError(null);
 		setCsvFilePath(filePath || undefined);
 		if (!filePath) {
 			setCsvHeaders([]);
@@ -120,9 +135,15 @@ export default function SyncPage() {
 				// Wenn Header geladen wurden, gehe zu Schritt 2
 				if (result.headers.length > 0) {
 					setCurrentStep(2);
+				} else {
+					setCsvError("Die CSV-Datei enthält keine Header.");
 				}
+			} else {
+				setCsvError(result.error || "Fehler beim Laden der CSV-Header");
 			}
 		} catch (error) {
+			const errorMessage = error instanceof Error ? error.message : "Unbekannter Fehler";
+			setCsvError(`Fehler beim Laden der CSV-Datei: ${errorMessage}`);
 			console.error("Fehler beim Laden der CSV-Header:", error);
 		}
 	}, [csv]);
@@ -136,6 +157,7 @@ export default function SyncPage() {
 			return;
 		}
 
+		setPreviewError(null);
 		setIsLoadingPreview(true);
 		try {
 			// Verwende sync.preview für echte Vorschau mit Matching
@@ -151,6 +173,7 @@ export default function SyncPage() {
 
 			if (result.success && result.data) {
 				setPlannedOperations(result.data.planned);
+				setSelectedTestOperationId(null); // Reset selection when preview changes
 				
 				// Konvertiere PlannedOperations zu PreviewRows
 				const previewRows = result.data.planned.map((op: PlannedOperation, index: number) => ({
@@ -193,9 +216,13 @@ export default function SyncPage() {
 
 				setCurrentStep(3);
 			} else {
+				const errorMessage = result.error || "Fehler beim Laden der Vorschau";
+				setPreviewError(errorMessage);
 				console.error("Fehler beim Laden der Vorschau:", result.error);
 			}
 		} catch (error) {
+			const errorMessage = error instanceof Error ? error.message : "Unbekannter Fehler";
+			setPreviewError(`Fehler beim Laden der Vorschau: ${errorMessage}`);
 			console.error("Fehler beim Laden der Vorschau:", error);
 		} finally {
 			setIsLoadingPreview(false);
@@ -227,6 +254,7 @@ export default function SyncPage() {
 		const handleComplete = (result: SyncResult) => {
 			setSyncResult(result);
 			setIsSyncRunning(false);
+			setIsTestRunning(false);
 			setStep("completed");
 			setResult(result);
 		};
@@ -279,6 +307,7 @@ export default function SyncPage() {
 			console.error("Fehler beim Starten des Syncs:", error);
 			setIsSyncRunning(false);
 			setStep("error");
+			setCurrentStep(3); // Zurück zu Vorschau bei Fehler
 			addLog({
 				level: "error",
 				message: `Fehler beim Starten: ${error instanceof Error ? error.message : "Unbekannter Fehler"}`,
@@ -295,6 +324,60 @@ export default function SyncPage() {
 	const handleRequestSync = useCallback(() => {
 		setShowConfirmationDialog(true);
 	}, []);
+
+	// Verfügbare Test-Operationen filtern (nur Inventory mit newValue > 0)
+	const availableTestOperations = useMemo(() => {
+		return plannedOperations.filter(
+			(op) =>
+				op.type === "inventory" &&
+				typeof op.newValue === "number" &&
+				op.newValue > 0
+		);
+	}, [plannedOperations]);
+
+	const handleTestSync = useCallback(async () => {
+		if (!shopConfig || !selectedTestOperationId) {
+			return;
+		}
+
+		const selectedOperation = plannedOperations.find(
+			(op) => op.id === selectedTestOperationId
+		);
+
+		if (!selectedOperation) {
+			return;
+		}
+
+		setIsTestRunning(true);
+		setSyncLogs([]);
+		setSyncResult(undefined);
+		setSyncProgress({
+			current: 0,
+			total: 100,
+			stage: "matching",
+			message: "Test-Synchronisation wird gestartet...",
+		});
+		setCurrentStep(4);
+		setStep("running");
+
+		try {
+			await sync.test({
+				shopConfig,
+				plannedOperations: [selectedOperation], // Nur die ausgewählte Operation
+			});
+		} catch (error) {
+			console.error("Fehler beim Test-Sync:", error);
+			setIsSyncRunning(false);
+			setIsTestRunning(false);
+			setStep("error");
+			setCurrentStep(3);
+			addLog({
+				level: "error",
+				message: `Fehler beim Test-Sync: ${error instanceof Error ? error.message : "Unbekannter Fehler"}`,
+				timestamp: new Date().toISOString(),
+			});
+		}
+	}, [shopConfig, selectedTestOperationId, plannedOperations, sync, setStep, addLog]);
 
 	const handleCancelSync = useCallback(async () => {
 		try {
@@ -321,10 +404,15 @@ export default function SyncPage() {
 			// Schritt 3 → 4: Vorschau bestätigt, zeige Bestätigungs-Dialog
 			handleRequestSync();
 		}
-	}, [currentStep, csvFilePath, columnMapping, handleLoadPreview, handleStartSync]);
+	}, [currentStep, csvFilePath, columnMapping, handleLoadPreview, handleRequestSync]);
 
 	const handleBack = useCallback(() => {
 		if (currentStep > 1) {
+			if (currentStep === 3) {
+				// Vorschau zurücksetzen wenn zurück zu Mapping
+				setPreviewData(null);
+				setPreviewError(null);
+			}
 			setCurrentStep((prev) => (prev - 1) as WizardStep);
 		}
 	}, [currentStep]);
@@ -341,7 +429,8 @@ export default function SyncPage() {
 		if (currentStep === 1) {
 			return !!csvFilePath;
 		} else if (currentStep === 2) {
-			return !!(columnMapping.sku || columnMapping.name);
+			// WICHTIG: Auch shopConfig prüfen, da handleLoadPreview shopConfig benötigt
+			return !!(columnMapping.sku || columnMapping.name) && !!shopConfig;
 		} else if (currentStep === 3) {
 			return (
 				!!previewData &&
@@ -390,16 +479,42 @@ export default function SyncPage() {
 
 			{/* Schritt 1: CSV-Upload */}
 			{currentStep === 1 && (
-				<CsvUpload
-					onFileSelected={handleFileSelected}
-					selectedFilePath={csvFilePath}
-					disabled={false}
-				/>
+				<>
+					{csvError && (
+						<Alert variant="destructive" className="mb-4">
+							<AlertCircle className="h-4 w-4" />
+							<AlertDescription>{csvError}</AlertDescription>
+						</Alert>
+					)}
+					<CsvUpload
+						onFileSelected={handleFileSelected}
+						selectedFilePath={csvFilePath}
+						disabled={false}
+					/>
+				</>
 			)}
 
 			{/* Schritt 2: Spalten-Mapping */}
 			{currentStep === 2 && csvHeaders.length > 0 && (
 				<>
+					{!shopConfig && (
+						<Alert variant="destructive" className="mb-4">
+							<AlertCircle className="h-4 w-4" />
+							<AlertDescription>
+								Shop-Konfiguration fehlt. Bitte konfiguriere zuerst einen Shop in den{" "}
+								<Link href="/settings" className="underline font-medium">
+									Einstellungen
+								</Link>
+								.
+							</AlertDescription>
+						</Alert>
+					)}
+					{previewError && (
+						<Alert variant="destructive" className="mb-4">
+							<AlertCircle className="h-4 w-4" />
+							<AlertDescription>{previewError}</AlertDescription>
+						</Alert>
+					)}
 					<ColumnMappingComponent
 						headers={csvHeaders}
 						mapping={columnMapping}
@@ -462,10 +577,65 @@ export default function SyncPage() {
 								</label>
 							</div>
 							{!updatePrices && !updateInventory && (
-								<p className="text-sm text-muted-foreground">
-									Bitte wähle mindestens eine Option aus.
-								</p>
+								<Alert variant="destructive">
+									<AlertCircle className="h-4 w-4" />
+									<AlertDescription>
+										Bitte wähle mindestens eine Option aus, um fortzufahren.
+									</AlertDescription>
+								</Alert>
 							)}
+						</CardContent>
+					</Card>
+
+					{/* Test-Button */}
+					<Card>
+						<CardContent className="py-4">
+							<div className="space-y-4">
+								<div>
+									<h3 className="text-sm font-medium mb-1">Test-Synchronisation</h3>
+									<p className="text-sm text-muted-foreground">
+										Wähle einen Artikel aus, um die Synchronisation zu testen (Bestand &gt; 0)
+									</p>
+								</div>
+
+								<div className="space-y-2">
+									<Label htmlFor="test-product-select">Artikel auswählen</Label>
+									<Select
+										value={selectedTestOperationId || ""}
+										onValueChange={setSelectedTestOperationId}
+										disabled={isTestRunning || availableTestOperations.length === 0}
+									>
+										<SelectTrigger id="test-product-select">
+											<SelectValue placeholder="Artikel auswählen..." />
+										</SelectTrigger>
+										<SelectContent>
+											{availableTestOperations.map((op) => (
+												<SelectItem key={op.id} value={op.id}>
+													{op.productTitle || op.variantTitle || op.sku || "Unbekannt"}
+													{op.sku && ` (SKU: ${op.sku})`}
+													{` - Neuer Bestand: ${op.newValue}`}
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
+								</div>
+
+								<Button
+									variant="outline"
+									onClick={handleTestSync}
+									disabled={isTestRunning || !selectedTestOperationId}
+									className="w-full"
+								>
+									{isTestRunning ? (
+										<>
+											<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+											Test läuft...
+										</>
+									) : (
+										"🧪 Test durchführen"
+									)}
+								</Button>
+							</div>
 						</CardContent>
 					</Card>
 

@@ -85,6 +85,7 @@ app.on("window-all-closed", () => {
 // IPC-Handler registrieren
 import { registerIpcHandlers } from "./services/ipc-handlers.js";
 import { getSyncEngine } from "./services/sync-engine.js";
+import { getLogger } from "./services/logger.js";
 
 // App-Info Handler
 ipcMain.handle("app:version", () => {
@@ -94,9 +95,12 @@ ipcMain.handle("app:version", () => {
 // Alle IPC-Handler registrieren
 registerIpcHandlers();
 
-// Sync-Engine mit MainWindow verbinden
+// Sync-Engine und Logger mit MainWindow verbinden
 app.whenReady().then(() => {
   const syncEngine = getSyncEngine();
+  const logger = getLogger();
+  
   // MainWindow wird später in ipc-handlers.ts gesetzt, wenn sync:start aufgerufen wird
+  // Logger wird automatisch initialisiert, wenn SyncEngine.setMainWindow() aufgerufen wird
 });
 

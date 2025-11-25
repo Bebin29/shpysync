@@ -486,8 +486,10 @@ export async function setInventory(
     };
   }>(config, GQL_INVENTORY_SET, {
     input: {
+      name: "available", // 'available' oder 'on_hand'
       reason: "correction",
-      setQuantities: updates.map(({ inventoryItemId, quantity }) => ({
+      ignoreCompareQuantity: true, // CAS aus -> direkt absolut setzen
+      quantities: updates.map(({ inventoryItemId, quantity }) => ({ // <<< WICHTIG: 'quantities', nicht 'setQuantities'
         inventoryItemId,
         locationId,
         quantity,

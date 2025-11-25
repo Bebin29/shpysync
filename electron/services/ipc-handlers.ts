@@ -6,6 +6,7 @@ import type {
   SyncStartConfig,
   SyncPreviewRequest,
   SyncPreviewResponse,
+  SyncTestRequest,
 } from "../types/ipc.js";
 import {
   getConfig,
@@ -266,6 +267,41 @@ export function registerIpcHandlers(): void {
       };
     } catch (error) {
       console.error("Fehler beim Abbrechen des Syncs:", error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Unbekannter Fehler",
+      };
+    }
+  });
+
+  ipcMain.handle("sync:test", async (event, config: SyncTestRequest) => {
+    try {
+      // Validiere Konfiguration
+      const validation = validateShopConfig(config.shopConfig);
+      if (!validation.valid) {
+        return {
+          success: false,
+          error: `Konfiguration ungültig: ${validation.errors.join(", ")}`,
+        };
+      }
+
+      // Hole Sync-Engine und setze MainWindow
+      const syncEngine = getSyncEngine();
+      const window = BrowserWindow.fromWebContents(event.sender);
+      syncEngine.setMainWindow(window);
+
+      // Starte Test-Sync (asynchron, Events werden über IPC gesendet)
+      syncEngine.testSync(config.shopConfig, config.plannedOperations).catch((error) => {
+        console.error("Fehler beim Test-Sync:", error);
+        // Fehler wird bereits über sync:complete Event gesendet
+      });
+
+      return {
+        success: true,
+        message: "Test-Synchronisation gestartet",
+      };
+    } catch (error) {
+      console.error("Fehler beim Starten des Test-Syncs:", error);
       return {
         success: false,
         error: error instanceof Error ? error.message : "Unbekannter Fehler",
