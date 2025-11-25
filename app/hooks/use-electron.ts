@@ -3,11 +3,14 @@
 import { useCallback } from "react";
 import type {
 	SyncStartConfig,
+	SyncPreviewRequest,
+	SyncPreviewResponse,
 	SyncProgress,
 	SyncLog,
 	SyncResult,
 	CsvParseResult,
 	ColumnMapping,
+	PlannedOperation,
 } from "../../electron/types/ipc";
 
 /**
@@ -37,6 +40,16 @@ export function useElectron() {
 
 	// Sync-Funktionen
 	const sync = {
+		preview: useCallback(
+			async (config: SyncPreviewRequest): Promise<SyncPreviewResponse> => {
+				if (!isAvailable) {
+					throw new Error("Electron API nicht verfügbar");
+				}
+				return window.electron.sync.preview(config);
+			},
+			[isAvailable]
+		),
+
 		start: useCallback(
 			async (config: SyncStartConfig): Promise<void> => {
 				if (!isAvailable) {
@@ -59,7 +72,7 @@ export function useElectron() {
 				if (!isAvailable) {
 					return;
 				}
-				window.electron.sync.onProgress(callback);
+				window.electron.sync.onProgress(callback as (progress: SyncProgress) => void);
 			},
 			[isAvailable]
 		),
@@ -69,7 +82,17 @@ export function useElectron() {
 				if (!isAvailable) {
 					return;
 				}
-				window.electron.sync.onLog(callback);
+				window.electron.sync.onLog(callback as (log: SyncLog) => void);
+			},
+			[isAvailable]
+		),
+
+		onPreviewReady: useCallback(
+			(callback: (operations: PlannedOperation[]) => void) => {
+				if (!isAvailable) {
+					return;
+				}
+				window.electron.sync.onPreviewReady(callback as (operations: PlannedOperation[]) => void);
 			},
 			[isAvailable]
 		),
@@ -79,7 +102,7 @@ export function useElectron() {
 				if (!isAvailable) {
 					return;
 				}
-				window.electron.sync.onComplete(callback);
+				window.electron.sync.onComplete(callback as (result: SyncResult) => void);
 			},
 			[isAvailable]
 		),
