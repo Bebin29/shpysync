@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from "electron";
-import type { SyncProgress, SyncLog, SyncResult, PlannedOperation, SyncStartConfig, SyncPreviewRequest, SyncPreviewResponse, SyncTestRequest, AppConfig } from "./types/ipc.js";
+import type { SyncProgress, SyncLog, SyncResult, PlannedOperation, SyncStartConfig, SyncPreviewRequest, SyncPreviewResponse, SyncTestRequest, AppConfig, CacheStats, DashboardStats, SyncHistoryEntry } from "./types/ipc.js";
 import type { AutoSyncStatus } from "./services/auto-sync-service.js";
 
 /**
@@ -71,6 +71,19 @@ const electronAPI = {
 		getConfig: () => ipcRenderer.invoke("autoSync:getConfig") as Promise<AppConfig["autoSync"]>,
 		setConfig: (config: AppConfig["autoSync"]) => ipcRenderer.invoke("autoSync:setConfig", config) as Promise<{ success: boolean; error?: string }>,
 		testSync: (csvPath: string) => ipcRenderer.invoke("autoSync:testSync", csvPath) as Promise<{ success: boolean; error?: string }>,
+	},
+
+	// Cache-Funktionen
+	cache: {
+		getStats: () => ipcRenderer.invoke("cache:get-stats") as Promise<CacheStats>,
+		rebuild: () => ipcRenderer.invoke("cache:rebuild") as Promise<void>,
+		clear: () => ipcRenderer.invoke("cache:clear") as Promise<void>,
+	},
+
+	// Dashboard-Funktionen
+	dashboard: {
+		getStats: () => ipcRenderer.invoke("dashboard:get-stats") as Promise<DashboardStats>,
+		getHistory: (limit?: number) => ipcRenderer.invoke("dashboard:get-history", limit) as Promise<SyncHistoryEntry[]>,
 	},
 };
 

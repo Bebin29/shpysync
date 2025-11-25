@@ -28,6 +28,14 @@ export interface ShopifyConfig {
   apiVersion?: string; // Optional: API-Version (Standard: "2025-10")
 }
 
+/**
+ * Erweiterte globalThis-Interface für Debug-Properties.
+ */
+interface GlobalThisWithShopifyDebug {
+  __lastRateLimitInfo?: string;
+  __lastRequestCost?: string;
+}
+
 export interface RateLimitInfo {
   used: number;
   limit: number;
@@ -72,7 +80,7 @@ export function parseRateLimitHeader(rateLimitHeader: string | undefined): RateL
  * @returns RateLimitInfo oder null
  */
 export function getLastRateLimitInfo(): RateLimitInfo | null {
-  const header = (globalThis as any).__lastRateLimitInfo;
+  const header = (globalThis as GlobalThisWithShopifyDebug).__lastRateLimitInfo;
   return parseRateLimitHeader(header);
 }
 
@@ -82,7 +90,7 @@ export function getLastRateLimitInfo(): RateLimitInfo | null {
  * @returns Cost als Number oder null
  */
 export function getLastRequestCost(): number | null {
-  const costHeader = (globalThis as any).__lastRequestCost;
+  const costHeader = (globalThis as GlobalThisWithShopifyDebug).__lastRequestCost;
   if (!costHeader) {
     return null;
   }
@@ -168,12 +176,12 @@ async function executeGraphQL<T = unknown>(
 
       // Rate-Limit-Info für spätere Verwendung speichern (global)
       if (rateLimitHeader) {
-        (globalThis as any).__lastRateLimitInfo = rateLimitHeader;
+        (globalThis as GlobalThisWithShopifyDebug).__lastRateLimitInfo = rateLimitHeader;
       }
 
       // Cost-Info für spätere Verwendung speichern (global)
       if (costHeader) {
-        (globalThis as any).__lastRequestCost = costHeader;
+        (globalThis as GlobalThisWithShopifyDebug).__lastRequestCost = costHeader;
       }
 
       console.debug(

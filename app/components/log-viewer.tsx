@@ -95,6 +95,9 @@ export function LogViewer({ logs, maxHeight = "400px" }: LogViewerProps) {
 			inventory: "Bestand",
 			price: "Preis",
 			system: "System",
+			cache: "Cache",
+			history: "Historie",
+			sync: "Sync",
 		};
 		return labels[category] || category;
 	};
