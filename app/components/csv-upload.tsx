@@ -67,6 +67,14 @@ export function CsvUpload({ onFileSelected, selectedFilePath, disabled }: CsvUpl
 		}
 	}, [csv, handleFileSelect, disabled]);
 
+	const handleDragEnter = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+		e.preventDefault();
+		e.stopPropagation();
+		if (!disabled) {
+			setIsDragging(true);
+		}
+	}, [disabled]);
+
 	const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
 		e.preventDefault();
 		e.stopPropagation();
@@ -145,6 +153,7 @@ export function CsvUpload({ onFileSelected, selectedFilePath, disabled }: CsvUpl
 					</div>
 				) : (
 					<div
+						onDragEnter={handleDragEnter}
 						onDragOver={handleDragOver}
 						onDragLeave={handleDragLeave}
 						onDrop={handleDrop}

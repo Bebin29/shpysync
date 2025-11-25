@@ -4,8 +4,8 @@ import { fileURLToPath } from "url";
 import { dirname } from "path";
 
 // ES Module __dirname equivalent
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+const filename = fileURLToPath(import.meta.url);
+const dirnamePath = dirname(filename);
 
 // Keep a global reference of the window object
 let mainWindow: BrowserWindow | null = null;
@@ -14,29 +14,54 @@ let mainWindow: BrowserWindow | null = null;
  * Erstellt das Hauptfenster der Electron-App.
  */
 function createWindow(): void {
+  // Preload-Pfad absolut machen (Electron benötigt absolute Pfade)
+  const preloadPath = path.resolve(dirnamePath, "preload.js");
+  
+  // Debug-Logging im Dev-Modus
+  if (!app.isPackaged) {
+    console.log("[Electron] Preload-Pfad:", preloadPath);
+    console.log("[Electron] dirnamePath:", dirnamePath);
+  }
+  
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
     webPreferences: {
       contextIsolation: true, // WICHTIG: Verhindert XSS → RCE
       nodeIntegration: false, // WICHTIG: Kein direkter Node-Zugriff
-      preload: path.join(__dirname, "preload.js"),
+      preload: preloadPath,
     },
     title: "WAWISync",
-    icon: path.join(__dirname, "../public/icons/icon.png"), // Optional
+    icon: path.join(dirnamePath, "../public/icons/icon.png"), // Optional
   });
 
   // Lade die Next.js App
-  const isDev = process.env.NODE_ENV === "development";
+  const isDev = !app.isPackaged;
   if (isDev) {
     mainWindow.loadURL("http://localhost:3000");
     mainWindow.webContents.openDevTools();
+    
+    // Debug: Prüfe ob Preload-Script geladen wurde
+    mainWindow.webContents.on("did-finish-load", () => {
+      mainWindow?.webContents.executeJavaScript(`
+        console.log("[Renderer] window.electron verfügbar:", typeof window.electron !== 'undefined');
+        console.log("[Renderer] window.electron:", window.electron);
+      `).catch((err) => {
+        console.error("[Electron] Fehler beim Ausführen von Debug-Code:", err);
+      });
+    });
   } else {
-    mainWindow.loadFile(path.join(__dirname, "../out/index.html"));
+    mainWindow.loadFile(path.join(dirnamePath, "../out/index.html"));
   }
 
   mainWindow.on("closed", () => {
     mainWindow = null;
+  });
+  
+  // Fehlerbehandlung für Preload-Script
+  mainWindow.webContents.on("preload-error", (_event, _preloadPath, error) => {
+    console.error("[Electron] Fehler beim Laden des Preload-Scripts:", error);
+    console.error("[Electron] Preload-Pfad:", preloadPath);
   });
 }
 
@@ -58,7 +83,8 @@ app.on("window-all-closed", () => {
 });
 
 // IPC-Handler registrieren
-import { registerIpcHandlers } from "./services/ipc-handlers";
+import { registerIpcHandlers } from "./services/ipc-handlers.js";
+import { getSyncEngine } from "./services/sync-engine.js";
 
 // App-Info Handler
 ipcMain.handle("app:version", () => {
@@ -67,4 +93,10 @@ ipcMain.handle("app:version", () => {
 
 // Alle IPC-Handler registrieren
 registerIpcHandlers();
+
+// Sync-Engine mit MainWindow verbinden
+app.whenReady().then(() => {
+  const syncEngine = getSyncEngine();
+  // MainWindow wird später in ipc-handlers.ts gesetzt, wenn sync:start aufgerufen wird
+});
 

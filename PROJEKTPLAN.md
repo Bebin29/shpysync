@@ -652,7 +652,21 @@ npm install lucide-react
 npm install zustand
 npm install csv-parse
 npm install axios
+
+# Tool für ES Module Import-Fixes (fügt .js-Endungen nach TypeScript-Kompilierung hinzu)
+npm install --save-dev tsc-esm-fix
 ```
+
+**Optional:** `.tsc-esm-fix.json` Konfiguration erstellen (falls bestimmte Dateien ausgeschlossen werden sollen):
+```json
+{
+  "exclude": [
+    "electron/dist/electron/main.js",
+    "electron/dist/electron/preload.js"
+  ]
+}
+```
+**Hinweis:** Diese Konfiguration ist optional. Das Problem mit Variablennamen wurde durch Umbenennung gelöst (siehe Phase 1.3).
 
 #### 1.2 Verzeichnisstruktur anlegen
 ```
@@ -684,19 +698,57 @@ wawisync-app/
     "resolveJsonModule": true,
     "strict": true
   },
-  "include": ["electron/**/*.ts", "../core/**/*.ts"]
+  "include": ["**/*.ts", "../core/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
 }
 ```
 - **Hinweis:** ES Modules werden verwendet (nicht CommonJS), da der Code `import/export` nutzt
+- **Wichtig:** `rootDir` wird weggelassen, damit TypeScript automatisch den gemeinsamen Root für `electron/` und `core/` bestimmt. Dies führt dazu, dass TypeScript die Dateien nach `electron/dist/electron/` kompiliert (nicht `electron/dist/`). Daher muss `package.json` auf `electron/dist/electron/main.js` zeigen.
+- **Wichtig:** Alle relativen Imports müssen mit `.js`-Endungen versehen werden, da Node.js bei ES Modules explizite Dateiendungen erfordert. Beispiel:
+  ```typescript
+  // ✅ Korrekt (im TypeScript-Quellcode)
+  import { registerIpcHandlers } from "./services/ipc-handlers.js";
+  import type { ShopConfig } from "../types/ipc.js";
+  import { parseCsvStream } from "../../core/infra/csv/parser.js";
+  
+  // ❌ Falsch (funktioniert nicht in kompiliertem Code)
+  import { registerIpcHandlers } from "./services/ipc-handlers";
+  import type { ShopConfig } from "../types/ipc";
+  ```
+  **Hinweis:** TypeScript entfernt die `.js`-Endungen beim Kompilieren (bei `moduleResolution: "node"`), aber Node.js benötigt sie zur Laufzeit. Daher wird `tsc-esm-fix` verwendet, um die `.js`-Endungen nach der Kompilierung automatisch wieder hinzuzufügen. Das Tool wird im Build-Script nach `tsc` ausgeführt:
+  ```json
+  "electron:build:ts": "tsc -p electron/tsconfig.json && tsc-esm-fix --target electron/dist"
+  ```
+  **Wichtig:** `tsc-esm-fix` kann Variablennamen fälschlich transformieren. Daher sollten `__filename` und `__dirname` vermieden werden. Stattdessen verwende `filename` und `dirnamePath`:
+  ```typescript
+  // ❌ Problem: TypeScript transformiert diese falsch
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = dirname(__filename);
+  
+  // ✅ Korrekt: Alternative Variablennamen verwenden
+  const filename = fileURLToPath(import.meta.url);
+  const dirnamePath = dirname(filename);
+  ```
+  Dies gilt für alle relativen Imports in `electron/` und `core/` Dateien.
 
 #### 1.4 Electron Main-Prozess (minimal)
 - `electron/main.ts`:
   - `BrowserWindow` mit:
     - `contextIsolation: true`
     - `nodeIntegration: false`
-    - `preload: path.join(__dirname, "preload.js")`
-  - Dev: `mainWindow.loadURL("http://localhost:3000")`
-  - Prod (Platzhalter): `mainWindow.loadFile(path.join(__dirname, "..", "renderer", "index.html"))`
+    - `preload: path.join(dirnamePath, "preload.js")` (siehe Hinweis zu Variablennamen)
+  - **Dev-Modus-Erkennung:** Verwende `app.isPackaged` statt `process.env.NODE_ENV`:
+    ```typescript
+    const isDev = !app.isPackaged;
+    if (isDev) {
+      mainWindow.loadURL("http://localhost:3000");
+      mainWindow.webContents.openDevTools();
+    } else {
+      mainWindow.loadFile(path.join(dirnamePath, "../out/index.html"));
+    }
+    ```
+    **Hinweis:** `app.isPackaged` ist die Electron-native Methode zur Erkennung des Dev-Modus. `process.env.NODE_ENV` wird im `electron:dev` Script nicht automatisch gesetzt.
+  - Prod: `mainWindow.loadFile(path.join(dirnamePath, "../out/index.html"))`
   - Standard-Lifecycle: `ready`, `window-all-closed`, `activate`
   - `ipcMain.handle("ping", ...)` implementieren
 
@@ -705,6 +757,50 @@ wawisync-app/
   - `contextBridge.exposeInMainWorld("electron", { ping: () => ipcRenderer.invoke("ping"), ... })`
   - Sicherheitsanforderung: Renderer hat keine Node-APIs, nur das explizit exponierte API-Objekt
   - **Hinweis:** Die API wird als `window.electron` exponiert (nicht `electronAPI`)
+  - **WICHTIG - Preload-Script als CommonJS kompilieren:**
+    - Electron lädt Preload-Scripts standardmäßig als CommonJS, auch wenn die `package.json` `"type": "module"` hat
+    - Das Preload-Script muss als CommonJS kompiliert werden, um den Fehler "Cannot use import statement outside a module" zu vermeiden
+    - Lösung: Separate TypeScript-Konfiguration `electron/tsconfig.preload.json` erstellen:
+    ```jsonc
+    {
+      "extends": "./tsconfig.json",
+      "compilerOptions": {
+        "target": "ES2020",
+        "module": "CommonJS",  // WICHTIG: CommonJS statt ES2020
+        "lib": ["ES2020"],
+        "outDir": "./dist/electron",
+        "noEmit": false,
+        "strict": true,
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true,
+        "resolveJsonModule": true,
+        "moduleResolution": "node",
+        "types": ["node"]
+      },
+      "include": ["preload.ts"],
+      "exclude": ["node_modules", "dist"]
+    }
+    ```
+    - Das Preload-Script muss aus der Haupt-TypeScript-Konfiguration ausgeschlossen werden:
+    ```jsonc
+    // electron/tsconfig.json
+    {
+      "exclude": ["node_modules", "dist", "preload.ts"]  // preload.ts ausschließen
+    }
+    ```
+    - Build-Script anpassen, um beide Kompilierungen auszuführen:
+    ```jsonc
+    {
+      "scripts": {
+        "electron:build:ts": "tsc -p electron/tsconfig.json && tsc -p electron/tsconfig.preload.json && tsc-esm-fix --target electron/dist"
+      }
+    }
+    ```
+    - **Ergebnis:** 
+      - Main Process (`main.ts`) wird als ES Module kompiliert (mit `import/export`)
+      - Preload Script (`preload.ts`) wird als CommonJS kompiliert (mit `require`)
+    - **Debugging:** Preload-Pfad muss absolut sein (verwende `path.resolve()` statt `path.join()`)
 
 #### 1.6 Renderer – einfacher IPC-Test
 - TypeScript-Definitionen in `app/types/electron.d.ts`:
@@ -728,15 +824,16 @@ wawisync-app/
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "electron:build:ts": "tsc -p electron/tsconfig.json",
+    "electron:build:ts": "tsc -p electron/tsconfig.json && tsc -p electron/tsconfig.preload.json && tsc-esm-fix --target electron/dist",
     "electron:dev": "npm run electron:build:ts && concurrently \"npm run dev\" \"wait-on http://localhost:3000 && electron .\"",
     "electron:build": "npm run build && npm run electron:build:ts && electron-builder"
   },
-  "main": "electron/dist/main.js"
+  "main": "electron/dist/electron/main.js"
 }
 ```
 - **Hinweis:** `wait-on` stellt sicher, dass Next.js läuft, bevor Electron startet
-- Vorbereitung für später: `main` verweist auf das gebaute Electron-Entry (`electron/dist/main.js`)
+- **Wichtig:** `tsc-esm-fix` wird nach der TypeScript-Kompilierung ausgeführt, um die `.js`-Endungen zu relativen Imports hinzuzufügen, die Node.js bei ES Modules benötigt
+- **Wichtig:** `main` verweist auf `electron/dist/electron/main.js` (nicht `electron/dist/main.js`), da TypeScript die Dateien in eine verschachtelte Struktur kompiliert
 
 #### 1.8 ESLint/Prettier/Tailwind
 - ESLint-Konfiguration erweitern (`.eslintrc.json`):
@@ -749,9 +846,18 @@ wawisync-app/
 - ✅ `npm run electron:dev` startet Next-Dev und Electron
 - ✅ Fenster öffnet deine Next-Seite
 - ✅ IPC-Ping-Test funktioniert (`"pong"` wird angezeigt) - Test-Komponente im Dashboard
-- ✅ Electron-TS wird fehlerfrei nach `electron/dist/` kompiliert
+- ✅ Electron-TS wird fehlerfrei nach `electron/dist/electron/` kompiliert
+  - `main.js` und `preload.js` werden korrekt nach `electron/dist/electron/` kompiliert
+  - `rootDir` wird weggelassen, damit TypeScript automatisch den gemeinsamen Root bestimmt
+  - `package.json` zeigt auf `electron/dist/electron/main.js`
 - ✅ TypeScript-Definitionen für `window.electron` vorhanden
 - ✅ ESLint-Konfiguration für Electron-Dateien erweitert
+- ✅ `.js`-Endungen werden automatisch von `tsc-esm-fix` hinzugefügt
+- ✅ Dev-Modus wird korrekt über `app.isPackaged` erkannt
+- ✅ Variablennamen `filename` und `dirnamePath` werden verwendet (statt `__filename` und `__dirname`)
+- ✅ Preload-Script wird als CommonJS kompiliert (separate `tsconfig.preload.json`)
+- ✅ Preload-Pfad ist absolut (`path.resolve()` statt `path.join()`)
+- ✅ Electron API (`window.electron`) ist im Dev-Modus verfügbar
 
 ---
 
@@ -1087,15 +1193,20 @@ interface SyncUIState {
 - Sync-Engine sendet regelmäßig `sync:progress` Events via IPC
 
 #### 6.3 IPC-Schnittstellen
+- `ipcMain.handle("sync:preview", ...)`:
+  - Input: `SyncPreviewRequest` (csvPath, columnMapping, shopConfig, options)
+  - Generiert Vorschau mit Matching-Ergebnissen OHNE Updates auszuführen
+  - Gibt `SyncPreviewResponse` zurück mit `planned` und `unmatchedRows`
+  - Wird in Phase 7 verwendet, um Vorschau vor Bestätigung zu zeigen
 - `ipcMain.handle("sync:start", ...)`:
-  - Input: `{ filePath, mapping, shopId, mode }` (z. B. `mode` = "prices+stock", "only-prices", "only-stock")
-  - Startet die Pipeline
-- `ipcMain.on("sync:cancel", ...)`:
+  - Input: `SyncStartConfig` (csvPath, columnMapping, shopConfig, options)
+  - Startet die Pipeline und führt Updates aus
+- `ipcMain.handle("sync:cancel", ...)`:
   - Setzt ein Abbruch-Flag, das in den Schleifen geprüft wird
 - Events zum Renderer:
   - `sync:progress` (aktueller Fortschritt, Text)
   - `sync:log` (Log-Einträge)
-  - `sync:previewReady` (PlannedOperations für Vorschau)
+  - `sync:previewReady` (PlannedOperations für Vorschau - wird während Sync gesendet, aber Vorschau sollte bereits über `sync:preview` generiert worden sein)
   - `sync:complete` (SyncResult)
 
 #### 6.4 Modus-Auswahl (Preis/Bestand)
@@ -1109,6 +1220,7 @@ interface SyncUIState {
 - ✅ Manuelles Starten des Sync (ohne UI-Feinheiten) funktioniert
 - ✅ Fortschritt und Logs kommen im Renderer an
 - ✅ Vorschau-Daten (PlannedOperations) werden erzeugt
+- ✅ **Hinweis:** Vorschau-Generierung wird in Phase 7 über separaten `sync:preview` Endpunkt implementiert
 
 ---
 
@@ -1117,16 +1229,16 @@ interface SyncUIState {
 **Ziel:** Alle geplanten Änderungen werden strukturiert angezeigt, filterbar, und die Ausführung erfolgt erst nach expliziter Bestätigung.
 
 #### 7.1 Datenmodell für geplante/ausgeführte Updates
-- `electron/core/domain/sync-types.ts`:
+- `core/domain/sync-types.ts`:
   ```typescript
   type OperationType = "price" | "inventory";
   
   interface PlannedOperation {
     id: string;
     type: OperationType;
-    sku?: string;
-    productTitle?: string;
-    variantTitle?: string;
+    sku?: string | null;
+    productTitle?: string | null;
+    variantTitle?: string | null;
     oldValue?: string | number | null;
     newValue: string | number;
   }
@@ -1136,23 +1248,70 @@ interface SyncUIState {
   interface OperationExecution extends PlannedOperation {
     status: OperationStatus;
     message?: string;
+    errorCode?: string;
+  }
+  
+  interface SyncPreviewResult {
+    planned: PlannedOperation[];
+    unmatchedRows: Array<{
+      rowNumber: number;
+      sku: string;
+      name: string;
+      price?: string;
+      stock?: number;
+    }>;
+  }
+  ```
+- `electron/types/ipc.ts`:
+  ```typescript
+  interface SyncPreviewRequest {
+    csvPath: string;
+    columnMapping: ColumnMapping;
+    shopConfig: ShopConfig;
+    options: {
+      updatePrices: boolean;
+      updateInventory: boolean;
+    };
+  }
+  
+  interface SyncPreviewResponse {
+    success: boolean;
+    data?: {
+      planned: PlannedOperation[];
+      unmatchedRows: Array<{...}>;
+    };
+    error?: string;
   }
   
   interface SyncResult {
-    planned: PlannedOperation[];
-    executed?: OperationExecution[];
+    totalPlanned: number;
+    totalExecuted: number;
+    totalSuccess: number;
+    totalFailed: number;
+    totalSkipped: number;
+    operations: OperationResult[]; // Statt OperationExecution[]
+    planned?: PlannedOperation[]; // Optional, wird gesetzt wenn Vorschau generiert wurde
+    startTime: string;
+    endTime?: string;
+    duration?: number;
   }
   ```
-- Vorschau zeigt `planned`
-- Nach Ausführung füllt Engine `executed`
+- **Hinweis:** `OperationExecution` wird nicht verwendet. Stattdessen wird `OperationResult` (IPC-Type) verwendet, da es mehr Informationen enthält (`csvRow`, `variantId`).
+- **Hinweis:** `SyncResult.planned` ist optional, da es nur gesetzt wird, wenn eine Vorschau generiert wurde (bei normalem Sync).
+- Vorschau zeigt `planned` (über `sync:preview` Endpunkt)
+- Nach Ausführung enthält `SyncResult` `operations` (mit Status-Informationen)
 
 #### 7.2 Vorschau-UI
+- **Wichtig:** Vorschau wird VOR dem Sync generiert über `sync:preview` IPC-Endpunkt
 - `preview-table.tsx`:
   - Tabellen-Ansicht mit Filter:
     - nach OperationType (Preis / Bestand)
     - nach Status (bei bereits ausgeführten Operationen)
-  - Sortierung nach SKU, Produktname, usw.
-  - Tab/Filter für "Nicht gematchte Zeilen" (eigene Liste)
+  - Sortierung nach SKU, Produktname, Preis, Bestand
+  - Tabs für "Alle" und "Nicht gematchte Zeilen"
+  - Anzeige von altem/neuem Wert (Preis und Bestand)
+  - Export-Button für Ergebnisse
+- **IPC-Endpunkt:** `sync:preview` generiert Vorschau mit Matching-Ergebnissen ohne Updates auszuführen
 
 #### 7.3 Bestätigungs-Dialog
 - Zusammenfassung:
@@ -1172,14 +1331,19 @@ interface SyncUIState {
 
 **Deliverables Phase 7:**
 - ✅ Vorschau zeigt alle geplanten Änderungen strukturiert
+- ✅ Vorschau wird VOR der Bestätigung generiert (über `sync:preview`)
+- ✅ Matching-Ergebnisse werden angezeigt (nicht nur CSV-Rohdaten)
 - ✅ Benutzer muss vor tatsächlichen API-Calls bestätigen
 - ✅ Nicht-gematchte Zeilen sind sichtbar und separat exportierbar
+- ✅ Export-Funktionen für Sync-Ergebnisse, nicht-gematchte Zeilen und Logs
 
 ---
 
 ### Phase 8: Fortschrittsanzeige & Logging (2 Tage)
 
 **Ziel:** Sync-Fortschritt und Logs sind transparent, filterbar und exportierbar.
+
+**Hinweis:** Vorschau wird bereits in Phase 7 VOR dem Sync generiert (über `sync:preview`). Die Fortschrittsanzeige in Phase 8 bezieht sich auf die tatsächliche Ausführung der Updates.
 
 #### 8.1 Log-Modell
 - `LogEntry`:
@@ -1334,18 +1498,23 @@ interface SyncUIState {
 
 #### 11.3 Integrationstests
 - `sync-engine`:
-  - Full-Run mit:
+  - `generatePreview()` Methode:
+    - CSV-Fixture + Shopify-Mock → `SyncPreviewResponse`
+    - Erwartung: korrekte Anzahl geplanter Updates, richtige Zuordnung, nicht-gematchte Zeilen identifiziert
+  - `startSync()` Full-Run mit:
     - CSV-Fixture
     - Shopify-Mock, der definierte Produkte zurückgibt
   - Erwartung:
     - korrekte Anzahl geplanter Updates
     - richtige Zuordnung
+    - `SyncResult.planned` wird gesetzt
 
 #### 11.4 E2E-Tests (Playwright)
 - Setup:
   - Playwright nutzt dein Electron-Build oder dev-Electron
 - Szenario:
-  - App starten → Shop konfigurieren → CSV auswählen → Mapping → Vorschau → Sync → Ergebnis prüfen
+  - App starten → Shop konfigurieren → CSV auswählen → Mapping → **Vorschau anfordern (`sync:preview`)** → Vorschau prüfen → Bestätigen → Sync starten → Ergebnis prüfen
+- **Wichtig:** E2E-Test muss `sync:preview` Endpunkt testen, nicht nur `sync:start`
 
 **Deliverables Phase 11:**
 - ✅ Unit-Test-Coverage der Domain-Logik > 80%
@@ -2465,6 +2634,7 @@ const mainWindow = new BrowserWindow({
 
 **Erstellt:** 2025-01-15
 **Aktualisiert:** 2025-01-15 (Feedback-Integration)
-**Version:** 2.0
-**Status:** Planungsphase (MVP-fokussiert)
+**Aktualisiert:** 2025-01-XX (Phase 7 Implementierung - sync:preview Endpunkt, SyncResult.planned optional)
+**Version:** 2.1
+**Status:** Phase 7 implementiert, Phase 8-12 geplant
 

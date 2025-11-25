@@ -1,7 +1,7 @@
-import { parseCsvPreview, extractRowValues, convertToCsvRows, type ColumnMapping } from "../../core/infra/csv/parser";
-import { indexToColumnLetter } from "../../core/utils/normalization";
-import type { CsvRow } from "../../core/domain/types";
-import type { CsvParseResult } from "../../core/infra/csv/parser";
+import { parseCsvPreview, extractRowValues, convertToCsvRows, type ColumnMapping } from "../../core/infra/csv/parser.js";
+import { indexToColumnLetter } from "../../core/utils/normalization.js";
+import type { CsvRow } from "../../core/domain/types.js";
+import type { CsvParseResult } from "../../core/infra/csv/parser.js";
 
 /**
  * CSV-Preview-Ergebnis mit gemappten Zeilen.

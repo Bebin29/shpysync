@@ -2,8 +2,9 @@ import * as fs from "fs";
 import { parse } from "csv-parse/sync";
 import { parse as parseStream } from "csv-parse";
 import * as iconv from "iconv-lite";
-import type { RawCsvRow, CsvRow } from "../../domain/types";
-import { columnLetterToIndex } from "../../utils/normalization";
+import { Transform } from "stream";
+import type { RawCsvRow, CsvRow } from "../../domain/types.js";
+import { columnLetterToIndex } from "../../utils/normalization.js";
 
 /**
  * CSV-Parser mit robuster Encoding-Erkennung.
@@ -82,9 +83,15 @@ export function parseCsv(
     console.warn("CSV konnte nicht sauber decodiert werden – verwende utf-8 mit 'replace'.");
   }
 
+  // Delimiter automatisch erkennen, falls nicht explizit angegeben
+  const detectedDelimiter = delimiter === ";" && text ? detectDelimiter(text) : delimiter;
+  if (detectedDelimiter !== delimiter) {
+    console.log(`CSV-Delimiter automatisch erkannt: '${detectedDelimiter}' (statt '${delimiter}')`);
+  }
+
   // CSV parsen (zuerst ohne columns, um Header-Reihenfolge zu behalten)
   const allRecords = parse(text, {
-    delimiter,
+    delimiter: detectedDelimiter,
     skip_empty_lines: true,
     trim: true,
   }) as string[][];
@@ -242,6 +249,107 @@ export function convertToCsvRows(extractedRows: ExtractedRow[]): CsvRow[] {
 }
 
 /**
+ * Erkennt den Delimiter einer CSV-Datei anhand der ersten Zeilen.
+ * 
+ * Analysiert die ersten Zeilen und zählt die Vorkommen von ',' und ';'.
+ * Der Delimiter mit den meisten konsistenten Vorkommen wird gewählt.
+ * 
+ * @param text - Decodierter Text der CSV-Datei (erste Zeilen)
+ * @returns Erkanntes Delimiter-Zeichen (Standard: ';')
+ */
+function detectDelimiter(text: string): string {
+	// Analysiere die ersten 10 Zeilen (oder weniger, falls Datei kürzer)
+	const lines = text.split(/\r?\n/).slice(0, 10).filter(line => line.trim().length > 0);
+	
+	if (lines.length === 0) {
+		return ";"; // Fallback
+	}
+
+	let commaCount = 0;
+	let semicolonCount = 0;
+	let commaConsistency = 0;
+	let semicolonConsistency = 0;
+	const fieldCountsComma: number[] = [];
+	const fieldCountsSemicolon: number[] = [];
+
+	for (const line of lines) {
+		// Zähle Delimiter, aber ignoriere die innerhalb von Anführungszeichen
+		let inQuotes = false;
+		let commaInLine = 0;
+		let semicolonInLine = 0;
+
+		for (let i = 0; i < line.length; i++) {
+			const char = line[i];
+			
+			if (char === '"') {
+				// Prüfe, ob es ein escaped Quote ist ("")
+				if (i + 1 < line.length && line[i + 1] === '"') {
+					i++; // Überspringe das nächste Zeichen
+					continue;
+				}
+				inQuotes = !inQuotes;
+			} else if (!inQuotes) {
+				if (char === ',') {
+					commaInLine++;
+				} else if (char === ';') {
+					semicolonInLine++;
+				}
+			}
+		}
+
+		commaCount += commaInLine;
+		semicolonCount += semicolonInLine;
+
+		// Anzahl der Felder = Anzahl der Delimiter + 1
+		if (commaInLine > 0) {
+			commaConsistency++;
+			fieldCountsComma.push(commaInLine + 1);
+		}
+		if (semicolonInLine > 0) {
+			semicolonConsistency++;
+			fieldCountsSemicolon.push(semicolonInLine + 1);
+		}
+	}
+
+	// Entscheidung basierend auf mehreren Kriterien:
+	// 1. Konsistenz: Delimiter, der in mehr Zeilen vorkommt
+	// 2. Anzahl: Delimiter mit mehr Gesamtvorkommen
+	// 3. Feldanzahl-Konsistenz: Delimiter mit konsistenterer Feldanzahl pro Zeile
+	
+	if (semicolonConsistency > commaConsistency) {
+		return ";";
+	} else if (commaConsistency > semicolonConsistency) {
+		return ",";
+	}
+
+	// Wenn Konsistenz gleich ist, prüfe Gesamtanzahl
+	if (semicolonCount > commaCount) {
+		return ";";
+	} else if (commaCount > semicolonCount) {
+		return ",";
+	}
+
+	// Wenn beide gleich sind, prüfe Feldanzahl-Konsistenz
+	if (fieldCountsSemicolon.length > 0 && fieldCountsComma.length > 0) {
+		const avgSemicolon = fieldCountsSemicolon.reduce((a, b) => a + b, 0) / fieldCountsSemicolon.length;
+		const avgComma = fieldCountsComma.reduce((a, b) => a + b, 0) / fieldCountsComma.length;
+		
+		// Wenn eine durchschnittliche Feldanzahl konsistenter ist (kleinere Varianz)
+		const varianceSemicolon = fieldCountsSemicolon.reduce((sum, val) => sum + Math.pow(val - avgSemicolon, 2), 0) / fieldCountsSemicolon.length;
+		const varianceComma = fieldCountsComma.reduce((sum, val) => sum + Math.pow(val - avgComma, 2), 0) / fieldCountsComma.length;
+		
+		if (varianceSemicolon < varianceComma) {
+			return ";";
+		} else if (varianceComma < varianceSemicolon) {
+			return ",";
+		}
+	}
+
+	// Fallback: Standard ist Semikolon (deutsche CSV-Konvention)
+	return ";";
+}
+
+/**
  * Erkennt das Encoding einer CSV-Datei anhand der ersten Bytes.
  * 
  * @param filePath - Pfad zur CSV-Datei
@@ -320,12 +428,44 @@ export async function parseCsvStream(
 	const encoding = detectEncoding(filePath);
 	console.log(`CSV mit Encoding '${encoding.name}' erkannt (Streaming-Modus).`);
 
+	// Delimiter automatisch erkennen (nur wenn Standard-Delimiter verwendet wird)
+	let detectedDelimiter = delimiter;
+	if (delimiter === ";") {
+		// Lese erste Zeilen für Delimiter-Erkennung
+		const sampleBuffer = Buffer.alloc(8192); // 8KB Sample
+		const fd = fs.openSync(filePath, "r");
+		const bytesRead = fs.readSync(fd, sampleBuffer, 0, 8192, 0);
+		fs.closeSync(fd);
+
+		// Decodiere Sample
+		let sampleText: string;
+		if (encoding.name === "cp1252") {
+			sampleText = iconv.decode(sampleBuffer.slice(0, bytesRead), "win1252");
+		} else if (encoding.name === "latin1") {
+			sampleText = iconv.decode(sampleBuffer.slice(0, bytesRead), "latin1");
+		} else if (encoding.name === "utf-8-sig") {
+			// Entferne BOM falls vorhanden
+			if (bytesRead >= 3 && sampleBuffer[0] === 0xef && sampleBuffer[1] === 0xbb && sampleBuffer[2] === 0xbf) {
+				sampleText = sampleBuffer.slice(3, bytesRead).toString("utf-8");
+			} else {
+				sampleText = sampleBuffer.slice(0, bytesRead).toString("utf-8");
+			}
+		} else {
+			sampleText = sampleBuffer.slice(0, bytesRead).toString("utf-8");
+		}
+
+		detectedDelimiter = detectDelimiter(sampleText);
+		if (detectedDelimiter !== delimiter) {
+			console.log(`CSV-Delimiter automatisch erkannt: '${detectedDelimiter}' (statt '${delimiter}')`);
+		}
+	}
+
 	// Datei-Stream erstellen
 	const fileStream = fs.createReadStream(filePath);
 
 	// CSV-Parser-Stream erstellen
 	const parser = parseStream({
-		delimiter,
+		delimiter: detectedDelimiter,
 		skip_empty_lines: true,
 		trim: true,
 	});
@@ -339,7 +479,7 @@ export async function parseCsvStream(
 	} else if (encoding.name === "utf-8-sig") {
 		// UTF-8-SIG: Erste 3 Bytes (BOM) entfernen
 		let bomRemoved = false;
-		const removeBom = new (class extends require("stream").Transform {
+		class RemoveBomTransform extends Transform {
 			_transform(chunk: Buffer, _encoding: string, callback: () => void) {
 				if (!bomRemoved && chunk.length >= 3) {
 					if (chunk[0] === 0xef && chunk[1] === 0xbb && chunk[2] === 0xbf) {
@@ -354,7 +494,8 @@ export async function parseCsvStream(
 				}
 				callback();
 			}
-		})();
+		}
+		const removeBom = new RemoveBomTransform();
 		decodedStream = fileStream.pipe(removeBom);
 	}
 
