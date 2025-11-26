@@ -5,9 +5,15 @@
  */
 
 import * as fs from "fs";
+import * as path from "path";
 import type { ColumnMapping } from "../infra/csv/parser.js";
 import { WawiError } from "./errors.js";
 import { columnLetterToIndex } from "../utils/normalization.js";
+
+/**
+ * Unterstützte Dateitypen.
+ */
+export type FileType = "csv" | "dbf";
 
 /**
  * Validiert, ob eine CSV-Datei existiert und lesbar ist.
@@ -52,6 +58,99 @@ export function validateCsvHeaders(headers: string[]): void {
 			"CSV_INVALID_FORMAT",
 			`Die CSV-Datei enthält leere Header-Namen an Positionen: ${emptyHeaders.map((_, i) => i + 1).join(", ")}`
 		);
+	}
+}
+
+/**
+ * Validiert, ob eine DBF-Datei existiert und lesbar ist.
+ */
+export function validateDbfFile(filePath: string): void {
+	if (!filePath || filePath.trim() === "") {
+		throw WawiError.csvError("CSV_FILE_NOT_FOUND", "Kein Dateipfad angegeben");
+	}
+
+	if (!fs.existsSync(filePath)) {
+		throw WawiError.csvError("CSV_FILE_NOT_FOUND", `Datei nicht gefunden: ${filePath}`, {
+			filePath,
+		});
+	}
+
+	const stats = fs.statSync(filePath);
+	if (!stats.isFile()) {
+		throw WawiError.csvError("CSV_INVALID_FORMAT", `Pfad ist keine Datei: ${filePath}`, {
+			filePath,
+		});
+	}
+
+	if (stats.size === 0) {
+		throw WawiError.csvError("CSV_EMPTY", "Die DBF-Datei ist leer", {
+			filePath,
+		});
+	}
+
+	// Prüfe DBF-Magic Bytes (erstes Byte sollte 0x03, 0x83, 0x8B, 0x30, 0x31, 0x32, 0xF5 sein)
+	const buffer = Buffer.alloc(1);
+	const fd = fs.openSync(filePath, "r");
+	fs.readSync(fd, buffer, 0, 1, 0);
+	fs.closeSync(fd);
+
+	const magicByte = buffer[0];
+	const validMagicBytes = [0x03, 0x83, 0x8B, 0x30, 0x31, 0x32, 0xF5]; // dBASE III/IV/VII, FoxPro, etc.
+	
+	if (!validMagicBytes.includes(magicByte)) {
+		throw WawiError.csvError(
+			"CSV_INVALID_FORMAT",
+			`Die Datei scheint keine gültige DBF-Datei zu sein (Magic Byte: 0x${magicByte.toString(16).toUpperCase()})`,
+			{ filePath, magicByte }
+		);
+	}
+}
+
+/**
+ * Validiert, ob DBF-Header (Feldnamen) vorhanden sind und nicht leer sind.
+ */
+export function validateDbfHeaders(headers: string[]): void {
+	if (!headers || headers.length === 0) {
+		throw WawiError.csvError("CSV_EMPTY", "Die DBF-Datei enthält keine Felder");
+	}
+
+	// Prüfe auf leere Feldnamen
+	const emptyHeaders = headers.filter((h) => !h || h.trim() === "");
+	if (emptyHeaders.length > 0) {
+		throw WawiError.csvError(
+			"CSV_INVALID_FORMAT",
+			`Die DBF-Datei enthält leere Feldnamen an Positionen: ${emptyHeaders.map((_, i) => i + 1).join(", ")}`
+		);
+	}
+}
+
+/**
+ * Erkennt den Dateityp basierend auf der Dateiendung.
+ * 
+ * @param filePath - Pfad zur Datei
+ * @returns Erkanntes Dateiformat
+ */
+export function detectFileType(filePath: string): FileType {
+	const ext = path.extname(filePath).toLowerCase();
+	if (ext === ".dbf") {
+		return "dbf";
+	}
+	return "csv"; // Default
+}
+
+/**
+ * Validiert eine Datei (CSV oder DBF) generisch.
+ * 
+ * @param filePath - Pfad zur Datei
+ * @param fileType - Optional: Dateityp (wird automatisch erkannt, falls nicht angegeben)
+ */
+export function validateFile(filePath: string, fileType?: FileType): void {
+	const detectedType = fileType || detectFileType(filePath);
+	
+	if (detectedType === "dbf") {
+		validateDbfFile(filePath);
+	} else {
+		validateCsvFile(filePath);
 	}
 }
 
