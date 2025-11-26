@@ -6,20 +6,26 @@ import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
 
-// Mock CSV Parser
-vi.mock("../../../core/infra/csv/parser.js", async () => {
-  const actual = await vi.importActual("../../../core/infra/csv/parser.js");
+// Mock File Parser (für CSV und DBF)
+vi.mock("../../../core/infra/file-parser/index.js", async () => {
+  const actual = await vi.importActual("../../../core/infra/file-parser/index.js");
   const fs = require("fs");
+  const path = require("path");
+  
   return {
     ...actual,
-    parseCsvStream: vi.fn(async (filePath: string) => {
-      // Wenn Datei nicht existiert, Fehler werfen (wie validateCsvFile)
+    parseFileStream: vi.fn(async (filePath: string, fileType?: string) => {
+      // Wenn Datei nicht existiert, Fehler werfen
       if (!fs.existsSync(filePath)) {
         const { WawiError } = await import("../../../core/domain/errors.js");
         throw WawiError.csvError("CSV_FILE_NOT_FOUND", `Datei nicht gefunden: ${filePath}`, {
           filePath,
         });
       }
+      
+      // Erkenne Dateityp basierend auf Endung
+      const ext = path.extname(filePath).toLowerCase();
+      const detectedType = ext === ".dbf" ? "dbf" : "csv";
       
       // Erstelle AsyncGenerator für rows
       async function* generateRows() {
@@ -46,6 +52,7 @@ vi.mock("../../../core/infra/csv/parser.js", async () => {
       return {
         headers: ["SKU", "Name", "Preis", "Bestand"],
         encoding: "utf-8",
+        fileType: detectedType,
         rows: generateRows(),
       };
     }),
@@ -215,6 +222,62 @@ describe("Sync Flow Integration", () => {
       };
 
       await expect(syncEngine.startSync(config)).rejects.toThrow();
+    });
+  });
+
+  describe("DBF-Datei-Unterstützung", () => {
+    it("sollte DBF-Datei erkennen und parsen", async () => {
+      const dbfPath = path.join(tempDir, "test.dbf");
+      fs.writeFileSync(dbfPath, "dummy content"); // Mock-Datei
+
+      const syncEngine = new SyncEngine();
+      const shopConfig: ShopConfig = {
+        shopUrl: "https://test.myshopify.com",
+        accessToken: "shpat_test123",
+        locationId: "gid://shopify/Location/1",
+        locationName: "Test Location",
+      };
+
+      const columnMapping: ColumnMapping = {
+        sku: "SKU",
+        name: "Name",
+        price: "Preis",
+        stock: "Bestand",
+      };
+
+      const syncConfig: SyncStartConfig = {
+        csvPath: dbfPath,
+        columnMapping,
+        shopConfig,
+        options: {
+          updatePrices: true,
+          updateInventory: true,
+          dryRun: false,
+        },
+      };
+
+      // Mock Shopify-API
+      vi.spyOn(syncEngine as any, "loadProducts").mockResolvedValue([
+        createMockProduct({
+          id: "gid://shopify/Product/1",
+          title: "Test Produkt 1",
+          variants: [
+            createMockVariant({
+              id: "gid://shopify/ProductVariant/1",
+              productId: "gid://shopify/Product/1",
+              sku: "SKU-001",
+            }),
+          ],
+        }),
+      ]);
+
+      vi.spyOn(syncEngine as any, "updatePrices").mockResolvedValue([]);
+      vi.spyOn(syncEngine as any, "updateInventory").mockResolvedValue([]);
+
+      const result = await syncEngine.startSync(syncConfig);
+
+      expect(result.totalPlanned).toBeGreaterThan(0);
+      expect(result.operations.length).toBeGreaterThan(0);
     });
   });
 

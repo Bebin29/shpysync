@@ -115,13 +115,15 @@ export function registerIpcHandlers(): void {
     }
   );
 
-  // CSV-Handler
+  // CSV/DBF-Handler
   ipcMain.handle("csv:select-file", async () => {
     try {
       const result = await dialog.showOpenDialog({
-        title: "CSV-Datei auswählen",
+        title: "CSV/DBF-Datei auswählen",
         filters: [
+          { name: "CSV/DBF-Dateien", extensions: ["csv", "dbf"] },
           { name: "CSV-Dateien", extensions: ["csv"] },
+          { name: "DBF-Dateien", extensions: ["dbf"] },
           { name: "Alle Dateien", extensions: ["*"] },
         ],
         properties: ["openFile"],
@@ -147,16 +149,17 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle("csv:get-headers", async (_event, filePath: string) => {
     try {
-      const { parseCsvPreview } = await import("../../core/infra/csv/parser.js");
-      const result = await parseCsvPreview(filePath, 1); // Nur erste Zeile für Header
+      const { parseFilePreview } = await import("../../core/infra/file-parser/index.js");
+      const result = await parseFilePreview(filePath, 1); // Nur erste Zeile für Header
       return {
         success: true,
         headers: result.headers,
         encoding: result.encoding,
+        fileType: result.fileType,
       };
     } catch (error) {
       const errorInfo = errorToErrorInfo(error);
-      console.error("Fehler beim Laden der CSV-Header:", errorInfo);
+      console.error("Fehler beim Laden der Datei-Header:", errorInfo);
       return {
         success: false,
         error: errorInfo.userMessage,
@@ -200,6 +203,7 @@ export function registerIpcHandlers(): void {
             previewRows: result.previewRows,
             columnMapping: result.columnMapping,
             columnNameToLetter, // Hilfs-Mapping für UI
+            fileType: result.fileType, // CSV oder DBF
           },
         };
       } catch (error) {

@@ -1,10 +1,11 @@
-import { parseCsvPreview, extractRowValues, convertToCsvRows, type ColumnMapping } from "../../core/infra/csv/parser.js";
+import { extractRowValues, convertToCsvRows, type ColumnMapping } from "../../core/infra/csv/parser.js";
+import { parseFilePreview } from "../../core/infra/file-parser/index.js";
 import { indexToColumnLetter } from "../../core/utils/normalization.js";
 import type { CsvRow } from "../../core/domain/types.js";
-import type { CsvParseResult } from "../../core/infra/csv/parser.js";
+import type { FileParseResult } from "../../core/infra/file-parser/types.js";
 
 /**
- * CSV-Preview-Ergebnis mit gemappten Zeilen.
+ * Datei-Preview-Ergebnis mit gemappten Zeilen (CSV/DBF).
  */
 export interface CsvPreviewResult {
 	headers: string[];
@@ -12,6 +13,7 @@ export interface CsvPreviewResult {
 	totalRows: number;
 	previewRows: CsvRow[];
 	columnMapping: ColumnMapping;
+	fileType: "csv" | "dbf";
 }
 
 /**
@@ -45,10 +47,10 @@ export function createColumnLetterToNameMap(headers: string[]): Map<string, stri
 }
 
 /**
- * Parst CSV-Datei im Preview-Modus und wendet Mapping an.
+ * Parst Datei (CSV/DBF) im Preview-Modus und wendet Mapping an.
  * 
- * @param filePath - Pfad zur CSV-Datei
- * @param mapping - Spalten-Mapping (Spaltenbuchstaben)
+ * @param filePath - Pfad zur Datei
+ * @param mapping - Spalten-Mapping (Spaltenbuchstaben für CSV, Feldnamen für DBF)
  * @param maxRows - Maximale Anzahl von Vorschau-Zeilen (Standard: 200)
  * @returns Preview-Ergebnis mit gemappten Zeilen
  */
@@ -57,8 +59,8 @@ export async function previewCsvWithMapping(
 	mapping: ColumnMapping,
 	maxRows: number = 200
 ): Promise<CsvPreviewResult> {
-	// CSV parsen (Preview-Modus)
-	const parseResult: CsvParseResult = await parseCsvPreview(filePath, maxRows);
+	// Datei parsen (Preview-Modus) - automatische Dateityp-Erkennung
+	const parseResult: FileParseResult = await parseFilePreview(filePath, maxRows);
 
 	if (parseResult.headers.length === 0) {
 		return {
@@ -67,6 +69,7 @@ export async function previewCsvWithMapping(
 			totalRows: 0,
 			previewRows: [],
 			columnMapping: mapping,
+			fileType: parseResult.fileType,
 		};
 	}
 
@@ -84,6 +87,7 @@ export async function previewCsvWithMapping(
 		totalRows: csvRows.length,
 		previewRows: csvRows,
 		columnMapping: mapping,
+		fileType: parseResult.fileType,
 	};
 }
 
