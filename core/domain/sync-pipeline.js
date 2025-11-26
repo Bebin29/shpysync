@@ -1,9 +1,13 @@
-import { buildVariantMaps, findVariantId } from "./matching";
-import { normalizePrice } from "./price-normalizer";
-import { coalesceInventoryUpdates } from "./inventory-coalescing";
-export function processCsvToUpdates(csvRows, products, options) {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.processCsvToUpdates = processCsvToUpdates;
+exports.groupPriceUpdatesByProduct = groupPriceUpdatesByProduct;
+const matching_js_1 = require("./matching.js");
+const price_normalizer_js_1 = require("./price-normalizer.js");
+const inventory_coalescing_js_1 = require("./inventory-coalescing.js");
+function processCsvToUpdates(csvRows, products, options) {
     // Variant-Maps für effizientes Matching erstellen
-    const variantMaps = buildVariantMaps(products);
+    const variantMaps = (0, matching_js_1.buildVariantMaps)(products);
     // Maps für schnellen Zugriff auf Variant-Daten
     const variantMap = new Map();
     for (const product of products) {
@@ -28,7 +32,7 @@ export function processCsvToUpdates(csvRows, products, options) {
             continue;
         }
         // Matching durchführen
-        const matchResult = findVariantId(csvRow.sku, csvRow.name, variantMaps);
+        const matchResult = (0, matching_js_1.findVariantId)(csvRow.sku, csvRow.name, variantMaps);
         if (!matchResult.variantId) {
             console.warn(`Zeile ${csvRow.rowNumber}: Keine Variant-ID für SKU='${csvRow.sku}' Name='${csvRow.name}' – übersprungen.`);
             unmatchedRows.push(csvRow);
@@ -69,7 +73,7 @@ export function processCsvToUpdates(csvRows, products, options) {
         // Preis-Update vorbereiten
         if (options.updatePrices && csvRow.price && csvRow.price.trim() !== "") {
             try {
-                const normalizedPrice = normalizePrice(csvRow.price);
+                const normalizedPrice = (0, price_normalizer_js_1.normalizePrice)(csvRow.price);
                 priceUpdates.push({
                     productId,
                     variantId,
@@ -110,7 +114,7 @@ export function processCsvToUpdates(csvRows, products, options) {
         });
     }
     // Inventory-Updates koaleszieren (Duplikate entfernen)
-    const coalescedInventoryUpdates = coalesceInventoryUpdates(inventoryUpdates);
+    const coalescedInventoryUpdates = (0, inventory_coalescing_js_1.coalesceInventoryUpdates)(inventoryUpdates);
     // Preis-Updates nach Produkt gruppieren (für Bulk-Updates)
     const priceUpdatesByProduct = new Map();
     for (const update of priceUpdates) {
@@ -146,7 +150,7 @@ export function processCsvToUpdates(csvRows, products, options) {
  * @param priceUpdates - Liste von Preis-Updates
  * @returns Map von Produkt-ID zu Liste von Variant-Updates
  */
-export function groupPriceUpdatesByProduct(priceUpdates) {
+function groupPriceUpdatesByProduct(priceUpdates) {
     const grouped = new Map();
     for (const update of priceUpdates) {
         if (!grouped.has(update.productId)) {

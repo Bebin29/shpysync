@@ -7,7 +7,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "electron:build:ts": "tsc -p electron/tsconfig.json && tsc -p electron/tsconfig.preload.json && tsc-esm-fix --target electron/dist",
+    "electron:build:ts": "tsc -p electron/tsconfig.json && tsc -p electron/tsconfig.preload.json && tsc-esm-fix --target electron/dist && node -e \"const fs = require('fs'); const path = require('path'); const src = path.join('electron', 'dist', 'electron', 'electron', 'preload.js'); const dest = path.join('electron', 'dist', 'electron', 'preload.js'); if (fs.existsSync(src)) { fs.copyFileSync(src, dest); console.log('Preload.js kopiert'); }\"",
     "fix:html": "node scripts/fix-html-base-tag.js",
     "electron:dev": "npm run electron:build:ts && concurrently \"npm run dev\" \"wait-on http://localhost:3000 && electron .\"",
     "electron:build": "npm run build && npm run fix:html && npm run electron:build:ts && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win",

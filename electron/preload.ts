@@ -91,8 +91,20 @@ const electronAPI = {
 try {
 	contextBridge.exposeInMainWorld("electron", electronAPI);
 	console.log("[Preload] Electron API erfolgreich exponiert");
+	console.log("[Preload] Dashboard verfügbar:", typeof electronAPI.dashboard !== "undefined");
+	console.log("[Preload] Dashboard Keys:", electronAPI.dashboard ? Object.keys(electronAPI.dashboard) : "N/A");
 } catch (error) {
 	console.error("[Preload] Fehler beim Exponieren der Electron API:", error);
+	// Versuche zumindest eine minimale API zu exponieren
+	try {
+		contextBridge.exposeInMainWorld("electron", {
+			ping: electronAPI.ping,
+			dashboard: electronAPI.dashboard,
+		});
+		console.log("[Preload] Minimale Electron API exponiert (Fallback)");
+	} catch (fallbackError) {
+		console.error("[Preload] Fehler beim Exponieren der minimalen API:", fallbackError);
+	}
 }
 
 // TypeScript-Definitionen für den Renderer
