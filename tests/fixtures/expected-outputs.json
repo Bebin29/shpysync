@@ -29,9 +29,9 @@
         "name": "Produkt ohne SKU"
       },
       "expectedMatch": {
-        "variantId": "gid://shopify/ProductVariant/3",
-        "method": "name",
-        "confidence": "exact"
+        "variantId": null,
+        "method": null,
+        "confidence": "low"
       }
     },
     {
@@ -40,12 +40,13 @@
         "name": "987654321"
       },
       "expectedMatch": {
-        "variantId": "gid://shopify/ProductVariant/4",
-        "method": "barcode",
-        "confidence": "exact"
+        "variantId": null,
+        "method": null,
+        "confidence": "low"
       }
     }
   ]
 }
+
 
 

@@ -431,10 +431,13 @@ export class SyncEngine {
 
 		// Shopify abfragen
 		this.logger.info("sync", "Lade Produkte von Shopify...");
-		const products = await getAllProductsWithVariants({
-			shopUrl: shopConfig.shopUrl,
-			accessToken: shopConfig.accessToken,
-		});
+		const products = await getAllProductsWithVariants(
+			{
+				shopUrl: shopConfig.shopUrl,
+				accessToken: shopConfig.accessToken,
+			},
+			shopConfig.locationId // Location-ID für Inventory-Levels übergeben
+		);
 
 		// Cache aktualisieren
 		try {

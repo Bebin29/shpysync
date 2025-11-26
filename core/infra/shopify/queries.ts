@@ -5,7 +5,7 @@
  */
 
 export const GQL_PRODUCTS = `
-  query ListProducts($first: Int!, $after: String) {
+  query ListProducts($first: Int!, $after: String, $locationId: ID) {
     products(first: $first, after: $after, sortKey: ID) {
       pageInfo {
         hasNextPage
@@ -25,6 +25,13 @@ export const GQL_PRODUCTS = `
                 title
                 inventoryItem {
                   id
+                  inventoryLevels(locationIds: [$locationId], first: 1) {
+                    edges {
+                      node {
+                        available
+                      }
+                    }
+                  }
                 }
               }
             }

@@ -18,10 +18,12 @@ import { getConfig } from "./config-service.js";
  * Nutzt Cursor-Pagination (max 250 Varianten pro Produkt).
  * 
  * @param config - Shopify-Konfiguration (ohne API-Version, wird aus Config geladen)
+ * @param locationId - Optional: Location-ID für Inventory-Levels
  * @returns Liste von Produkten mit allen Varianten
  */
 export async function getAllProductsWithVariants(
-	config: ShopifyConfig
+	config: ShopifyConfig,
+	locationId?: string
 ): Promise<Product[]> {
 	// Lade API-Version aus Config
 	const appConfig = getConfig();
@@ -32,7 +34,7 @@ export async function getAllProductsWithVariants(
 		apiVersion,
 	};
 
-	return getAllProducts(configWithVersion);
+	return getAllProducts(configWithVersion, locationId);
 }
 
 /**

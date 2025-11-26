@@ -105,15 +105,25 @@ export function processCsvToUpdates(
       continue;
     }
 
-    // Preis-Update vorbereiten
+    // Preis-Update vorbereiten (nur wenn sich der Preis geändert hat)
     if (options.updatePrices && csvRow.price && csvRow.price.trim() !== "") {
       try {
         const normalizedPrice = normalizePrice(csvRow.price);
-        priceUpdates.push({
-          productId,
-          variantId,
-          price: normalizedPrice,
-        });
+        const currentPrice = variant.price;
+        
+        // Nur updaten, wenn sich der Preis geändert hat
+        if (normalizedPrice !== currentPrice) {
+          priceUpdates.push({
+            productId,
+            variantId,
+            price: normalizedPrice,
+          });
+        } else {
+          // Preis unverändert - als gematcht markieren, aber kein Update
+          console.debug(
+            `Zeile ${csvRow.rowNumber}: Preis unverändert (${currentPrice}) – übersprungen.`
+          );
+        }
       } catch (error) {
         console.warn(
           `Zeile ${csvRow.rowNumber}: Preis konnte nicht normalisiert werden ('${csvRow.price}') – übersprungen: ${error}`
@@ -129,14 +139,24 @@ export function processCsvToUpdates(
       }
     }
 
-    // Inventory-Update vorbereiten
+    // Inventory-Update vorbereiten (nur wenn sich der Bestand geändert hat)
     if (options.updateInventory && csvRow.stock !== undefined && csvRow.stock !== null) {
       const inventoryItemId = variant.inventoryItemId;
       if (inventoryItemId) {
-        inventoryUpdates.push({
-          inventoryItemId,
-          quantity: csvRow.stock,
-        });
+        const currentQuantity = variant.currentQuantity;
+        
+        // Nur updaten, wenn sich der Bestand geändert hat
+        if (currentQuantity === undefined || currentQuantity !== csvRow.stock) {
+          inventoryUpdates.push({
+            inventoryItemId,
+            quantity: csvRow.stock,
+          });
+        } else {
+          // Bestand unverändert - als gematcht markieren, aber kein Update
+          console.debug(
+            `Zeile ${csvRow.rowNumber}: Bestand unverändert (${currentQuantity}) – übersprungen.`
+          );
+        }
       } else {
         console.warn(
           `Zeile ${csvRow.rowNumber}: inventoryItem-ID fehlt für Variant ${variantId} – Inventur-Update übersprungen.`

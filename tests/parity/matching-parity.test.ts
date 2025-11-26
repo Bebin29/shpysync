@@ -59,46 +59,50 @@ describe("Matching Parity", () => {
     });
   });
 
-  describe("Name-Matching", () => {
-    it("sollte per exaktem Namen matchen", () => {
+  describe("Name-Matching (entfernt)", () => {
+    it("sollte kein Match finden wenn nur Name vorhanden (keine SKU)", () => {
       const maps = buildVariantMaps(products);
       const result = findVariantId("", "Produkt ohne SKU", maps);
 
-      expect(result.variantId).toBe("gid://shopify/ProductVariant/3");
-      expect(result.method).toBe("name");
-      expect(result.confidence).toBe("exact");
+      expect(result.variantId).toBeNull();
+      expect(result.method).toBeNull();
+      expect(result.confidence).toBe("low");
     });
 
-    it("sollte Name-Matching case-insensitive sein", () => {
+    it("sollte kein Match finden bei Name-Matching ohne SKU", () => {
       const maps = buildVariantMaps(products);
       const result = findVariantId("", "PRODUKT OHNE SKU", maps);
 
-      expect(result.variantId).toBe("gid://shopify/ProductVariant/3");
-      expect(result.method).toBe("name");
+      expect(result.variantId).toBeNull();
+      expect(result.method).toBeNull();
     });
   });
 
-  describe("Barcode-Matching", () => {
-    it("sollte per Barcode matchen", () => {
+  describe("Barcode-Matching (entfernt)", () => {
+    it("sollte kein Match finden bei Barcode ohne SKU", () => {
       const maps = buildVariantMaps(products);
       const result = findVariantId("", "987654321", maps);
 
-      expect(result.variantId).toBe("gid://shopify/ProductVariant/4");
-      expect(result.method).toBe("barcode");
-      expect(result.confidence).toBe("exact");
+      expect(result.variantId).toBeNull();
+      expect(result.method).toBeNull();
+      expect(result.confidence).toBe("low");
     });
   });
 
-  describe("Priorität", () => {
-    it("sollte SKU höchste Priorität haben", () => {
+  describe("Nur SKU-Matching", () => {
+    it("sollte nur per SKU matchen können", () => {
       const maps = buildVariantMaps(products);
       
       // Produkt mit SKU, Name und Barcode
       const result = findVariantId("SKU-002", "Test Produkt 2", maps);
       
-      // SKU sollte gewinnen, auch wenn Name passt
+      // Nur SKU sollte funktionieren
       expect(result.method).toBe("sku");
       expect(result.variantId).toBe("gid://shopify/ProductVariant/2");
+      
+      // Name sollte nicht funktionieren
+      const resultName = findVariantId("", "Test Produkt 2", maps);
+      expect(resultName.variantId).toBeNull();
     });
   });
 

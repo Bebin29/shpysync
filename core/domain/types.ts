@@ -19,6 +19,7 @@ export interface Variant {
   title: string;
   price: string; // Shopify Money-Format (z.B. "12.50")
   inventoryItemId: string | null; // Shopify GID für Inventory
+  currentQuantity?: number; // Optional: aktueller Bestand (wenn geladen)
 }
 
 /**

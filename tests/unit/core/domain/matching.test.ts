@@ -276,30 +276,24 @@ describe("findVariantId", () => {
     });
   });
 
-  describe("Name-Matching", () => {
-    it("sollte per exaktem Namen matchen", () => {
+  describe("Name-Matching (entfernt)", () => {
+    it("sollte kein Match finden wenn nur Name vorhanden (keine SKU)", () => {
       const result = findVariantId("", "Test Produkt", maps);
-      expect(result.variantId).toBe("gid://shopify/ProductVariant/1");
-      expect(result.method).toBe("name");
-      expect(result.confidence).toBe("exact");
+      expect(result.variantId).toBeNull();
+      expect(result.method).toBeNull();
+      expect(result.confidence).toBe("low");
     });
 
-    it("sollte per Namen matchen wenn keine SKU vorhanden", () => {
+    it("sollte kein Match finden wenn nur Name vorhanden (keine SKU)", () => {
       const result = findVariantId("", "Anderes Produkt", maps);
-      expect(result.variantId).toBe("gid://shopify/ProductVariant/2");
-      expect(result.method).toBe("name");
-      expect(result.confidence).toBe("exact");
-    });
-
-    it("sollte Name-Matching case-insensitive sein", () => {
-      const result = findVariantId("", "TEST PRODUKT", maps);
-      expect(result.variantId).toBe("gid://shopify/ProductVariant/1");
-      expect(result.method).toBe("name");
+      expect(result.variantId).toBeNull();
+      expect(result.method).toBeNull();
+      expect(result.confidence).toBe("low");
     });
   });
 
-  describe("Name mit Kürzung", () => {
-    it("sollte Namen nach '-' kürzen", () => {
+  describe("Name mit Kürzung (entfernt)", () => {
+    it("sollte kein Match finden bei Namen mit Kürzung ohne SKU", () => {
       const productsWithDash: Product[] = [
         createMockProduct({
           title: "Test Produkt",
@@ -313,33 +307,13 @@ describe("findVariantId", () => {
 
       const mapsWithDash = buildVariantMaps(productsWithDash);
       const result = findVariantId("", "Test Produkt - Variante", mapsWithDash);
-      expect(result.variantId).toBe("gid://shopify/ProductVariant/1");
-      expect(result.method).toBe("name");
-      expect(result.confidence).toBe("partial");
-    });
-
-    it("sollte Namen nach '(' kürzen", () => {
-      const productsWithParen: Product[] = [
-        createMockProduct({
-          title: "Test Produkt",
-          variants: [
-            createMockVariant({
-              id: "gid://shopify/ProductVariant/1",
-            }),
-          ],
-        }),
-      ];
-
-      const mapsWithParen = buildVariantMaps(productsWithParen);
-      const result = findVariantId("", "Test Produkt (Variante)", mapsWithParen);
-      expect(result.variantId).toBe("gid://shopify/ProductVariant/1");
-      expect(result.method).toBe("name");
-      expect(result.confidence).toBe("partial");
+      expect(result.variantId).toBeNull();
+      expect(result.method).toBeNull();
     });
   });
 
-  describe("Prefix-Matching", () => {
-    it("sollte Prefix-Matching durchführen wenn genau ein Kandidat", () => {
+  describe("Prefix-Matching (entfernt)", () => {
+    it("sollte kein Match finden bei Prefix-Matching ohne SKU", () => {
       const productsPrefix: Product[] = [
         createMockProduct({
           title: "Test Produkt Lang",
@@ -353,44 +327,17 @@ describe("findVariantId", () => {
 
       const mapsPrefix = buildVariantMaps(productsPrefix);
       const result = findVariantId("", "Test Produkt", mapsPrefix);
-      expect(result.variantId).toBe("gid://shopify/ProductVariant/1");
-      expect(result.method).toBe("prefix");
-      expect(result.confidence).toBe("low");
-    });
-
-    it("sollte kein Prefix-Matching wenn mehrere Kandidaten", () => {
-      const productsMultiple: Product[] = [
-        createMockProduct({
-          title: "Test Produkt 1",
-          variants: [
-            createMockVariant({
-              id: "gid://shopify/ProductVariant/1",
-            }),
-          ],
-        }),
-        createMockProduct({
-          title: "Test Produkt 2",
-          variants: [
-            createMockVariant({
-              id: "gid://shopify/ProductVariant/2",
-            }),
-          ],
-        }),
-      ];
-
-      const mapsMultiple = buildVariantMaps(productsMultiple);
-      const result = findVariantId("", "Test", mapsMultiple);
-      // Sollte kein Match finden, da mehrere Kandidaten
       expect(result.variantId).toBeNull();
+      expect(result.method).toBeNull();
     });
   });
 
-  describe("Barcode-Matching", () => {
-    it("sollte per Barcode matchen", () => {
+  describe("Barcode-Matching (entfernt)", () => {
+    it("sollte kein Match finden bei Barcode ohne SKU", () => {
       const result = findVariantId("", "123456789", maps);
-      expect(result.variantId).toBe("gid://shopify/ProductVariant/1");
-      expect(result.method).toBe("barcode");
-      expect(result.confidence).toBe("exact");
+      expect(result.variantId).toBeNull();
+      expect(result.method).toBeNull();
+      expect(result.confidence).toBe("low");
     });
   });
 
@@ -408,8 +355,8 @@ describe("findVariantId", () => {
     });
   });
 
-  describe("Priorität", () => {
-    it("sollte SKU höchste Priorität haben", () => {
+  describe("Nur SKU-Matching", () => {
+    it("sollte nur per SKU matchen können", () => {
       // Produkt mit SKU, Name und Barcode
       const productsPriority: Product[] = [
         createMockProduct({
@@ -426,9 +373,18 @@ describe("findVariantId", () => {
 
       const mapsPriority = buildVariantMaps(productsPriority);
       
-      // SKU sollte gewinnen, auch wenn Name und Barcode passen
+      // Nur SKU sollte funktionieren
       const result = findVariantId("SKU-001", "Test Produkt", mapsPriority);
       expect(result.method).toBe("sku");
+      expect(result.variantId).toBe("gid://shopify/ProductVariant/1");
+      
+      // Name sollte nicht funktionieren
+      const resultName = findVariantId("", "Test Produkt", mapsPriority);
+      expect(resultName.variantId).toBeNull();
+      
+      // Barcode sollte nicht funktionieren
+      const resultBarcode = findVariantId("", "123456789", mapsPriority);
+      expect(resultBarcode.variantId).toBeNull();
     });
   });
 });
