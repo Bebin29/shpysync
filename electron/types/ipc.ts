@@ -154,9 +154,13 @@ export interface AppConfig {
 	autoSync: {
 		enabled: boolean;
 		interval?: number; // in Minuten (15, 30, 60, 120)
-		csvPath?: string; // Pfad zur CSV-Datei
+		csvPath?: string; // Pfad zur CSV-Datei (optional, wenn dbfPath gesetzt)
+		dbfPath?: string; // Pfad zur DBF-Datei (optional, wenn csvPath gesetzt)
 		schedule?: string; // Cron-ähnliche Syntax (für zukünftige Verwendung)
 	};
+	// Standard-Pfade für manuelle Sync (werden automatisch verwendet, wenn gesetzt)
+	defaultCsvPath?: string; // Standard-CSV-Pfad für manuelle Sync
+	defaultDbfPath?: string; // Standard-DBF-Pfad für manuelle Sync (wird bevorzugt, wenn gesetzt)
 }
 
 // CSV-Types

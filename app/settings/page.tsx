@@ -59,6 +59,9 @@ export default function SettingsPage() {
   const [autoSyncEnabled, setAutoSyncEnabled] = useState(false);
   const [autoSyncInterval, setAutoSyncInterval] = useState<number>(30);
   const [autoSyncCsvPath, setAutoSyncCsvPath] = useState("");
+  const [autoSyncDbfPath, setAutoSyncDbfPath] = useState("");
+  const [defaultCsvPath, setDefaultCsvPath] = useState("");
+  const [defaultDbfPath, setDefaultDbfPath] = useState("");
   const [savingAutoSync, setSavingAutoSync] = useState(false);
   const [testingAutoSync, setTestingAutoSync] = useState(false);
 
@@ -72,14 +75,29 @@ export default function SettingsPage() {
     }
   }, [shopConfig]);
 
-  // Lade Auto-Sync-Config
+  // Lade Auto-Sync-Config und Standard-Pfade
   useEffect(() => {
     if (autoSyncConfig) {
       setAutoSyncEnabled(autoSyncConfig.enabled || false);
       setAutoSyncInterval(autoSyncConfig.interval || 30);
       setAutoSyncCsvPath(autoSyncConfig.csvPath || "");
+      setAutoSyncDbfPath(autoSyncConfig.dbfPath || "");
     }
   }, [autoSyncConfig]);
+
+  // Lade Standard-Pfade aus Config
+  useEffect(() => {
+    const loadDefaultPaths = async () => {
+      try {
+        const config = await window.electron.config.get();
+        setDefaultCsvPath(config.defaultCsvPath || "");
+        setDefaultDbfPath(config.defaultDbfPath || "");
+      } catch (err) {
+        console.error("Fehler beim Laden der Standard-Pfade:", err);
+      }
+    };
+    loadDefaultPaths();
+  }, []);
 
   // Lade Locations wenn Shop-URL und Token vorhanden
   const handleLoadLocations = async () => {
@@ -484,7 +502,43 @@ export default function SettingsPage() {
           {autoSyncEnabled && (
             <>
               <div className="space-y-2">
-                <Label htmlFor="auto-sync-csv">CSV-Datei</Label>
+                <Label htmlFor="auto-sync-dbf">DBF-Datei (bevorzugt)</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="auto-sync-dbf"
+                    placeholder="Pfad zur DBF-Datei"
+                    value={autoSyncDbfPath}
+                    readOnly
+                    className="flex-1"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={async () => {
+                      try {
+                        const result = await csv.selectFile();
+                        if (result.success && result.filePath) {
+                          setAutoSyncDbfPath(result.filePath);
+                          // Wenn DBF ausgewählt, CSV leeren
+                          if (result.filePath.toLowerCase().endsWith(".dbf")) {
+                            setAutoSyncCsvPath("");
+                          }
+                        }
+                      } catch (err) {
+                        console.error("Fehler beim Auswählen der DBF-Datei:", err);
+                      }
+                    }}
+                  >
+                    Datei auswählen
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Die DBF-Datei, die automatisch synchronisiert werden soll (wird bevorzugt)
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="auto-sync-csv">CSV-Datei (Alternative)</Label>
                 <div className="flex gap-2">
                   <Input
                     id="auto-sync-csv"
@@ -501,6 +555,10 @@ export default function SettingsPage() {
                         const result = await csv.selectFile();
                         if (result.success && result.filePath) {
                           setAutoSyncCsvPath(result.filePath);
+                          // Wenn CSV ausgewählt, DBF leeren
+                          if (result.filePath.toLowerCase().endsWith(".csv")) {
+                            setAutoSyncDbfPath("");
+                          }
                         }
                       } catch (err) {
                         console.error("Fehler beim Auswählen der CSV-Datei:", err);
@@ -511,7 +569,7 @@ export default function SettingsPage() {
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Die CSV-Datei, die automatisch synchronisiert werden soll
+                  Die CSV-Datei, die automatisch synchronisiert werden soll (nur wenn keine DBF-Datei gesetzt)
                 </p>
               </div>
 
@@ -621,17 +679,18 @@ export default function SettingsPage() {
                   type="button"
                   variant="outline"
                   onClick={async () => {
-                    if (!autoSyncCsvPath) {
+                    const testFilePath = autoSyncDbfPath || autoSyncCsvPath;
+                    if (!testFilePath) {
                       setConnectionResult({
                         success: false,
-                        message: "Bitte CSV-Datei auswählen",
+                        message: "Bitte CSV- oder DBF-Datei auswählen",
                       });
                       return;
                     }
 
                     setTestingAutoSync(true);
                     try {
-                      await testAutoSync(autoSyncCsvPath);
+                      await testAutoSync(testFilePath);
                       setConnectionResult({
                         success: true,
                         message: "Test-Sync erfolgreich gestartet",
@@ -645,7 +704,7 @@ export default function SettingsPage() {
                       setTestingAutoSync(false);
                     }
                   }}
-                  disabled={testingAutoSync || !autoSyncCsvPath || !shopConfig}
+                  disabled={testingAutoSync || (!autoSyncCsvPath && !autoSyncDbfPath) || !shopConfig}
                 >
                   {testingAutoSync ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -657,10 +716,11 @@ export default function SettingsPage() {
                 <Button
                   type="button"
                   onClick={async () => {
-                    if (!autoSyncCsvPath) {
+                    const saveFilePath = autoSyncDbfPath || autoSyncCsvPath;
+                    if (!saveFilePath) {
                       setConnectionResult({
                         success: false,
-                        message: "Bitte CSV-Datei auswählen",
+                        message: "Bitte CSV- oder DBF-Datei auswählen",
                       });
                       return;
                     }
@@ -685,7 +745,7 @@ export default function SettingsPage() {
                       setSavingAutoSync(false);
                     }
                   }}
-                  disabled={savingAutoSync || !autoSyncCsvPath || !shopConfig}
+                  disabled={savingAutoSync || (!autoSyncCsvPath && !autoSyncDbfPath) || !shopConfig}
                 >
                   {savingAutoSync ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -697,6 +757,125 @@ export default function SettingsPage() {
               </div>
             </>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Standard-Pfade für manuelle Sync */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Standard-Pfade für manuelle Synchronisation</CardTitle>
+          <CardDescription>
+            Diese Pfade werden automatisch verwendet, wenn eine manuelle Synchronisation gestartet wird
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="default-dbf">DBF-Datei (bevorzugt)</Label>
+            <div className="flex gap-2">
+              <Input
+                id="default-dbf"
+                placeholder="Pfad zur DBF-Datei"
+                value={defaultDbfPath}
+                readOnly
+                className="flex-1"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={async () => {
+                  try {
+                    const result = await csv.selectFile();
+                    if (result.success && result.filePath) {
+                      setDefaultDbfPath(result.filePath);
+                      // Speichere in Config
+                      await window.electron.config.set({
+                        ...(await window.electron.config.get()),
+                        defaultDbfPath: result.filePath,
+                      });
+                    }
+                  } catch (err) {
+                    console.error("Fehler beim Auswählen der DBF-Datei:", err);
+                  }
+                }}
+              >
+                Datei auswählen
+              </Button>
+              {defaultDbfPath && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={async () => {
+                    setDefaultDbfPath("");
+                    const config = await window.electron.config.get();
+                    await window.electron.config.set({
+                      ...config,
+                      defaultDbfPath: undefined,
+                    });
+                  }}
+                >
+                  Entfernen
+                </Button>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Standard-DBF-Datei für manuelle Synchronisation (wird bevorzugt, wenn gesetzt)
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="default-csv">CSV-Datei (Alternative)</Label>
+            <div className="flex gap-2">
+              <Input
+                id="default-csv"
+                placeholder="Pfad zur CSV-Datei"
+                value={defaultCsvPath}
+                readOnly
+                className="flex-1"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={async () => {
+                  try {
+                    const result = await csv.selectFile();
+                    if (result.success && result.filePath) {
+                      setDefaultCsvPath(result.filePath);
+                      // Speichere in Config
+                      await window.electron.config.set({
+                        ...(await window.electron.config.get()),
+                        defaultCsvPath: result.filePath,
+                      });
+                    }
+                  } catch (err) {
+                    console.error("Fehler beim Auswählen der CSV-Datei:", err);
+                  }
+                }}
+              >
+                Datei auswählen
+              </Button>
+              {defaultCsvPath && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={async () => {
+                    setDefaultCsvPath("");
+                    const config = await window.electron.config.get();
+                    await window.electron.config.set({
+                      ...config,
+                      defaultCsvPath: undefined,
+                    });
+                  }}
+                >
+                  Entfernen
+                </Button>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Standard-CSV-Datei für manuelle Synchronisation (nur wenn keine DBF-Datei gesetzt)
+            </p>
+          </div>
         </CardContent>
       </Card>
 
