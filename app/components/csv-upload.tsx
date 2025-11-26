@@ -31,8 +31,9 @@ export function CsvUpload({ onFileSelected, selectedFilePath, disabled }: CsvUpl
 
 			try {
 				// Validiere Dateityp
-				if (!filePath.toLowerCase().endsWith(".csv")) {
-					setError("Nur CSV-Dateien werden unterstützt.");
+				const lowerPath = filePath.toLowerCase();
+				if (!lowerPath.endsWith(".csv") && !lowerPath.endsWith(".dbf")) {
+					setError("Nur CSV- und DBF-Dateien werden unterstützt.");
 					return;
 				}
 
@@ -119,9 +120,9 @@ export function CsvUpload({ onFileSelected, selectedFilePath, disabled }: CsvUpl
 	return (
 		<Card>
 			<CardHeader>
-				<CardTitle>CSV-Datei hochladen</CardTitle>
+				<CardTitle>CSV/DBF-Datei hochladen</CardTitle>
 				<CardDescription>
-					Lade deine CSV-Datei mit Produktdaten hoch
+					Lade deine CSV- oder DBF-Datei mit Produktdaten hoch
 				</CardDescription>
 			</CardHeader>
 			<CardContent className="space-y-4">
@@ -138,7 +139,9 @@ export function CsvUpload({ onFileSelected, selectedFilePath, disabled }: CsvUpl
 							<FileText className="h-5 w-5 text-gray-600" />
 							<div>
 								<p className="text-sm font-medium text-gray-900">{selectedFilePath}</p>
-								<p className="text-xs text-gray-500">CSV-Datei ausgewählt</p>
+								<p className="text-xs text-gray-500">
+									{selectedFilePath.toLowerCase().endsWith(".dbf") ? "DBF-Datei" : "CSV-Datei"} ausgewählt
+								</p>
 							</div>
 						</div>
 						<Button
@@ -171,10 +174,10 @@ export function CsvUpload({ onFileSelected, selectedFilePath, disabled }: CsvUpl
 							}`}
 						/>
 						<p className="mb-2 text-sm font-medium text-gray-700">
-							{isDragging ? "Datei hier ablegen" : "CSV-Datei auswählen"}
+							{isDragging ? "Datei hier ablegen" : "CSV/DBF-Datei auswählen"}
 						</p>
 						<p className="mb-4 text-xs text-gray-500">
-							Drag & Drop oder klicke zum Auswählen
+							Drag & Drop oder klicke zum Auswählen (CSV oder DBF)
 						</p>
 						<Button onClick={handleBrowseClick} disabled={disabled || isLoading}>
 							<FileText className="mr-2 h-4 w-4" />

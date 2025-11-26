@@ -1,7 +1,9 @@
 import type { BrowserWindow } from "electron";
 import type { ShopConfig, ColumnMapping, SyncStartConfig, SyncPreviewRequest, SyncProgress, SyncLog, SyncResult, OperationResult, PlannedOperation } from "../types/ipc.js";
 import type { CsvRow, Product, MappedRow, Variant } from "../../core/domain/types.js";
-import { parseCsvStream, extractRowValues, convertToCsvRows, type ColumnMapping as CoreColumnMapping } from "../../core/infra/csv/parser.js";
+import { extractRowValues, convertToCsvRows, type ColumnMapping as CoreColumnMapping } from "../../core/infra/csv/parser.js";
+import { parseFileStream } from "../../core/infra/file-parser/index.js";
+import { detectFileType } from "../../core/domain/validators.js";
 import { processCsvToUpdates, groupPriceUpdatesByProduct } from "../../core/domain/sync-pipeline.js";
 import { getAllProductsWithVariants, updateVariantPrices } from "./shopify-product-service.js";
 import { setInventoryQuantities } from "./shopify-inventory-service.js";
@@ -167,21 +169,23 @@ export class SyncEngine {
 		let totalSkipped = 0;
 
 		try {
-			// Schritt 1: CSV parsen (Streaming)
+			// Schritt 1: Datei parsen (Streaming)
+			const fileType = this.detectFileTypeInternal(config.csvPath);
+			const fileTypeLabel = fileType === "dbf" ? "DBF" : "CSV";
 			this.sendProgress({
 				current: 0,
 				total: 100,
 				stage: "matching",
-				message: "CSV wird geparst...",
+				message: `${fileTypeLabel} wird geparst...`,
 			});
 
-			const csvRows = await this.parseCsvWithMapping(config.csvPath, config.columnMapping);
+			const csvRows = await this.parseFileWithMapping(config.csvPath, config.columnMapping);
 			
 			if (this.checkCancelled()) {
 				throw new Error("Sync wurde abgebrochen");
 			}
 
-			this.logger.info("csv", `${csvRows.length} Zeilen aus CSV geladen.`, { rowCount: csvRows.length });
+			this.logger.info("csv", `${csvRows.length} Zeilen aus ${fileTypeLabel} geladen.`, { rowCount: csvRows.length, fileType });
 
 			// Schritt 2: Shopify-Produkte/Varianten laden
 			this.sendProgress({
@@ -371,13 +375,21 @@ export class SyncEngine {
 	}
 
 	/**
-	 * Parst CSV-Datei mit Mapping (Streaming).
+	 * Erkennt den Dateityp einer Datei.
 	 */
-	private async parseCsvWithMapping(
+	private detectFileTypeInternal(filePath: string): "csv" | "dbf" {
+		return detectFileType(filePath);
+	}
+
+	/**
+	 * Parst Datei (CSV oder DBF) mit Mapping (Streaming).
+	 */
+	private async parseFileWithMapping(
 		filePath: string,
 		mapping: ColumnMapping
 	): Promise<CsvRow[]> {
-		const streamResult = await parseCsvStream(filePath, ";");
+		const fileType = this.detectFileTypeInternal(filePath);
+		const streamResult = await parseFileStream(filePath, fileType);
 		const coreMapping: CoreColumnMapping = {
 			sku: mapping.sku,
 			name: mapping.name,
@@ -467,7 +479,7 @@ export class SyncEngine {
 		}>;
 	}> {
 		// Schritt 1: CSV parsen
-		const csvRows = await this.parseCsvWithMapping(config.csvPath, config.columnMapping);
+		const csvRows = await this.parseFileWithMapping(config.csvPath, config.columnMapping);
 
 		// Schritt 2: Shopify-Produkte/Varianten laden (mit Cache)
 		const products = await this.loadProducts(config.shopConfig, true);

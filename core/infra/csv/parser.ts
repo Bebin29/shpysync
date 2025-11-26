@@ -186,10 +186,29 @@ export interface ExtractedRow {
 }
 
 /**
- * Extrahiert Werte aus einer CSV-Zeile basierend auf Spalten-Mapping.
+ * Prüft, ob ein String ein Spaltenbuchstabe ist (für CSV).
  * 
- * @param row - CSV-Zeile
- * @param columnMapping - Mapping von Feldnamen zu Spaltenbuchstaben (z.B. { sku: "A", name: "B" })
+ * @param str - String zum Prüfen
+ * @returns true, wenn es ein Spaltenbuchstabe ist (z.B. "A", "B", "AB")
+ */
+function isColumnLetter(str: string): boolean {
+  const upper = str.trim().toUpperCase();
+  if (upper.length === 0) {
+    return false;
+  }
+  // Prüfe, ob alle Zeichen Buchstaben sind (A-Z)
+  return /^[A-Z]+$/.test(upper);
+}
+
+/**
+ * Extrahiert Werte aus einer CSV/DBF-Zeile basierend auf Spalten-Mapping.
+ * 
+ * Unterstützt sowohl:
+ * - CSV: Spaltenbuchstaben (z.B. { sku: "A", name: "B" })
+ * - DBF: Feldnamen (z.B. { sku: "ARTNR", name: "BEZEICHNUNG" })
+ * 
+ * @param row - CSV/DBF-Zeile
+ * @param columnMapping - Mapping von Feldnamen zu Spaltenbuchstaben (CSV) oder Feldnamen (DBF)
  * @param headers - Array von Header-Namen (in der Reihenfolge der Spalten)
  * @returns Extrahierte Werte oder null bei Fehler
  */
@@ -199,36 +218,63 @@ export function extractRowValues(
   headers: string[]
 ): ExtractedRow | null {
   try {
-    // Validiere Mapping (wird nur einmal pro CSV gemacht, aber hier für Sicherheit)
-    // In der Praxis sollte validateColumnMapping vor dem Parsen aufgerufen werden
-    try {
-      validateColumnMapping(columnMapping, headers);
-    } catch (error) {
-      // Wenn Mapping ungültig ist, geben wir null zurück (wird in unmatchedRows gesammelt)
-      console.warn(`Zeile ${row.rowNumber}: Mapping-Validierungsfehler:`, error);
-      return null;
+    // Prüfe, ob Mapping Spaltenbuchstaben (CSV) oder Feldnamen (DBF) verwendet
+    const isCsvMapping = isColumnLetter(columnMapping.sku);
+    
+    let skuHeader: string;
+    let nameHeader: string;
+    let priceHeader: string;
+    let stockHeader: string;
+
+    if (isCsvMapping) {
+      // CSV: Konvertiere Spaltenbuchstaben zu Indizes
+      try {
+        validateColumnMapping(columnMapping, headers);
+      } catch (error) {
+        console.warn(`Zeile ${row.rowNumber}: Mapping-Validierungsfehler:`, error);
+        return null;
+      }
+
+      const skuIndex = columnLetterToIndex(columnMapping.sku);
+      const nameIndex = columnLetterToIndex(columnMapping.name);
+      const priceIndex = columnLetterToIndex(columnMapping.price);
+      const stockIndex = columnLetterToIndex(columnMapping.stock);
+
+      // Validiere, dass genug Spalten vorhanden sind
+      const maxIndex = Math.max(skuIndex, nameIndex, priceIndex, stockIndex);
+      if (headers.length <= maxIndex) {
+        console.warn(
+          `Zeile ${row.rowNumber}: Nicht genug Spalten (${headers.length} vorhanden, ${maxIndex + 1} benötigt)`
+        );
+        return null;
+      }
+
+      // Hole Header-Namen an den entsprechenden Indizes
+      skuHeader = headers[skuIndex];
+      nameHeader = headers[nameIndex];
+      priceHeader = headers[priceIndex];
+      stockHeader = headers[stockIndex];
+    } else {
+      // DBF: Verwende Feldnamen direkt
+      skuHeader = columnMapping.sku.trim();
+      nameHeader = columnMapping.name.trim();
+      priceHeader = columnMapping.price.trim();
+      stockHeader = columnMapping.stock.trim();
+
+      // Validiere, dass alle Feldnamen in Headers vorhanden sind
+      const missingFields: string[] = [];
+      if (!headers.includes(skuHeader)) missingFields.push(skuHeader);
+      if (!headers.includes(nameHeader)) missingFields.push(nameHeader);
+      if (!headers.includes(priceHeader)) missingFields.push(priceHeader);
+      if (!headers.includes(stockHeader)) missingFields.push(stockHeader);
+
+      if (missingFields.length > 0) {
+        console.warn(
+          `Zeile ${row.rowNumber}: Feldnamen nicht gefunden: ${missingFields.join(", ")}`
+        );
+        return null;
+      }
     }
-
-    // Konvertiere Spaltenbuchstaben zu Indizes
-    const skuIndex = columnLetterToIndex(columnMapping.sku);
-    const nameIndex = columnLetterToIndex(columnMapping.name);
-    const priceIndex = columnLetterToIndex(columnMapping.price);
-    const stockIndex = columnLetterToIndex(columnMapping.stock);
-
-    // Validiere, dass genug Spalten vorhanden sind
-    const maxIndex = Math.max(skuIndex, nameIndex, priceIndex, stockIndex);
-    if (headers.length <= maxIndex) {
-      console.warn(
-        `Zeile ${row.rowNumber}: Nicht genug Spalten (${headers.length} vorhanden, ${maxIndex + 1} benötigt)`
-      );
-      return null;
-    }
-
-    // Hole Header-Namen an den entsprechenden Indizes
-    const skuHeader = headers[skuIndex];
-    const nameHeader = headers[nameIndex];
-    const priceHeader = headers[priceIndex];
-    const stockHeader = headers[stockIndex];
 
     // Extrahiere Werte aus row.data (Record mit Header-Namen als Keys)
     const sku = (row.data[skuHeader] || "").trim();

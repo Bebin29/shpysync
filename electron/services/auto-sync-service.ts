@@ -3,6 +3,7 @@ import type { ShopConfig, ColumnMapping, SyncStartConfig } from "../types/ipc.js
 import { getSyncEngine } from "./sync-engine.js";
 import { getShopConfig, getDefaultColumnMapping, getConfig } from "./config-service.js";
 import { getLogger } from "./logger.js";
+import { detectFileType } from "../../core/domain/validators.js";
 
 /**
  * Auto-Sync-Konfiguration.
@@ -47,7 +48,13 @@ export class AutoSyncService {
 	start(config: AutoSyncConfig): void {
 		// Validierung
 		if (!config.csvPath || !existsSync(config.csvPath)) {
-			throw new Error(`CSV-Datei nicht gefunden: ${config.csvPath}`);
+			throw new Error(`Datei nicht gefunden: ${config.csvPath}`);
+		}
+		
+		// Validiere Dateityp
+		const fileType = detectFileType(config.csvPath);
+		if (fileType !== "csv" && fileType !== "dbf") {
+			throw new Error(`Unsupported file type: ${config.csvPath}. Only CSV and DBF files are supported.`);
 		}
 
 		if (config.interval <= 0) {
@@ -58,7 +65,8 @@ export class AutoSyncService {
 		this.stop();
 
 		this.config = config;
-		this.logger.info("system", `Auto-Sync gestartet: Intervall ${config.interval} Minuten, CSV: ${config.csvPath}`);
+		const fileTypeLabel = fileType === "dbf" ? "DBF" : "CSV";
+		this.logger.info("system", `Auto-Sync gestartet: Intervall ${config.interval} Minuten, ${fileTypeLabel}: ${config.csvPath}`);
 
 		// Berechne nächste Ausführungszeit
 		this.nextRunTime = new Date(Date.now() + config.interval * 60 * 1000);
@@ -139,7 +147,13 @@ export class AutoSyncService {
 			}
 
 			if (!existsSync(this.config.csvPath)) {
-				throw new Error(`CSV-Datei nicht gefunden: ${this.config.csvPath}`);
+				throw new Error(`Datei nicht gefunden: ${this.config.csvPath}`);
+			}
+			
+			// Validiere Dateityp
+			const fileType = detectFileType(this.config.csvPath);
+			if (fileType !== "csv" && fileType !== "dbf") {
+				throw new Error(`Unsupported file type: ${this.config.csvPath}. Only CSV and DBF files are supported.`);
 			}
 
 			// Erstelle Sync-Config
@@ -155,7 +169,8 @@ export class AutoSyncService {
 			};
 
 			// Führe Sync aus
-			this.logger.info("system", `Auto-Sync gestartet: ${this.config.csvPath}`);
+			const fileTypeLabel = fileType === "dbf" ? "DBF" : "CSV";
+			this.logger.info("system", `Auto-Sync gestartet (${fileTypeLabel}): ${this.config.csvPath}`);
 			const syncEngine = getSyncEngine();
 			
 			// Sync läuft asynchron, wir warten nicht darauf
