@@ -482,10 +482,13 @@ export function registerIpcHandlers(): void {
       }
 
       // Alle Produkte von Shopify laden
-      const products = await getAllProductsWithVariants({
-        shopUrl: shopConfig.shopUrl,
-        accessToken: shopConfig.accessToken,
-      });
+      const products = await getAllProductsWithVariants(
+        {
+          shopUrl: shopConfig.shopUrl,
+          accessToken: shopConfig.accessToken,
+        },
+        shopConfig.locationId // Location-ID für Inventory-Levels übergeben
+      );
 
       // Cache aktualisieren
       const cacheService = getCacheService();
