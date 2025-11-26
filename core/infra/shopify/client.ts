@@ -337,9 +337,13 @@ async function executeGraphQL<T = unknown>(
  * Ruft alle Produkte mit Cursor-Pagination ab.
  * 
  * @param config - Shopify-Konfiguration
+ * @param locationId - Optional: Location-ID für Inventory-Levels
  * @returns Liste von Produkten
  */
-export async function getAllProducts(config: ShopifyConfig): Promise<Product[]> {
+export async function getAllProducts(
+  config: ShopifyConfig,
+  locationId?: string
+): Promise<Product[]> {
   const products: Product[] = [];
   let after: string | null = null;
   let page = 0;
@@ -349,6 +353,9 @@ export async function getAllProducts(config: ShopifyConfig): Promise<Product[]> 
     const variables: Record<string, unknown> = { first: 250 };
     if (after) {
       variables.after = after;
+    }
+    if (locationId) {
+      variables.locationId = locationId;
     }
 
     const data = await executeGraphQL<{
@@ -366,7 +373,16 @@ export async function getAllProducts(config: ShopifyConfig): Promise<Product[]> 
                   barcode: string | null;
                   price: string;
                   title: string;
-                  inventoryItem: { id: string } | null;
+                  inventoryItem: {
+                    id: string;
+                    inventoryLevels: {
+                      edges: Array<{
+                        node: {
+                          available: number;
+                        };
+                      }>;
+                    };
+                  } | null;
                 };
               }>;
             };
@@ -384,15 +400,24 @@ export async function getAllProducts(config: ShopifyConfig): Promise<Product[]> 
 
     for (const edge of connection.edges) {
       const node = edge.node;
-      const variants: Variant[] = node.variants.edges.map((vEdge) => ({
-        id: vEdge.node.id,
-        productId: node.id,
-        sku: vEdge.node.sku,
-        barcode: vEdge.node.barcode,
-        title: vEdge.node.title,
-        price: vEdge.node.price,
-        inventoryItemId: vEdge.node.inventoryItem?.id || null,
-      }));
+      const variants: Variant[] = node.variants.edges.map((vEdge) => {
+        const inventoryItem = vEdge.node.inventoryItem;
+        const inventoryLevels = inventoryItem?.inventoryLevels?.edges;
+        const currentQuantity = inventoryLevels && inventoryLevels.length > 0
+          ? inventoryLevels[0].node.available
+          : undefined;
+
+        return {
+          id: vEdge.node.id,
+          productId: node.id,
+          sku: vEdge.node.sku,
+          barcode: vEdge.node.barcode,
+          title: vEdge.node.title,
+          price: vEdge.node.price,
+          inventoryItemId: inventoryItem?.id || null,
+          currentQuantity,
+        };
+      });
 
       products.push({
         id: node.id,

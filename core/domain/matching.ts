@@ -70,16 +70,11 @@ export function buildVariantMaps(products: Product[]): VariantMaps {
 /**
  * Findet Variant-ID für eine CSV-Zeile.
  * 
- * Portiert von Python `find_variant_id()` Funktion.
- * Matching-Priorität:
- * 1. SKU (exakt)
- * 2. Name exakt (normalisiert)
- * 3. Name mit Kürzung (nach "-" oder "(")
- * 4. Prefix-Matching (vorsichtig)
- * 5. Kombinierter Name oder Barcode
+ * Verwendet nur noch SKU-Matching (exakt) für höchste Genauigkeit.
+ * Alle anderen Matching-Methoden wurden entfernt, um Fehlmatches zu vermeiden.
  * 
  * @param rowSku - SKU aus CSV-Zeile
- * @param rowName - Name aus CSV-Zeile
+ * @param rowName - Name aus CSV-Zeile (wird nicht mehr verwendet, bleibt für API-Kompatibilität)
  * @param maps - Variant-Maps
  * @returns Match-Ergebnis
  */
@@ -88,7 +83,7 @@ export function findVariantId(
   rowName: string,
   maps: VariantMaps
 ): MatchResult {
-  // 1) SKU-Matching (höchste Priorität)
+  // Nur SKU-Matching (exakt)
   if (rowSku) {
     const variantId = maps.skuToVariant.get(rowSku);
     if (variantId) {
@@ -98,58 +93,6 @@ export function findVariantId(
         confidence: "exact",
       };
     }
-  }
-
-  // 2) Name exakt (normalisiert)
-  const nameNorm = normalizeString(rowName);
-  const variants = maps.nameToVariants.get(nameNorm);
-  if (variants && variants.length > 0) {
-    return {
-      variantId: variants[0],
-      method: "name",
-      confidence: "exact",
-    };
-  }
-
-  // 3) Name mit Kürzung ("Product - Variant" / "Product (…)" kürzen)
-  const baseMatch = rowName.match(/^([^-\n(]+)/);
-  if (baseMatch) {
-    const base = baseMatch[1].trim();
-    const baseNorm = normalizeString(base);
-    const baseVariants = maps.nameToVariants.get(baseNorm);
-    if (baseVariants && baseVariants.length > 0) {
-      return {
-        variantId: baseVariants[0],
-        method: "name",
-        confidence: "partial",
-      };
-    }
-  }
-
-  // 4) Prefix-Matching (vorsichtig - nur wenn genau ein Kandidat)
-  const candidates: string[] = [];
-  for (const [key, variantIds] of maps.nameToVariants.entries()) {
-    if (nameNorm.startsWith(key) || key.startsWith(nameNorm)) {
-      candidates.push(key);
-    }
-  }
-  if (candidates.length === 1) {
-    const variantIds = maps.nameToVariants.get(candidates[0])!;
-    return {
-      variantId: variantIds[0],
-      method: "prefix",
-      confidence: "low",
-    };
-  }
-
-  // 5) Kombinierter Name oder Barcode
-  const variantId = maps.extraNameMap.get(nameNorm);
-  if (variantId) {
-    return {
-      variantId,
-      method: "barcode", // Könnte auch kombinierter Name sein, aber wir unterscheiden nicht
-      confidence: "exact",
-    };
   }
 
   // Kein Match gefunden
