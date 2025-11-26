@@ -1,4 +1,8 @@
-import { normalizeString } from "../utils/normalization";
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.buildVariantMaps = buildVariantMaps;
+exports.findVariantId = findVariantId;
+const normalization_js_1 = require("../utils/normalization.js");
 /**
  * Erstellt Variant-Maps für effizientes Matching.
  *
@@ -7,7 +11,7 @@ import { normalizeString } from "../utils/normalization";
  * @param products - Liste von Shopify-Produkten
  * @returns Variant-Maps für Matching
  */
-export function buildVariantMaps(products) {
+function buildVariantMaps(products) {
     const skuToVariant = new Map();
     const nameToVariants = new Map();
     const extraNameMap = new Map();
@@ -15,7 +19,7 @@ export function buildVariantMaps(products) {
     for (const product of products) {
         const productId = product.id;
         const productTitle = product.title || "";
-        const productTitleNorm = normalizeString(productTitle);
+        const productTitleNorm = (0, normalization_js_1.normalizeString)(productTitle);
         // Initialisiere nameToVariants für dieses Produkt
         if (!nameToVariants.has(productTitleNorm)) {
             nameToVariants.set(productTitleNorm, []);
@@ -36,7 +40,7 @@ export function buildVariantMaps(products) {
             variantsForName.push(variantId);
             // Kombinierter Name (Product + Variant)
             const variantTitle = variant.title || "";
-            const comboKey = normalizeString(`${productTitle} ${variantTitle}`);
+            const comboKey = (0, normalization_js_1.normalizeString)(`${productTitle} ${variantTitle}`);
             extraNameMap.set(comboKey, variantId);
             // Barcode-Mapping
             const barcode = (variant.barcode || "").trim();
@@ -68,7 +72,7 @@ export function buildVariantMaps(products) {
  * @param maps - Variant-Maps
  * @returns Match-Ergebnis
  */
-export function findVariantId(rowSku, rowName, maps) {
+function findVariantId(rowSku, rowName, maps) {
     // 1) SKU-Matching (höchste Priorität)
     if (rowSku) {
         const variantId = maps.skuToVariant.get(rowSku);
@@ -81,7 +85,7 @@ export function findVariantId(rowSku, rowName, maps) {
         }
     }
     // 2) Name exakt (normalisiert)
-    const nameNorm = normalizeString(rowName);
+    const nameNorm = (0, normalization_js_1.normalizeString)(rowName);
     const variants = maps.nameToVariants.get(nameNorm);
     if (variants && variants.length > 0) {
         return {
@@ -94,7 +98,7 @@ export function findVariantId(rowSku, rowName, maps) {
     const baseMatch = rowName.match(/^([^-\n(]+)/);
     if (baseMatch) {
         const base = baseMatch[1].trim();
-        const baseNorm = normalizeString(base);
+        const baseNorm = (0, normalization_js_1.normalizeString)(base);
         const baseVariants = maps.nameToVariants.get(baseNorm);
         if (baseVariants && baseVariants.length > 0) {
             return {
