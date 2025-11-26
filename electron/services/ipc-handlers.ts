@@ -376,10 +376,10 @@ export function registerIpcHandlers(): void {
         };
       }
 
-      if (!autoSyncConfig.csvPath) {
+      if (!autoSyncConfig.csvPath && !autoSyncConfig.dbfPath) {
         return {
           success: false,
-          error: "CSV-Pfad ist nicht konfiguriert",
+          error: "CSV- oder DBF-Pfad ist nicht konfiguriert",
         };
       }
 
@@ -395,6 +395,7 @@ export function registerIpcHandlers(): void {
         enabled: true,
         interval: autoSyncConfig.interval,
         csvPath: autoSyncConfig.csvPath,
+        dbfPath: autoSyncConfig.dbfPath,
       });
 
       return {

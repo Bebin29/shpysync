@@ -11,7 +11,8 @@ import { detectFileType } from "../../core/domain/validators.js";
 export interface AutoSyncConfig {
 	enabled: boolean;
 	interval: number; // in Minuten
-	csvPath: string;
+	csvPath?: string; // Optional, wenn dbfPath gesetzt
+	dbfPath?: string; // Optional, wenn csvPath gesetzt
 }
 
 /**
@@ -46,15 +47,16 @@ export class AutoSyncService {
 	 * @throws Error wenn CSV-Pfad nicht existiert oder Config ungültig
 	 */
 	start(config: AutoSyncConfig): void {
-		// Validierung
-		if (!config.csvPath || !existsSync(config.csvPath)) {
-			throw new Error(`Datei nicht gefunden: ${config.csvPath}`);
+		// Validierung: Entweder csvPath oder dbfPath muss gesetzt sein
+		const filePath = config.dbfPath || config.csvPath;
+		if (!filePath || !existsSync(filePath)) {
+			throw new Error(`Datei nicht gefunden: ${filePath}`);
 		}
 		
 		// Validiere Dateityp
-		const fileType = detectFileType(config.csvPath);
+		const fileType = detectFileType(filePath);
 		if (fileType !== "csv" && fileType !== "dbf") {
-			throw new Error(`Unsupported file type: ${config.csvPath}. Only CSV and DBF files are supported.`);
+			throw new Error(`Unsupported file type: ${filePath}. Only CSV and DBF files are supported.`);
 		}
 
 		if (config.interval <= 0) {
@@ -66,7 +68,7 @@ export class AutoSyncService {
 
 		this.config = config;
 		const fileTypeLabel = fileType === "dbf" ? "DBF" : "CSV";
-		this.logger.info("system", `Auto-Sync gestartet: Intervall ${config.interval} Minuten, ${fileTypeLabel}: ${config.csvPath}`);
+		this.logger.info("system", `Auto-Sync gestartet: Intervall ${config.interval} Minuten, ${fileTypeLabel}: ${filePath}`);
 
 		// Berechne nächste Ausführungszeit
 		this.nextRunTime = new Date(Date.now() + config.interval * 60 * 1000);
@@ -146,19 +148,20 @@ export class AutoSyncService {
 				throw new Error("Spalten-Mapping fehlt. Bitte konfiguriere zuerst das Mapping.");
 			}
 
-			if (!existsSync(this.config.csvPath)) {
-				throw new Error(`Datei nicht gefunden: ${this.config.csvPath}`);
+			const filePath = this.config.dbfPath || this.config.csvPath;
+			if (!filePath || !existsSync(filePath)) {
+				throw new Error(`Datei nicht gefunden: ${filePath}`);
 			}
 			
 			// Validiere Dateityp
-			const fileType = detectFileType(this.config.csvPath);
+			const fileType = detectFileType(filePath);
 			if (fileType !== "csv" && fileType !== "dbf") {
-				throw new Error(`Unsupported file type: ${this.config.csvPath}. Only CSV and DBF files are supported.`);
+				throw new Error(`Unsupported file type: ${filePath}. Only CSV and DBF files are supported.`);
 			}
 
 			// Erstelle Sync-Config
 			const syncConfig: SyncStartConfig = {
-				csvPath: this.config.csvPath,
+				csvPath: filePath, // csvPath wird für beide Dateitypen verwendet (historisch)
 				columnMapping,
 				shopConfig,
 				options: {
@@ -232,16 +235,16 @@ export class AutoSyncService {
 	/**
 	 * Führt einen manuellen Test-Sync aus (ohne Scheduler).
 	 * 
-	 * @param csvPath - Pfad zur CSV-Datei
+	 * @param filePath - Pfad zur CSV- oder DBF-Datei
 	 * @returns Promise mit Sync-Ergebnis
 	 */
-	async executeTestSync(csvPath: string): Promise<void> {
+	async executeTestSync(filePath: string): Promise<void> {
 		if (this.isRunningSync) {
 			throw new Error("Sync läuft bereits");
 		}
 
-		if (!existsSync(csvPath)) {
-			throw new Error(`CSV-Datei nicht gefunden: ${csvPath}`);
+		if (!existsSync(filePath)) {
+			throw new Error(`Datei nicht gefunden: ${filePath}`);
 		}
 
 		const shopConfig = getShopConfig();
@@ -256,7 +259,7 @@ export class AutoSyncService {
 		}
 
 		const syncConfig: SyncStartConfig = {
-			csvPath,
+			csvPath: filePath, // csvPath wird für beide Dateitypen verwendet (historisch)
 			columnMapping,
 			shopConfig,
 			options: {
