@@ -8,7 +8,7 @@ import { columnLetterToIndex } from "../../utils/normalization.js";
 import { validateCsvFile, validateCsvHeaders, validateColumnMapping } from "../../domain/validators.js";
 
 /**
- * CSV-Parser mit robuster Encoding-Erkennung.
+ * CSV-Parser mit robuster Encoding- und Delimiter-Erkennung.
  * 
  * Portiert von Python `_read_csv_rows()` Funktion.
  * 
@@ -18,8 +18,23 @@ import { validateCsvFile, validateCsvHeaders, validateColumnMapping } from "../.
  * - CP1252 (Windows-1252)
  * - Latin1 (ISO-8859-1)
  * 
+ * Unterstützte Delimiter (automatische Erkennung):
+ * - Semikolon (;) - Standard, deutsche CSV-Konvention
+ * - Komma (,)
+ * - Tab (\t) - TSV-Format
+ * - Pipe (|)
+ * 
+ * Die Delimiter-Erkennung erfolgt automatisch, wenn der Standard-Delimiter (;) verwendet wird.
+ * Die Erkennung berücksichtigt Anführungszeichen korrekt (Delimiter innerhalb von Quotes werden ignoriert).
+ * 
+ * Anführungszeichen-Behandlung:
+ * - Felder können in doppelten Anführungszeichen (") eingeschlossen sein
+ * - Escaped Quotes werden als "" dargestellt (z.B. "Das war ""10"", Baby" → Das war "10", Baby)
+ * - Einfache Anführungszeichen (') werden als normale Zeichen behandelt
+ * - Felder mit Delimitern oder Newlines sollten in Quotes eingeschlossen sein
+ * 
  * @param filePath - Pfad zur CSV-Datei
- * @param delimiter - Trennzeichen (Standard: ';')
+ * @param delimiter - Trennzeichen (Standard: ';', automatische Erkennung wenn ';' verwendet wird)
  * @returns Parse-Ergebnis mit Rows, Headers, Encoding und totalRows
  */
 export interface CsvParseResult {
@@ -94,10 +109,20 @@ export function parseCsv(
   }
 
   // CSV parsen (zuerst ohne columns, um Header-Reihenfolge zu behalten)
+  // Konfiguration für robuste Quote-Behandlung:
+  // - quote: '"' - Felder können in Anführungszeichen eingeschlossen sein
+  // - escape: '"' - Escaped Quotes werden als "" dargestellt
+  // - relax_quotes: true - Erlaubt unescaped Quotes in Feldern (für Kompatibilität)
+  // - trim: true - Entfernt Whitespace, aber nicht die Quotes selbst (csv-parse entfernt Quotes automatisch)
   const allRecords = parse(text, {
     delimiter: detectedDelimiter,
     skip_empty_lines: true,
-    trim: true,
+    trim: true, // Trimmt Whitespace, csv-parse entfernt Quotes automatisch
+    relax_column_count: true, // Erlaubt unterschiedliche Spaltenanzahlen pro Zeile
+    relax_quotes: true, // Erlaubt unescaped Quotes in Feldern (für Kompatibilität mit fehlerhaften CSVs)
+    escape: '"', // Escape-Zeichen für Quotes ("" = ein einzelnes ")
+    quote: '"', // Quote-Zeichen für Felder mit Delimitern/Newlines
+    bom: false, // BOM wird bereits manuell behandelt
   }) as string[][];
 
   if (allRecords.length === 0) {
@@ -269,7 +294,8 @@ export function convertToCsvRows(extractedRows: ExtractedRow[]): CsvRow[] {
 /**
  * Erkennt den Delimiter einer CSV-Datei anhand der ersten Zeilen.
  * 
- * Analysiert die ersten Zeilen und zählt die Vorkommen von ',' und ';'.
+ * Analysiert die ersten Zeilen und zählt die Vorkommen verschiedener Delimiter.
+ * Unterstützt: Semikolon (;), Komma (,), Tab (\t), Pipe (|), Tabulator-ähnliche Zeichen.
  * Der Delimiter mit den meisten konsistenten Vorkommen wird gewählt.
  * 
  * @param text - Decodierter Text der CSV-Datei (erste Zeilen)
@@ -283,18 +309,32 @@ function detectDelimiter(text: string): string {
 		return ";"; // Fallback
 	}
 
-	let commaCount = 0;
-	let semicolonCount = 0;
-	let commaConsistency = 0;
-	let semicolonConsistency = 0;
-	const fieldCountsComma: number[] = [];
-	const fieldCountsSemicolon: number[] = [];
+	// Unterstützte Delimiter mit Priorität (häufigste zuerst)
+	const delimiters = [
+		{ char: ";", name: "semicolon" },
+		{ char: ",", name: "comma" },
+		{ char: "\t", name: "tab" },
+		{ char: "|", name: "pipe" },
+	];
+
+	// Statistiken für jeden Delimiter
+	const stats = delimiters.map(d => ({
+		char: d.char,
+		name: d.name,
+		totalCount: 0,
+		consistency: 0,
+		fieldCounts: [] as number[],
+	}));
 
 	for (const line of lines) {
 		// Zähle Delimiter, aber ignoriere die innerhalb von Anführungszeichen
 		let inQuotes = false;
-		let commaInLine = 0;
-		let semicolonInLine = 0;
+		const delimiterCounts = new Map<string, number>();
+		
+		// Initialisiere Zähler für alle Delimiter
+		for (const delim of delimiters) {
+			delimiterCounts.set(delim.char, 0);
+		}
 
 		for (let i = 0; i < line.length; i++) {
 			const char = line[i];
@@ -307,60 +347,58 @@ function detectDelimiter(text: string): string {
 				}
 				inQuotes = !inQuotes;
 			} else if (!inQuotes) {
-				if (char === ',') {
-					commaInLine++;
-				} else if (char === ';') {
-					semicolonInLine++;
+				// Zähle alle unterstützten Delimiter
+				for (const delim of delimiters) {
+					if (char === delim.char) {
+						delimiterCounts.set(delim.char, (delimiterCounts.get(delim.char) || 0) + 1);
+					}
 				}
 			}
 		}
 
-		commaCount += commaInLine;
-		semicolonCount += semicolonInLine;
-
-		// Anzahl der Felder = Anzahl der Delimiter + 1
-		if (commaInLine > 0) {
-			commaConsistency++;
-			fieldCountsComma.push(commaInLine + 1);
-		}
-		if (semicolonInLine > 0) {
-			semicolonConsistency++;
-			fieldCountsSemicolon.push(semicolonInLine + 1);
+		// Aktualisiere Statistiken
+		for (let i = 0; i < stats.length; i++) {
+			const count = delimiterCounts.get(delimiters[i].char) || 0;
+			stats[i].totalCount += count;
+			
+			if (count > 0) {
+				stats[i].consistency++;
+				stats[i].fieldCounts.push(count + 1); // Anzahl der Felder = Delimiter + 1
+			}
 		}
 	}
 
-	// Entscheidung basierend auf mehreren Kriterien:
+	// Finde den besten Delimiter basierend auf mehreren Kriterien:
 	// 1. Konsistenz: Delimiter, der in mehr Zeilen vorkommt
-	// 2. Anzahl: Delimiter mit mehr Gesamtvorkommen
+	// 2. Gesamtanzahl: Delimiter mit mehr Gesamtvorkommen
 	// 3. Feldanzahl-Konsistenz: Delimiter mit konsistenterer Feldanzahl pro Zeile
 	
-	if (semicolonConsistency > commaConsistency) {
-		return ";";
-	} else if (commaConsistency > semicolonConsistency) {
-		return ",";
-	}
-
-	// Wenn Konsistenz gleich ist, prüfe Gesamtanzahl
-	if (semicolonCount > commaCount) {
-		return ";";
-	} else if (commaCount > semicolonCount) {
-		return ",";
-	}
-
-	// Wenn beide gleich sind, prüfe Feldanzahl-Konsistenz
-	if (fieldCountsSemicolon.length > 0 && fieldCountsComma.length > 0) {
-		const avgSemicolon = fieldCountsSemicolon.reduce((a, b) => a + b, 0) / fieldCountsSemicolon.length;
-		const avgComma = fieldCountsComma.reduce((a, b) => a + b, 0) / fieldCountsComma.length;
-		
-		// Wenn eine durchschnittliche Feldanzahl konsistenter ist (kleinere Varianz)
-		const varianceSemicolon = fieldCountsSemicolon.reduce((sum, val) => sum + Math.pow(val - avgSemicolon, 2), 0) / fieldCountsSemicolon.length;
-		const varianceComma = fieldCountsComma.reduce((sum, val) => sum + Math.pow(val - avgComma, 2), 0) / fieldCountsComma.length;
-		
-		if (varianceSemicolon < varianceComma) {
-			return ";";
-		} else if (varianceComma < varianceSemicolon) {
-			return ",";
+	// Sortiere nach Konsistenz (höchste zuerst)
+	stats.sort((a, b) => {
+		// Primär: Konsistenz
+		if (b.consistency !== a.consistency) {
+			return b.consistency - a.consistency;
 		}
+		// Sekundär: Gesamtanzahl
+		if (b.totalCount !== a.totalCount) {
+			return b.totalCount - a.totalCount;
+		}
+		// Tertiär: Feldanzahl-Konsistenz (kleinere Varianz = besser)
+		if (a.fieldCounts.length > 0 && b.fieldCounts.length > 0) {
+			const avgA = a.fieldCounts.reduce((sum, val) => sum + val, 0) / a.fieldCounts.length;
+			const avgB = b.fieldCounts.reduce((sum, val) => sum + val, 0) / b.fieldCounts.length;
+			const varianceA = a.fieldCounts.reduce((sum, val) => sum + Math.pow(val - avgA, 2), 0) / a.fieldCounts.length;
+			const varianceB = b.fieldCounts.reduce((sum, val) => sum + Math.pow(val - avgB, 2), 0) / b.fieldCounts.length;
+			return varianceA - varianceB;
+		}
+		return 0;
+	});
+
+	// Wenn ein Delimiter in mindestens einer Zeile vorkommt, verwende ihn
+	const bestDelimiter = stats.find(s => s.consistency > 0);
+	if (bestDelimiter) {
+		console.log(`Delimiter-Erkennung: '${bestDelimiter.name}' (${bestDelimiter.consistency} von ${lines.length} Zeilen, ${bestDelimiter.totalCount} Vorkommen)`);
+		return bestDelimiter.char;
 	}
 
 	// Fallback: Standard ist Semikolon (deutsche CSV-Konvention)
@@ -433,9 +471,10 @@ export interface CsvStreamResult {
  * Parst CSV-Datei im Streaming-Modus (für große Dateien).
  * 
  * Gibt ein Objekt mit Headers, Encoding und einem AsyncIterator für Rows zurück.
+ * Unterstützt automatische Delimiter-Erkennung (Semikolon, Komma, Tab, Pipe).
  * 
  * @param filePath - Pfad zur CSV-Datei
- * @param delimiter - Trennzeichen (Standard: ';')
+ * @param delimiter - Trennzeichen (Standard: ';', automatische Erkennung wenn ';' verwendet wird)
  * @returns Headers, Encoding und AsyncIterator für Rows
  */
 export async function parseCsvStream(
@@ -485,10 +524,16 @@ export async function parseCsvStream(
 	const fileStream = fs.createReadStream(filePath);
 
 	// CSV-Parser-Stream erstellen
+	// Konfiguration für robuste Quote-Behandlung (siehe parseCsv für Details)
 	const parser = parseStream({
 		delimiter: detectedDelimiter,
 		skip_empty_lines: true,
-		trim: true,
+		trim: true, // Trimmt Whitespace, csv-parse entfernt Quotes automatisch
+		relax_column_count: true, // Erlaubt unterschiedliche Spaltenanzahlen pro Zeile
+		relax_quotes: true, // Erlaubt unescaped Quotes in Feldern (für Kompatibilität)
+		escape: '"', // Escape-Zeichen für Quotes ("" = ein einzelnes ")
+		quote: '"', // Quote-Zeichen für Felder mit Delimitern/Newlines
+		bom: false, // BOM wird bereits manuell behandelt
 	});
 
 	// Encoding-Decoder-Stream (falls nicht UTF-8)
@@ -573,10 +618,11 @@ export async function parseCsvStream(
  * Parst CSV-Datei im Preview-Modus (nur erste N Zeilen).
  * 
  * Optimiert für UI-Vorschau, lädt nicht die gesamte Datei.
+ * Unterstützt automatische Delimiter-Erkennung (Semikolon, Komma, Tab, Pipe).
  * 
  * @param filePath - Pfad zur CSV-Datei
  * @param maxRows - Maximale Anzahl von Datenzeilen (Standard: 200)
- * @param delimiter - Trennzeichen (Standard: ';')
+ * @param delimiter - Trennzeichen (Standard: ';', automatische Erkennung wenn ';' verwendet wird)
  * @returns Parse-Ergebnis mit ersten N Zeilen
  */
 export async function parseCsvPreview(

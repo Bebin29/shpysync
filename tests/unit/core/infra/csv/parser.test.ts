@@ -49,6 +49,40 @@ describe("parseCsv", () => {
       expect(result.rows).toHaveLength(1);
     });
 
+    it("sollte CSV-Datei mit Tab-Delimiter (TSV) parsen", () => {
+      const csvContent = "SKU\tName\tPreis\tBestand\nSKU-001\tTest Produkt\t12.50\t10";
+      const csvPath = path.join(tempDir, "test.tsv");
+      fs.writeFileSync(csvPath, csvContent, "utf-8");
+
+      const result = parseCsv(csvPath, "\t");
+
+      expect(result.headers).toEqual(["SKU", "Name", "Preis", "Bestand"]);
+      expect(result.rows).toHaveLength(1);
+      expect(result.rows[0].data).toEqual({
+        SKU: "SKU-001",
+        Name: "Test Produkt",
+        Preis: "12.50",
+        Bestand: "10",
+      });
+    });
+
+    it("sollte CSV-Datei mit Pipe-Delimiter parsen", () => {
+      const csvContent = "SKU|Name|Preis|Bestand\nSKU-001|Test Produkt|12.50|10";
+      const csvPath = path.join(tempDir, "test.csv");
+      fs.writeFileSync(csvPath, csvContent, "utf-8");
+
+      const result = parseCsv(csvPath, "|");
+
+      expect(result.headers).toEqual(["SKU", "Name", "Preis", "Bestand"]);
+      expect(result.rows).toHaveLength(1);
+      expect(result.rows[0].data).toEqual({
+        SKU: "SKU-001",
+        Name: "Test Produkt",
+        Preis: "12.50",
+        Bestand: "10",
+      });
+    });
+
     it("sollte mehrere Zeilen parsen", () => {
       const csvContent = "SKU;Name;Preis;Bestand\nSKU-001;Produkt 1;12.50;10\nSKU-002;Produkt 2;8.99;5";
       const csvPath = path.join(tempDir, "test.csv");
@@ -99,6 +133,99 @@ describe("parseCsv", () => {
     });
   });
 
+  describe("Anführungszeichen-Behandlung", () => {
+    it("sollte Felder mit Anführungszeichen korrekt parsen", () => {
+      const csvContent = 'SKU;Name;Preis;Bestand\nSKU-001;"Test Produkt";12.50;10';
+      const csvPath = path.join(tempDir, "test.csv");
+      fs.writeFileSync(csvPath, csvContent, "utf-8");
+
+      const result = parseCsv(csvPath, ";");
+
+      expect(result.rows).toHaveLength(1);
+      // Quotes sollten automatisch entfernt werden
+      expect(result.rows[0].data.Name).toBe("Test Produkt");
+    });
+
+    it("sollte Felder mit Kommas innerhalb von Quotes korrekt parsen", () => {
+      const csvContent = 'SKU;Name;Preis;Bestand\nSKU-001;"Musterstraße, Weg 1";12.50;10';
+      const csvPath = path.join(tempDir, "test.csv");
+      fs.writeFileSync(csvPath, csvContent, "utf-8");
+
+      const result = parseCsv(csvPath, ";");
+
+      expect(result.rows).toHaveLength(1);
+      expect(result.rows[0].data.Name).toBe("Musterstraße, Weg 1");
+    });
+
+    it("sollte Escaped Quotes (\"\") korrekt behandeln", () => {
+      const csvContent = 'SKU;Name;Preis;Bestand\nSKU-001;"Das war ""10 große Scheine"", Baby";12.50;10';
+      const csvPath = path.join(tempDir, "test.csv");
+      fs.writeFileSync(csvPath, csvContent, "utf-8");
+
+      const result = parseCsv(csvPath, ";");
+
+      expect(result.rows).toHaveLength(1);
+      // Escaped Quotes (""") sollten zu einem einzelnen " werden
+      expect(result.rows[0].data.Name).toBe('Das war "10 große Scheine", Baby');
+    });
+
+    it("sollte einfache Anführungszeichen (\') innerhalb von Werten korrekt behandeln", () => {
+      const csvContent = "SKU;Name;Preis;Bestand\nSKU-001;O'Brien's Produkt;12.50;10";
+      const csvPath = path.join(tempDir, "test.csv");
+      fs.writeFileSync(csvPath, csvContent, "utf-8");
+
+      const result = parseCsv(csvPath, ";");
+
+      expect(result.rows).toHaveLength(1);
+      expect(result.rows[0].data.Name).toBe("O'Brien's Produkt");
+    });
+
+    it("sollte Felder mit Quotes und einfachen Anführungszeichen kombinieren", () => {
+      const csvContent = 'SKU;Name;Preis;Bestand\nSKU-001;"O\'Brien\'s ""Special"" Produkt";12.50;10';
+      const csvPath = path.join(tempDir, "test.csv");
+      fs.writeFileSync(csvPath, csvContent, "utf-8");
+
+      const result = parseCsv(csvPath, ";");
+
+      expect(result.rows).toHaveLength(1);
+      expect(result.rows[0].data.Name).toBe("O'Brien's \"Special\" Produkt");
+    });
+
+    it("sollte Felder mit Komma-Delimiter und Quotes korrekt parsen", () => {
+      const csvContent = 'SKU,Name,Preis,Bestand\nSKU-001,"Musterstraße, Weg 1",12.50,10';
+      const csvPath = path.join(tempDir, "test.csv");
+      fs.writeFileSync(csvPath, csvContent, "utf-8");
+
+      const result = parseCsv(csvPath, ",");
+
+      expect(result.rows).toHaveLength(1);
+      expect(result.rows[0].data.Name).toBe("Musterstraße, Weg 1");
+    });
+
+    it("sollte mehrere Felder mit Quotes in einer Zeile korrekt parsen", () => {
+      const csvContent = 'SKU;Name;Preis;Bestand\nSKU-001;"Test Produkt";"12,50";10';
+      const csvPath = path.join(tempDir, "test.csv");
+      fs.writeFileSync(csvPath, csvContent, "utf-8");
+
+      const result = parseCsv(csvPath, ";");
+
+      expect(result.rows).toHaveLength(1);
+      expect(result.rows[0].data.Name).toBe("Test Produkt");
+      expect(result.rows[0].data.Preis).toBe("12,50");
+    });
+
+    it("sollte Felder mit Newlines innerhalb von Quotes korrekt parsen", () => {
+      const csvContent = 'SKU;Name;Preis;Bestand\nSKU-001;"Produkt\nmit\nZeilenumbruch";12.50;10';
+      const csvPath = path.join(tempDir, "test.csv");
+      fs.writeFileSync(csvPath, csvContent, "utf-8");
+
+      const result = parseCsv(csvPath, ";");
+
+      expect(result.rows).toHaveLength(1);
+      expect(result.rows[0].data.Name).toBe("Produkt\nmit\nZeilenumbruch");
+    });
+  });
+
   describe("Row-Numbering", () => {
     it("sollte korrekte Row-Nummern vergeben", () => {
       const csvContent = "SKU;Name;Preis;Bestand\nSKU-001;Produkt 1;12.50;10\nSKU-002;Produkt 2;8.99;5";
@@ -125,6 +252,58 @@ describe("parseCsv", () => {
 
       // Leere Dateien sollten einen Fehler werfen (validiert durch validateCsvFile)
       expect(() => parseCsv(csvPath, ";")).toThrow("Die CSV-Datei ist leer");
+    });
+  });
+
+  describe("Automatische Delimiter-Erkennung", () => {
+    it("sollte Komma automatisch erkennen wenn Standard-Delimiter verwendet wird", () => {
+      const csvContent = "SKU,Name,Preis,Bestand\nSKU-001,Test Produkt,12.50,10";
+      const csvPath = path.join(tempDir, "test.csv");
+      fs.writeFileSync(csvPath, csvContent, "utf-8");
+
+      // Verwende Standard-Delimiter (;), sollte aber Komma erkennen
+      const result = parseCsv(csvPath, ";");
+
+      expect(result.headers).toEqual(["SKU", "Name", "Preis", "Bestand"]);
+      expect(result.rows).toHaveLength(1);
+      expect(result.rows[0].data.SKU).toBe("SKU-001");
+    });
+
+    it("sollte Tab automatisch erkennen wenn Standard-Delimiter verwendet wird", () => {
+      const csvContent = "SKU\tName\tPreis\tBestand\nSKU-001\tTest Produkt\t12.50\t10";
+      const csvPath = path.join(tempDir, "test.tsv");
+      fs.writeFileSync(csvPath, csvContent, "utf-8");
+
+      // Verwende Standard-Delimiter (;), sollte aber Tab erkennen
+      const result = parseCsv(csvPath, ";");
+
+      expect(result.headers).toEqual(["SKU", "Name", "Preis", "Bestand"]);
+      expect(result.rows).toHaveLength(1);
+      expect(result.rows[0].data.SKU).toBe("SKU-001");
+    });
+
+    it("sollte Pipe automatisch erkennen wenn Standard-Delimiter verwendet wird", () => {
+      const csvContent = "SKU|Name|Preis|Bestand\nSKU-001|Test Produkt|12.50|10";
+      const csvPath = path.join(tempDir, "test.csv");
+      fs.writeFileSync(csvPath, csvContent, "utf-8");
+
+      // Verwende Standard-Delimiter (;), sollte aber Pipe erkennen
+      const result = parseCsv(csvPath, ";");
+
+      expect(result.headers).toEqual(["SKU", "Name", "Preis", "Bestand"]);
+      expect(result.rows).toHaveLength(1);
+      expect(result.rows[0].data.SKU).toBe("SKU-001");
+    });
+
+    it("sollte Semikolon verwenden wenn kein anderer Delimiter erkannt wird", () => {
+      const csvContent = "SKU;Name;Preis;Bestand\nSKU-001;Test Produkt;12.50;10";
+      const csvPath = path.join(tempDir, "test.csv");
+      fs.writeFileSync(csvPath, csvContent, "utf-8");
+
+      const result = parseCsv(csvPath, ";");
+
+      expect(result.headers).toEqual(["SKU", "Name", "Preis", "Bestand"]);
+      expect(result.rows).toHaveLength(1);
     });
   });
 
