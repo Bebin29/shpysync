@@ -1,3 +1,6 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.coalesceInventoryUpdates = coalesceInventoryUpdates;
 /**
  * Inventory-Koaleszierung für Duplikat-Erkennung.
  *
@@ -9,7 +12,7 @@
  * @param updates - Liste von (inventoryItemId, quantity)-Paaren
  * @returns Koaleszierte Updates (ein Eintrag pro Item)
  */
-export function coalesceInventoryUpdates(updates) {
+function coalesceInventoryUpdates(updates) {
     const lastValues = new Map();
     const countByItem = new Map();
     for (const { inventoryItemId, quantity } of updates) {

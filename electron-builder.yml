@@ -17,15 +17,25 @@ files:
   - "electron/dist/**/*"
   # Package.json für Electron
   - "package.json"
-  # Nur benötigte node_modules (Runtime Dependencies)
-  - "!node_modules/**/*"
-  - "node_modules/better-sqlite3/**/*"
-  - "node_modules/electron-store/**/*"
-  - "node_modules/winston/**/*"
-  - "node_modules/axios/**/*"
-  - "node_modules/csv-parse/**/*"
-  - "node_modules/iconv-lite/**/*"
-  - "node_modules/zod/**/*"
+  # Alle Production Dependencies automatisch einschließen
+  # (electron-builder analysiert package.json und schließt alle Dependencies ein)
+  - "node_modules/**/*"
+  # Dev-Dependencies ausschließen (nur Build-Tools)
+  - "!node_modules/@types/**/*"
+  - "!node_modules/typescript/**/*"
+  - "!node_modules/vitest/**/*"
+  - "!node_modules/@vitest/**/*"
+  - "!node_modules/eslint/**/*"
+  - "!node_modules/prettier/**/*"
+  - "!node_modules/autoprefixer/**/*"
+  - "!node_modules/postcss/**/*"
+  - "!node_modules/tailwindcss/**/*"
+  - "!node_modules/concurrently/**/*"
+  - "!node_modules/cross-env/**/*"
+  - "!node_modules/wait-on/**/*"
+  - "!node_modules/tsc-esm-fix/**/*"
+  - "!node_modules/electron-builder/**/*"
+  - "!node_modules/electron/**/*"
   # Exclude
   - "!node_modules/.cache"
   - "!electron/**/*.ts"
@@ -70,5 +80,6 @@ nsis:
   createStartMenuShortcut: true
 
 # Optional: ASAR deaktivieren, falls Pfadprobleme auftreten
-# asar: false
+# TEMPORÄR DEAKTIVIERT: Test für ES Module Export-Problem
+asar: false
 

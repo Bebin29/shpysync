@@ -1718,6 +1718,27 @@ if (isDev) {
 }
 ```
 
+##### Problem 5: ES Module Export-Fehler im Production Build
+
+**Symptom:**
+```
+SyntaxError: The requested module './api-version-manager.js' does not provide an export named 'getApiVersionFromConfig'
+```
+
+**Ursache:**
+- ES Module Exporte werden im Production Build (ASAR-Archiv) nicht korrekt erkannt
+- Möglicherweise ein Problem mit der Art, wie electron-builder ES Modules im ASAR-Archiv behandelt
+
+**Lösung:**
+- ✅ **Exporte sind korrekt:** Funktionen sind mit `export function` definiert
+- ✅ **Kompilierung erfolgreich:** TypeScript kompiliert die Datei korrekt
+- ⚠️ **Mögliche Workarounds:**
+  1. ASAR deaktivieren (nur für Tests): `asar: false` in `electron-builder.yml`
+  2. Explizite Export-Statements prüfen
+  3. Build neu erstellen und testen
+
+**Hinweis:** Dieses Problem tritt möglicherweise nur im Production Build auf. Im Dev-Modus funktioniert alles korrekt.
+
 ##### Zusammenfassung der Build-Konfiguration
 
 **Erforderliche Dateien:**
@@ -1742,6 +1763,7 @@ electron-builder --win    # Electron Packaging
 - ✅ Navigation Handler in `electron/main.ts` vorhanden
 - ✅ `app.getAppPath()` für Production-Pfade verwendet
 - ✅ `file://` URLs mit korrekter Pfad-Normalisierung (`replace(/\\/g, "/")`)
+- ⚠️ ES Module Exporte im Production Build prüfen (ASAR-Archiv)
 
 ---
 

@@ -26,6 +26,19 @@ export function useDashboard() {
 				throw new Error("Electron API nicht verfügbar");
 			}
 
+			// Prüfe ob Dashboard-API verfügbar ist
+			if (!window.electron.dashboard) {
+				throw new Error("Dashboard API nicht verfügbar. Bitte App neu starten.");
+			}
+
+			// Prüfe ob getStats und getHistory verfügbar sind
+			if (typeof window.electron.dashboard.getStats !== "function") {
+				throw new Error("Dashboard getStats Funktion nicht verfügbar");
+			}
+			if (typeof window.electron.dashboard.getHistory !== "function") {
+				throw new Error("Dashboard getHistory Funktion nicht verfügbar");
+			}
+
 			// Lade Stats und Historie parallel
 			const [statsData, historyData] = await Promise.all([
 				window.electron.dashboard.getStats(),
@@ -38,6 +51,9 @@ export function useDashboard() {
 			const errorMessage = err instanceof Error ? err.message : "Unbekannter Fehler";
 			setError(errorMessage);
 			console.error("Fehler beim Laden der Dashboard-Daten:", err);
+			// Setze Standardwerte bei Fehler
+			setStats(null);
+			setHistory([]);
 		} finally {
 			setLoading(false);
 		}

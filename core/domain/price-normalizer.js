@@ -1,3 +1,6 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.normalizePrice = normalizePrice;
 /**
  * Preis-Normalisierung für Shopify-kompatibles Format.
  *
@@ -14,7 +17,7 @@
  * @returns Shopify-kompatibler Money-String (z.B. "12.50")
  * @throws Error wenn val null/undefined oder nicht parsebar
  */
-export function normalizePrice(val) {
+function normalizePrice(val) {
     if (val == null) {
         throw new Error("Preis ist null oder undefined");
     }

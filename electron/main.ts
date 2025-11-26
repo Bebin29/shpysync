@@ -21,20 +21,31 @@ function createWindow(): void {
     // Production: Preload liegt in resources/app/electron/dist/electron/preload.js
     // Oder in resources/app.asar/electron/dist/electron/preload.js (wenn asar aktiviert)
     const appPath = app.getAppPath();
-    preloadPath = path.join(appPath, "electron", "dist", "electron", "preload.js");
     
-    // Fallback: Versuche auch ohne "electron" Prefix (falls Struktur anders ist)
-    if (!existsSync(preloadPath)) {
-      preloadPath = path.join(appPath, "dist", "electron", "preload.js");
-    }
+    // Versuche verschiedene Pfade (mit und ohne ASAR)
+    const possiblePaths = [
+      path.join(appPath, "electron", "dist", "electron", "preload.js"), // Mit ASAR
+      path.join(appPath, "electron", "dist", "electron", "preload.js"), // Ohne ASAR (gleicher Pfad)
+      path.join(appPath, "dist", "electron", "preload.js"), // Alternative Struktur
+      path.join(dirnamePath, "preload.js"), // Relativ zu main.js
+    ];
+    
+    // Finde den ersten existierenden Pfad
+    preloadPath = possiblePaths.find(p => existsSync(p)) || possiblePaths[0];
+    
+    // Debug-Logging auch im Production Build (für Fehlerdiagnose)
+    console.log("[Electron] Production Build - Preload-Pfad-Suche:");
+    console.log("[Electron] appPath:", appPath);
+    console.log("[Electron] dirnamePath:", dirnamePath);
+    possiblePaths.forEach((p, i) => {
+      console.log(`[Electron] Pfad ${i + 1}: ${p} - ${existsSync(p) ? "✓ existiert" : "✗ nicht gefunden"}`);
+    });
+    console.log("[Electron] Gewählter Preload-Pfad:", preloadPath);
+    console.log("[Electron] Preload existiert:", existsSync(preloadPath));
   } else {
     // Dev: Preload liegt in electron/dist/electron/preload.js
     preloadPath = path.resolve(dirnamePath, "electron", "preload.js");
-  }
-  
-  // Debug-Logging im Dev-Modus
-  if (!app.isPackaged) {
-    console.log("[Electron] Preload-Pfad:", preloadPath);
+    console.log("[Electron] Dev-Modus - Preload-Pfad:", preloadPath);
     console.log("[Electron] dirnamePath:", dirnamePath);
     console.log("[Electron] Preload existiert:", existsSync(preloadPath));
   }
@@ -69,10 +80,20 @@ function createWindow(): void {
   } else {
     // Im Production-Build: Verwende loadURL mit file:// Protokoll
     // Base-Tag wird bereits statisch von fix-html-base-tag.js gesetzt
-    const outDir = path.join(app.getAppPath(), "out");
+    const appPath = app.getAppPath();
+    const outDir = path.join(appPath, "out");
     const indexPath = path.join(outDir, "index.html");
+    
+    // Debug-Logging für Production Build
+    console.log("[Electron] Production Build - HTML-Pfad-Suche:");
+    console.log("[Electron] appPath:", appPath);
+    console.log("[Electron] outDir:", outDir);
+    console.log("[Electron] indexPath:", indexPath);
+    console.log("[Electron] index.html existiert:", existsSync(indexPath));
+    
     // Konvertiere Windows-Pfad zu file:// URL
     const fileUrl = `file://${indexPath.replace(/\\/g, "/")}`;
+    console.log("[Electron] Lade URL:", fileUrl);
     
     mainWindow.loadURL(fileUrl);
     
@@ -126,6 +147,22 @@ function createWindow(): void {
   mainWindow.webContents.on("preload-error", (_event, _preloadPath, error) => {
     console.error("[Electron] Fehler beim Laden des Preload-Scripts:", error);
     console.error("[Electron] Preload-Pfad:", preloadPath);
+  });
+
+  // Debug: Prüfe ob Preload-Script geladen wurde (auch im Production Build)
+  mainWindow.webContents.on("did-finish-load", () => {
+    mainWindow?.webContents.executeJavaScript(`
+      console.log("[Renderer] window.electron verfügbar:", typeof window.electron !== 'undefined');
+      if (typeof window.electron !== 'undefined') {
+        console.log("[Renderer] window.electron Keys:", Object.keys(window.electron));
+        console.log("[Renderer] window.electron.dashboard verfügbar:", typeof window.electron.dashboard !== 'undefined');
+        if (window.electron.dashboard) {
+          console.log("[Renderer] window.electron.dashboard Keys:", Object.keys(window.electron.dashboard));
+        }
+      }
+    `).catch((err) => {
+      console.error("[Electron] Fehler beim Ausführen von Debug-Code:", err);
+    });
   });
 }
 

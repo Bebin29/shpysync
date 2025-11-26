@@ -1,3 +1,8 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.normalizeString = normalizeString;
+exports.columnLetterToIndex = columnLetterToIndex;
+exports.indexToColumnLetter = indexToColumnLetter;
 /**
  * String-Normalisierung für Matching.
  *
@@ -9,7 +14,7 @@
  * @param s - String zum Normalisieren
  * @returns Normalisierter String
  */
-export function normalizeString(s) {
+function normalizeString(s) {
     if (s == null) {
         return "";
     }
@@ -27,7 +32,7 @@ export function normalizeString(s) {
  * @param letter - Spaltenbuchstabe (z.B. "A", "B", "AB")
  * @returns 0-basierter Index
  */
-export function columnLetterToIndex(letter) {
+function columnLetterToIndex(letter) {
     const upper = letter.toUpperCase();
     let result = 0;
     for (let i = 0; i < upper.length; i++) {
@@ -42,7 +47,7 @@ export function columnLetterToIndex(letter) {
  * @param index - 0-basierter Index
  * @returns Spaltenbuchstabe (z.B. "A", "B", "AB")
  */
-export function indexToColumnLetter(index) {
+function indexToColumnLetter(index) {
     if (index < 0) {
         throw new Error("Index muss >= 0 sein");
     }
