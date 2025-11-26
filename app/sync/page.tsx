@@ -127,6 +127,32 @@ export default function SyncPage() {
 		}
 	}, [savedMapping]);
 
+	// Lade Standard-Pfad beim Mount (DBF wird bevorzugt)
+	useEffect(() => {
+		const loadDefaultPath = async () => {
+			try {
+				if (typeof window === "undefined" || !window.electron) {
+					return;
+				}
+				const config = await window.electron.config.get();
+				// DBF wird bevorzugt, wenn gesetzt
+				const defaultPath = (config as { defaultDbfPath?: string; defaultCsvPath?: string }).defaultDbfPath || 
+				                     (config as { defaultDbfPath?: string; defaultCsvPath?: string }).defaultCsvPath;
+				if (defaultPath && !csvFilePath) {
+					// Automatisch Standard-Pfad verwenden
+					handleFileSelected(defaultPath);
+				}
+			} catch (err) {
+				console.error("Fehler beim Laden des Standard-Pfads:", err);
+			}
+		};
+		// Nur beim Mount ausführen, wenn noch kein Pfad gesetzt ist
+		if (!csvFilePath) {
+			loadDefaultPath();
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, []); // Nur beim Mount ausführen
+
 	// Aktualisiere Store, wenn CSV-Pfad geändert wird
 	useEffect(() => {
 		if (csvFilePath) {

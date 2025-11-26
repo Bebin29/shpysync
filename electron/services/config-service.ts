@@ -22,6 +22,8 @@ const store = new Store<AppConfig>({
     autoSync: {
       enabled: false,
     },
+    defaultCsvPath: undefined,
+    defaultDbfPath: undefined,
   },
   encryptionKey: "wawisync-config-key", // TODO: In Produktion aus sicherer Quelle laden
 });
@@ -351,20 +353,22 @@ export function getAutoSyncConfig(): AppConfig["autoSync"] {
  * @throws Error wenn CSV-Pfad ungültig ist
  */
 export function setAutoSyncConfig(autoSyncConfig: AppConfig["autoSync"]): void {
-	// Validierung: CSV-Pfad muss existieren wenn enabled
+	// Validierung: Entweder CSV- oder DBF-Pfad muss existieren wenn enabled
 	if (autoSyncConfig.enabled) {
-		if (!autoSyncConfig.csvPath) {
-			throw new Error("CSV-Pfad ist erforderlich wenn Auto-Sync aktiviert ist");
+		if (!autoSyncConfig.csvPath && !autoSyncConfig.dbfPath) {
+			throw new Error("CSV- oder DBF-Pfad ist erforderlich wenn Auto-Sync aktiviert ist");
 		}
 
 		if (!autoSyncConfig.interval || autoSyncConfig.interval <= 0) {
 			throw new Error("Intervall muss größer als 0 sein");
 		}
 
-		// Prüfe ob CSV-Datei existiert
+		// Prüfe ob Datei existiert
 		const { existsSync } = require("fs");
-		if (!existsSync(autoSyncConfig.csvPath)) {
-			throw new Error(`CSV-Datei nicht gefunden: ${autoSyncConfig.csvPath}`);
+		const filePath = autoSyncConfig.dbfPath || autoSyncConfig.csvPath;
+		if (filePath && !existsSync(filePath)) {
+			const fileType = autoSyncConfig.dbfPath ? "DBF" : "CSV";
+			throw new Error(`${fileType}-Datei nicht gefunden: ${filePath}`);
 		}
 	}
 
@@ -375,6 +379,40 @@ export function setAutoSyncConfig(autoSyncConfig: AppConfig["autoSync"]): void {
 		autoSync: autoSyncConfig,
 	};
 	setConfig(updatedConfig);
+}
+
+/**
+ * Setzt den Standard-CSV-Pfad für manuelle Sync.
+ * 
+ * @param csvPath - Pfad zur CSV-Datei (optional, null zum Löschen)
+ */
+export function setDefaultCsvPath(csvPath: string | null): void {
+	const storeTyped = store as unknown as { set: (key: string, value: unknown) => void };
+	storeTyped.set("defaultCsvPath", csvPath || undefined);
+}
+
+/**
+ * Setzt den Standard-DBF-Pfad für manuelle Sync.
+ * 
+ * @param dbfPath - Pfad zur DBF-Datei (optional, null zum Löschen)
+ */
+export function setDefaultDbfPath(dbfPath: string | null): void {
+	const storeTyped = store as unknown as { set: (key: string, value: unknown) => void };
+	storeTyped.set("defaultDbfPath", dbfPath || undefined);
+}
+
+/**
+ * Gibt den Standard-Dateipfad zurück (DBF wird bevorzugt, falls gesetzt).
+ * 
+ * @returns Dateipfad oder null, wenn keiner gesetzt ist
+ */
+export function getDefaultFilePath(): string | null {
+	const config = getConfig();
+	// DBF wird bevorzugt, wenn gesetzt
+	if (config.defaultDbfPath) {
+		return config.defaultDbfPath;
+	}
+	return config.defaultCsvPath || null;
 }
 
 /**
