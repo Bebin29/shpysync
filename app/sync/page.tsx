@@ -127,7 +127,7 @@ export default function SyncPage() {
 		}
 	}, [savedMapping]);
 
-	// Lade Standard-Pfad beim Mount (DBF wird bevorzugt)
+	// Lade Standard-Pfad beim Mount und wenn sich die Config ändert
 	useEffect(() => {
 		const loadDefaultPath = async () => {
 			try {
@@ -146,10 +146,23 @@ export default function SyncPage() {
 				console.error("Fehler beim Laden des Standard-Pfads:", err);
 			}
 		};
-		// Nur beim Mount ausführen, wenn noch kein Pfad gesetzt ist
+		
+		// Beim Mount: Standard-Pfad laden, wenn noch kein Pfad gesetzt ist
 		if (!csvFilePath) {
 			loadDefaultPath();
 		}
+		
+		// Lade auch neu, wenn die Seite fokussiert wird (z.B. nach Änderung in Einstellungen)
+		const handleFocus = () => {
+			if (!csvFilePath) {
+				loadDefaultPath();
+			}
+		};
+		window.addEventListener("focus", handleFocus);
+		
+		return () => {
+			window.removeEventListener("focus", handleFocus);
+		};
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, []); // Nur beim Mount ausführen
 

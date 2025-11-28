@@ -354,9 +354,7 @@ export async function getAllProducts(
     if (after) {
       variables.after = after;
     }
-    if (locationId) {
-      variables.locationId = locationId;
-    }
+    // locationId wird nicht mehr in der Query verwendet, sondern beim Filtern der Ergebnisse
 
     const data = await executeGraphQL<{
       products: {
@@ -378,7 +376,13 @@ export async function getAllProducts(
                     inventoryLevels: {
                       edges: Array<{
                         node: {
-                          available: number;
+                          quantities: Array<{
+                            name: string;
+                            quantity: number;
+                          }>;
+                          location: {
+                            id: string;
+                          };
                         };
                       }>;
                     };
@@ -403,9 +407,23 @@ export async function getAllProducts(
       const variants: Variant[] = node.variants.edges.map((vEdge) => {
         const inventoryItem = vEdge.node.inventoryItem;
         const inventoryLevels = inventoryItem?.inventoryLevels?.edges;
-        const currentQuantity = inventoryLevels && inventoryLevels.length > 0
-          ? inventoryLevels[0].node.available
-          : undefined;
+        
+        // Extrahiere die verfügbare Menge aus quantities
+        let currentQuantity: number | undefined = undefined;
+        if (inventoryLevels && inventoryLevels.length > 0) {
+          // Wenn locationId angegeben ist, filtere nach dieser Location
+          const relevantLevel = locationId
+            ? inventoryLevels.find(level => level.node.location.id === locationId)
+            : inventoryLevels[0];
+          
+          if (relevantLevel) {
+            // Finde die "available" Quantity
+            const availableQuantity = relevantLevel.node.quantities.find(
+              q => q.name === "available"
+            );
+            currentQuantity = availableQuantity?.quantity;
+          }
+        }
 
         return {
           id: vEdge.node.id,
