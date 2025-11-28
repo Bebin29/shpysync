@@ -44,20 +44,40 @@ export function validateCsvFile(filePath: string): void {
 }
 
 /**
- * Validiert, ob CSV-Header vorhanden sind und nicht leer sind.
+ * Normalisiert CSV-Header, indem leere Header automatisch benannt werden.
+ * 
+ * @param headers - Array von Header-Namen
+ * @returns Normalisierte Header (leere Header werden als "Column_N" benannt)
+ */
+function normalizeCsvHeaders(headers: string[]): string[] {
+	return headers.map((header, index) => {
+		if (!header || header.trim() === "") {
+			return `Column_${index + 1}`;
+		}
+		return header.trim();
+	});
+}
+
+/**
+ * Validiert, ob CSV-Header vorhanden sind und normalisiert leere Header automatisch.
+ * 
+ * Leere Header werden automatisch als "Column_N" benannt (z.B. "Column_1", "Column_2").
+ * Die Funktion modifiziert das übergebene Array direkt.
+ * 
+ * @param headers - Array von Header-Namen (wird modifiziert)
+ * @throws WawiError wenn keine Header vorhanden sind
  */
 export function validateCsvHeaders(headers: string[]): void {
 	if (!headers || headers.length === 0) {
 		throw WawiError.csvError("CSV_EMPTY", "Die CSV-Datei enthält keine Header-Zeile");
 	}
 
-	// Prüfe auf leere Header-Namen
-	const emptyHeaders = headers.filter((h) => !h || h.trim() === "");
-	if (emptyHeaders.length > 0) {
-		throw WawiError.csvError(
-			"CSV_INVALID_FORMAT",
-			`Die CSV-Datei enthält leere Header-Namen an Positionen: ${emptyHeaders.map((_, i) => i + 1).join(", ")}`
-		);
+	// Normalisiere leere Header automatisch
+	const normalizedHeaders = normalizeCsvHeaders(headers);
+	
+	// Ersetze die ursprünglichen Header durch normalisierte
+	for (let i = 0; i < headers.length; i++) {
+		headers[i] = normalizedHeaders[i];
 	}
 }
 
@@ -107,20 +127,40 @@ export function validateDbfFile(filePath: string): void {
 }
 
 /**
- * Validiert, ob DBF-Header (Feldnamen) vorhanden sind und nicht leer sind.
+ * Normalisiert DBF-Header, indem leere Header automatisch benannt werden.
+ * 
+ * @param headers - Array von Header-Namen
+ * @returns Normalisierte Header (leere Header werden als "Field_N" benannt)
+ */
+function normalizeDbfHeaders(headers: string[]): string[] {
+	return headers.map((header, index) => {
+		if (!header || header.trim() === "") {
+			return `Field_${index + 1}`;
+		}
+		return header.trim();
+	});
+}
+
+/**
+ * Validiert, ob DBF-Header (Feldnamen) vorhanden sind und normalisiert leere Header automatisch.
+ * 
+ * Leere Header werden automatisch als "Field_N" benannt (z.B. "Field_1", "Field_2").
+ * Die Funktion modifiziert das übergebene Array direkt.
+ * 
+ * @param headers - Array von Header-Namen (wird modifiziert)
+ * @throws WawiError wenn keine Header vorhanden sind
  */
 export function validateDbfHeaders(headers: string[]): void {
 	if (!headers || headers.length === 0) {
 		throw WawiError.csvError("CSV_EMPTY", "Die DBF-Datei enthält keine Felder");
 	}
 
-	// Prüfe auf leere Feldnamen
-	const emptyHeaders = headers.filter((h) => !h || h.trim() === "");
-	if (emptyHeaders.length > 0) {
-		throw WawiError.csvError(
-			"CSV_INVALID_FORMAT",
-			`Die DBF-Datei enthält leere Feldnamen an Positionen: ${emptyHeaders.map((_, i) => i + 1).join(", ")}`
-		);
+	// Normalisiere leere Header automatisch
+	const normalizedHeaders = normalizeDbfHeaders(headers);
+	
+	// Ersetze die ursprünglichen Header durch normalisierte
+	for (let i = 0; i < headers.length; i++) {
+		headers[i] = normalizedHeaders[i];
 	}
 }
 

@@ -1,5 +1,5 @@
 import * as fs from "fs";
-import * as iconv from "iconv-lite";
+import iconv from "iconv-lite";
 import type { RawCsvRow } from "../../domain/types.js";
 import { validateDbfFile, validateDbfHeaders } from "../../domain/validators.js";
 
@@ -102,11 +102,35 @@ function readNullTerminatedString(buffer: Buffer, offset: number, maxLength: num
 }
 
 /**
+ * Konvertiert Codepage-Namen zu iconv-lite kompatible Encoding-Namen.
+ * 
+ * @param codepageName - Codepage-Name (z.B. "cp1252")
+ * @returns iconv-lite Encoding-Name (z.B. "win1252")
+ */
+function normalizeEncodingName(codepageName: string): string {
+  // Mapping von Codepage-Namen zu iconv-lite Namen
+  const encodingMap: Record<string, string> = {
+    "cp1252": "win1252",
+    "cp1250": "win1250",
+    "cp1251": "win1251",
+    "cp1253": "win1253",
+    "cp1254": "win1254",
+    "cp1255": "win1255",
+    "cp1256": "win1256",
+    "cp1257": "win1257",
+    "latin1": "latin1",
+    "iso-8859-1": "latin1",
+  };
+  
+  return encodingMap[codepageName.toLowerCase()] || codepageName;
+}
+
+/**
  * Erkennt das Encoding einer DBF-Datei.
  * 
  * @param header - DBF-Header
  * @param buffer - Datei-Buffer (für Magic Bytes)
- * @returns Encoding-Name
+ * @returns Encoding-Name (iconv-lite kompatibel)
  */
 function detectDbfEncoding(header: DbfHeader, buffer: Buffer): string {
   // Prüfe Codepage-Feld im Header (dBASE IV+)
@@ -115,10 +139,10 @@ function detectDbfEncoding(header: DbfHeader, buffer: Buffer): string {
     const codepageMap: Record<number, string> = {
       0x01: "cp437", // DOS USA
       0x02: "cp850", // DOS Multilingual
-      0x03: "cp1252", // Windows ANSI
+      0x03: "win1252", // Windows ANSI (iconv-lite Name)
       0x04: "cp10000", // Mac Roman
-      0x57: "cp1252", // Windows ANSI (alternative)
-      0x58: "cp1252", // Windows ANSI (alternative)
+      0x57: "win1252", // Windows ANSI (alternative)
+      0x58: "win1252", // Windows ANSI (alternative)
       0x64: "cp852", // DOS Eastern European
       0x65: "cp866", // DOS Russian
       0x66: "cp865", // DOS Nordic
@@ -132,24 +156,24 @@ function detectDbfEncoding(header: DbfHeader, buffer: Buffer): string {
       0x7a: "cp936", // Windows Simplified Chinese
       0x7b: "cp932", // Windows Japanese
       0x7c: "cp874", // Windows Thai
-      0x7d: "cp1255", // Windows Hebrew
-      0x7e: "cp1256", // Windows Arabic
-      0x7f: "cp1250", // Windows Eastern European
-      0x8c: "cp1251", // Windows Cyrillic
-      0x8d: "cp1253", // Windows Greek
-      0x8e: "cp1254", // Windows Turkish
-      0x96: "cp1257", // Windows Baltic
+      0x7d: "win1255", // Windows Hebrew
+      0x7e: "win1256", // Windows Arabic
+      0x7f: "win1250", // Windows Eastern European
+      0x8c: "win1251", // Windows Cyrillic
+      0x8d: "win1253", // Windows Greek
+      0x8e: "win1254", // Windows Turkish
+      0x96: "win1257", // Windows Baltic
     };
     
     const mapped = codepageMap[header.codepage];
     if (mapped) {
-      return mapped;
+      return normalizeEncodingName(mapped);
     }
   }
   
   // Fallback: Versuche verschiedene Encodings
   // DBF-Dateien sind meist CP1252 (Windows) oder Latin1
-  const testEncodings = ["cp1252", "latin1", "utf-8"];
+  const testEncodings = ["win1252", "latin1", "utf-8"];
   
   for (const enc of testEncodings) {
     try {
@@ -168,8 +192,8 @@ function detectDbfEncoding(header: DbfHeader, buffer: Buffer): string {
     }
   }
   
-  // Standard-Fallback: CP1252 (Windows-Standard für deutsche DBF-Dateien)
-  return "cp1252";
+  // Standard-Fallback: win1252 (Windows-Standard für deutsche DBF-Dateien)
+  return "win1252";
 }
 
 /**
