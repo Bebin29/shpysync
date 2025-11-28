@@ -23,8 +23,9 @@ import { validateDbfFile, validateDbfHeaders } from "../../domain/validators.js"
  * 
  * Unterstützte Datentypen:
  * - C (Character/String)
- * - N (Numeric)
- * - D (Date)
+ * - I (Integer) - 4 Bytes Little-Endian (dBASE IV+), binär gespeichert
+ * - N (Numeric) - als ASCII-String gespeichert
+ * - D (Date) - YYYYMMDD als 8 Bytes ASCII
  * - L (Logical/Boolean)
  * - M (Memo) - wird als leerer String behandelt
  */
@@ -216,6 +217,11 @@ function detectDbfEncoding(header: DbfHeader, buffer: Buffer, fields?: DbfField[
                 isValid = false;
                 break;
               }
+              // Prüfe auf deutsche Umlaute (wenn vorhanden, ist Encoding wahrscheinlich korrekt)
+              if (/[äöüÄÖÜß]/.test(decoded)) {
+                // Umlaute gefunden - Encoding ist wahrscheinlich korrekt
+                console.log(`[DBF] Umlaute gefunden mit Encoding: ${enc}`);
+              }
             }
             
             fieldOffset += field.length;
@@ -327,25 +333,57 @@ function convertDbfFieldValue(
     case "C": // Character
       return iconv.decode(fieldData, encoding).trim();
     
-    case "N": // Numeric
-      const numericStr = iconv.decode(fieldData, encoding).trim();
-      // Entferne führende Nullen, behalte Dezimalpunkt
-      return numericStr || "0";
+    case "I": // Integer - 4 Bytes Little-Endian (dBASE IV+)
+      if (field.length === 4 && fieldData.length >= 4) {
+        const intValue = buffer.readInt32LE(offset);
+        return intValue.toString();
+      }
+      // Fallback: als String behandeln
+      return iconv.decode(fieldData, encoding).trim();
     
-    case "D": // Date (YYYYMMDD)
+    case "N": // Numeric (als ASCII-String gespeichert)
+      const numericStr = iconv.decode(fieldData, encoding).trim();
+      // Prüfe, ob es eine gültige Zahl ist
+      if (numericStr === "" || numericStr === " " || /^\s*$/.test(numericStr)) {
+        return "0";
+      }
+      return numericStr;
+    
+    case "D": // Date (YYYYMMDD als 8 Bytes ASCII)
       const dateStr = iconv.decode(fieldData, encoding).trim();
-      if (dateStr.length === 8) {
+      // Prüfe auf leeres Datum
+      if (dateStr === "" || /^\s*$/.test(dateStr) || /^\s*\/\s*\/\s*$/.test(dateStr)) {
+        return "";
+      }
+      // Prüfe, ob es das Format YYYYMMDD hat (8 Ziffern)
+      if (dateStr.length === 8 && /^\d{8}$/.test(dateStr)) {
         // Konvertiere YYYYMMDD zu DD.MM.YYYY
         const year = dateStr.substring(0, 4);
         const month = dateStr.substring(4, 6);
         const day = dateStr.substring(6, 8);
         return `${day}.${month}.${year}`;
       }
+      // Falls bereits formatiert (z.B. "11/28/2025"), versuche zu parsen
+      const dateMatch = dateStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+      if (dateMatch) {
+        const [, month, day, year] = dateMatch;
+        return `${day.padStart(2, "0")}.${month.padStart(2, "0")}.${year}`;
+      }
       return dateStr;
     
-    case "L": // Logical (T/t/Y/y = true, F/f/N/n = false)
-      const logicalChar = String.fromCharCode(fieldData[0] || 0).toUpperCase();
-      return logicalChar === "T" || logicalChar === "Y" ? "TRUE" : "FALSE";
+    case "L": // Logical (T/t/Y/y = true, F/f/N/n = false, Leer/Null = leer)
+      const logicalByte = fieldData[0] || 0;
+      // Leerzeichen oder Null = leerer Wert
+      if (logicalByte === 0x20 || logicalByte === 0x00) {
+        return "";
+      }
+      const logicalChar = String.fromCharCode(logicalByte).toUpperCase();
+      if (logicalChar === "T" || logicalChar === "Y") {
+        return "TRUE";
+      } else if (logicalChar === "F" || logicalChar === "N") {
+        return "FALSE";
+      }
+      return ""; // Unbekannt = leer
     
     case "M": // Memo (wird als leerer String behandelt)
       return "";
@@ -587,4 +625,5 @@ export async function parseDbfPreview(
     totalRows: rowCount, // Nur die Anzahl der geladenen Zeilen
   };
 }
+
 

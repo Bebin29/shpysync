@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from "electron";
-import type { SyncProgress, SyncLog, SyncResult, PlannedOperation, SyncStartConfig, SyncPreviewRequest, SyncPreviewResponse, SyncTestRequest, AppConfig, CacheStats, DashboardStats, SyncHistoryEntry } from "./types/ipc.js";
+import type { SyncProgress, SyncLog, SyncResult, PlannedOperation, SyncStartConfig, SyncPreviewRequest, SyncPreviewResponse, SyncTestRequest, AppConfig, CacheStats, DashboardStats, SyncHistoryEntry, UpdateInfo, UpdateStatus } from "./types/ipc.js";
 import type { AutoSyncStatus } from "./services/auto-sync-service.js";
 
 /**
@@ -84,6 +84,35 @@ const electronAPI = {
 	dashboard: {
 		getStats: () => ipcRenderer.invoke("dashboard:get-stats") as Promise<DashboardStats>,
 		getHistory: (limit?: number) => ipcRenderer.invoke("dashboard:get-history", limit) as Promise<SyncHistoryEntry[]>,
+	},
+
+	// Update-Funktionen
+	update: {
+		check: () => ipcRenderer.invoke("update:check") as Promise<{ success: boolean; error?: string }>,
+		download: () => ipcRenderer.invoke("update:download") as Promise<{ success: boolean; error?: string }>,
+		install: () => ipcRenderer.invoke("update:install") as Promise<{ success: boolean; error?: string }>,
+		getStatus: () => ipcRenderer.invoke("update:get-status") as Promise<UpdateStatus>,
+		onChecking: (callback: () => void) => {
+			ipcRenderer.on("update:checking-for-update", () => callback());
+		},
+		onAvailable: (callback: (info: UpdateInfo) => void) => {
+			ipcRenderer.on("update:update-available", (_event, info: UpdateInfo) => callback(info));
+		},
+		onNotAvailable: (callback: () => void) => {
+			ipcRenderer.on("update:update-not-available", () => callback());
+		},
+		onDownloadProgress: (callback: (progress: { percent: number; transferred: number; total: number }) => void) => {
+			ipcRenderer.on("update:update-download-progress", (_event, progress) => callback(progress));
+		},
+		onDownloaded: (callback: () => void) => {
+			ipcRenderer.on("update:update-downloaded", () => callback());
+		},
+		onError: (callback: (error: { message: string }) => void) => {
+			ipcRenderer.on("update:update-error", (_event, error: { message: string }) => callback(error));
+		},
+		removeAllListeners: (channel: string) => {
+			ipcRenderer.removeAllListeners(channel);
+		},
 	},
 };
 

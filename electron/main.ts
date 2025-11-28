@@ -188,7 +188,8 @@ import { registerIpcHandlers } from "./services/ipc-handlers.js";
 import { getSyncEngine } from "./services/sync-engine.js";
 import { getLogger } from "./services/logger.js";
 import { getAutoSyncService } from "./services/auto-sync-service.js";
-import { getAutoSyncConfig } from "./services/config-service.js";
+import { getAutoSyncConfig, getUpdateConfig } from "./services/config-service.js";
+import { getUpdateService } from "./services/update-service.js";
 
 // App-Info Handler
 ipcMain.handle("app:version", () => {
@@ -220,6 +221,23 @@ app.whenReady().then(() => {
     }
   } catch (error) {
     logger.error("system", `Fehler beim Starten des Auto-Sync: ${error instanceof Error ? error.message : String(error)}`);
+  }
+
+  // Update-Service initialisieren
+  try {
+    const updateService = getUpdateService();
+    if (mainWindow) {
+      updateService.setMainWindow(mainWindow);
+      
+      // Automatische Update-Prüfung basierend auf Config
+      const updateConfig = getUpdateConfig();
+      if (updateConfig.autoCheckEnabled) {
+        updateService.startAutoCheck(updateConfig.autoCheckInterval);
+        logger.info("system", `Automatische Update-Prüfung aktiviert (Intervall: ${updateConfig.autoCheckInterval} Stunden)`);
+      }
+    }
+  } catch (error) {
+    logger.error("system", `Fehler beim Initialisieren des Update-Services: ${error instanceof Error ? error.message : String(error)}`);
   }
 });
 
