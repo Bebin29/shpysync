@@ -118,6 +118,12 @@ function normalizeEncodingName(codepageName: string): string {
     "cp1255": "win1255",
     "cp1256": "win1256",
     "cp1257": "win1257",
+    "cp437": "cp437",
+    "cp850": "cp850",
+    "cp852": "cp852",
+    "cp866": "cp866",
+    "cp865": "cp865",
+    "cp861": "cp861",
     "latin1": "latin1",
     "iso-8859-1": "latin1",
   };
@@ -126,19 +132,20 @@ function normalizeEncodingName(codepageName: string): string {
 }
 
 /**
- * Erkennt das Encoding einer DBF-Datei.
+ * Erkennt das Encoding einer DBF-Datei durch Testen der tatsächlichen Daten.
  * 
  * @param header - DBF-Header
- * @param buffer - Datei-Buffer (für Magic Bytes)
+ * @param buffer - Datei-Buffer
+ * @param fields - Feldbeschreibungen (für Daten-Test)
  * @returns Encoding-Name (iconv-lite kompatibel)
  */
-function detectDbfEncoding(header: DbfHeader, buffer: Buffer): string {
+function detectDbfEncoding(header: DbfHeader, buffer: Buffer, fields?: DbfField[]): string {
   // Prüfe Codepage-Feld im Header (dBASE IV+)
   if (header.codepage !== undefined && header.codepage !== 0) {
     // Codepage-Mapping (vereinfacht)
     const codepageMap: Record<number, string> = {
       0x01: "cp437", // DOS USA
-      0x02: "cp850", // DOS Multilingual
+      0x02: "cp850", // DOS Multilingual (häufig in deutschen DBF-Dateien)
       0x03: "win1252", // Windows ANSI (iconv-lite Name)
       0x04: "cp10000", // Mac Roman
       0x57: "win1252", // Windows ANSI (alternative)
@@ -167,23 +174,75 @@ function detectDbfEncoding(header: DbfHeader, buffer: Buffer): string {
     
     const mapped = codepageMap[header.codepage];
     if (mapped) {
-      return normalizeEncodingName(mapped);
+      const normalized = normalizeEncodingName(mapped);
+      console.log(`[DBF] Encoding aus Codepage-Feld erkannt: ${header.codepage} (0x${header.codepage.toString(16)}) → ${normalized}`);
+      return normalized;
+    } else {
+      console.log(`[DBF] Unbekannte Codepage im Header: ${header.codepage} (0x${header.codepage.toString(16)})`);
     }
   }
   
-  // Fallback: Versuche verschiedene Encodings
-  // DBF-Dateien sind meist CP1252 (Windows) oder Latin1
-  const testEncodings = ["win1252", "latin1", "utf-8"];
+  // Fallback: Versuche verschiedene Encodings durch Testen der Daten
+  // Priorität: cp850 (häufig in deutschen DBF-Dateien), dann win1252, dann latin1
+  const testEncodings = ["cp850", "win1252", "latin1", "cp437", "cp852"];
   
+  // Wenn Felder vorhanden sind, teste mit echten Datenwerten
+  if (fields && fields.length > 0 && header.recordCount > 0) {
+    const recordOffset = header.headerLength;
+    if (recordOffset + header.recordLength <= buffer.length) {
+      // Teste mit dem ersten Record
+      for (const enc of testEncodings) {
+        try {
+          let isValid = true;
+          let fieldOffset = recordOffset + 1; // Nach Deleted-Flag
+          
+          // Teste die ersten 3 Felder (oder alle, wenn weniger vorhanden)
+          const fieldsToTest = Math.min(3, fields.length);
+          for (let i = 0; i < fieldsToTest; i++) {
+            const field = fields[i];
+            if (fieldOffset + field.length > buffer.length) {
+              isValid = false;
+              break;
+            }
+            
+            const fieldData = buffer.slice(fieldOffset, fieldOffset + field.length);
+            if (field.type === "C") {
+              // Teste Character-Feld
+              const decoded = iconv.decode(fieldData, enc).trim();
+              // Prüfe, ob das Ergebnis sinnvoll aussieht (keine zu vielen Steuerzeichen)
+              const controlChars = (decoded.match(/[\x00-\x1F]/g) || []).length;
+              if (controlChars > decoded.length * 0.1) {
+                // Zu viele Steuerzeichen = wahrscheinlich falsches Encoding
+                isValid = false;
+                break;
+              }
+            }
+            
+            fieldOffset += field.length;
+          }
+          
+          if (isValid) {
+            console.log(`[DBF] Encoding durch Daten-Test erkannt: ${enc}`);
+            return enc;
+          }
+        } catch (error) {
+          // Encoding nicht unterstützt oder Fehler beim Decodieren
+          continue;
+        }
+      }
+    }
+  }
+  
+  // Fallback: Teste nur Feldnamen
   for (const enc of testEncodings) {
     try {
       // Teste, ob Feldnamen sinnvoll decodiert werden können
-      // (Feldnamen sollten druckbare ASCII/ANSI-Zeichen sein)
       const testOffset = 32; // Erste Feldbeschreibung
       if (buffer.length > testOffset + 11) {
         const testName = readNullTerminatedString(buffer, testOffset, 11, enc);
         // Prüfe, ob der Name nur druckbare Zeichen enthält
         if (/^[\x20-\x7E]+$/.test(testName) || /^[\x20-\xFF]+$/.test(testName)) {
+          console.log(`[DBF] Encoding durch Feldnamen-Test erkannt: ${enc}`);
           return enc;
         }
       }
@@ -192,8 +251,9 @@ function detectDbfEncoding(header: DbfHeader, buffer: Buffer): string {
     }
   }
   
-  // Standard-Fallback: win1252 (Windows-Standard für deutsche DBF-Dateien)
-  return "win1252";
+  // Standard-Fallback: cp850 (häufig in deutschen DBF-Dateien)
+  console.log(`[DBF] Encoding-Fallback verwendet: cp850`);
+  return "cp850";
 }
 
 /**
@@ -316,11 +376,21 @@ export function parseDbf(filePath: string): DbfParseResult {
   // Header parsen
   const header = parseDbfHeader(buffer);
   
-  // Encoding erkennen
-  const encoding = detectDbfEncoding(header, buffer);
+  // Feldbeschreibungen vorläufig parsen (mit Standard-Encoding für Feldnamen)
+  // Feldnamen sind meist ASCII-kompatibel, daher verwenden wir win1252 für erste Parsing
+  const fields = parseDbfFields(buffer, header.headerLength, "win1252");
   
-  // Feldbeschreibungen parsen
-  const fields = parseDbfFields(buffer, header.headerLength, encoding);
+  // Encoding erkennen (mit Feldinformationen für bessere Erkennung)
+  const encoding = detectDbfEncoding(header, buffer, fields);
+  
+  // Wenn Encoding anders ist, Feldnamen erneut parsen
+  if (encoding !== "win1252") {
+    const fieldsReencoded = parseDbfFields(buffer, header.headerLength, encoding);
+    // Aktualisiere Feldnamen mit korrektem Encoding
+    for (let i = 0; i < fields.length && i < fieldsReencoded.length; i++) {
+      fields[i].name = fieldsReencoded[i].name;
+    }
+  }
   
   if (fields.length === 0) {
     return {
@@ -403,11 +473,20 @@ export async function parseDbfStream(filePath: string): Promise<DbfStreamResult>
   // Header parsen
   const header = parseDbfHeader(buffer);
   
-  // Encoding erkennen
-  const encoding = detectDbfEncoding(header, buffer);
+  // Feldbeschreibungen vorläufig parsen (mit Standard-Encoding für Feldnamen)
+  const fields = parseDbfFields(buffer, header.headerLength, "win1252");
   
-  // Feldbeschreibungen parsen
-  const fields = parseDbfFields(buffer, header.headerLength, encoding);
+  // Encoding erkennen (mit Feldinformationen für bessere Erkennung)
+  const encoding = detectDbfEncoding(header, buffer, fields);
+  
+  // Wenn Encoding anders ist, Feldnamen erneut parsen
+  if (encoding !== "win1252") {
+    const fieldsReencoded = parseDbfFields(buffer, header.headerLength, encoding);
+    // Aktualisiere Feldnamen mit korrektem Encoding
+    for (let i = 0; i < fields.length && i < fieldsReencoded.length; i++) {
+      fields[i].name = fieldsReencoded[i].name;
+    }
+  }
   
   if (fields.length === 0) {
     return {
