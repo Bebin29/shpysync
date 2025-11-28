@@ -88,6 +88,7 @@ export const autoSyncSchema = z.object({
 	enabled: z.boolean(),
 	interval: z.number().positive().optional(),
 	csvPath: z.string().optional(),
+	dbfPath: z.string().optional(),
 	schedule: z.string().optional(), // Für zukünftige Verwendung (Cron-ähnliche Syntax)
 });
 
@@ -101,6 +102,8 @@ export const appConfigSchema = z.object({
 	defaultColumnMapping: columnMappingSchema.nullable(),
 	apiVersion: z.string().optional(),
 	autoSync: autoSyncSchema,
+	defaultCsvPath: z.string().optional(),
+	defaultDbfPath: z.string().optional(),
 });
 
 export type AppConfigSchema = z.infer<typeof appConfigSchema>;

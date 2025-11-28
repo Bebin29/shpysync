@@ -730,7 +730,8 @@ export default function SettingsPage() {
                       await saveAutoSyncConfig({
                         enabled: autoSyncEnabled,
                         interval: autoSyncInterval,
-                        csvPath: autoSyncCsvPath,
+                        csvPath: autoSyncCsvPath || undefined,
+                        dbfPath: autoSyncDbfPath || undefined,
                       });
                       setConnectionResult({
                         success: true,

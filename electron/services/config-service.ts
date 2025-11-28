@@ -68,6 +68,8 @@ function migrateOldConfig(config: unknown): AppConfig | null {
 		defaultColumnMapping: null,
 		apiVersion: typeof config.apiVersion === "string" ? config.apiVersion : SHOPIFY_API_VERSION,
 		autoSync: isObject(config.autoSync) ? (config.autoSync as AppConfig["autoSync"]) : { enabled: false },
+		defaultCsvPath: typeof config.defaultCsvPath === "string" ? config.defaultCsvPath : undefined,
+		defaultDbfPath: typeof config.defaultDbfPath === "string" ? config.defaultDbfPath : undefined,
 	};
 
 	// Prüfe, ob shop vorhanden ist
@@ -136,6 +138,8 @@ export function getConfig(): AppConfig {
 		defaultColumnMapping: storeTyped.get("defaultColumnMapping"),
 		apiVersion: storeTyped.get("apiVersion"),
 		autoSync: storeTyped.get("autoSync"),
+		defaultCsvPath: storeTyped.get("defaultCsvPath"),
+		defaultDbfPath: storeTyped.get("defaultDbfPath"),
 	};
 	
 	// Migration von alter Struktur
@@ -152,6 +156,8 @@ export function getConfig(): AppConfig {
 			defaultColumnMapping: null,
 			apiVersion: SHOPIFY_API_VERSION,
 			autoSync: { enabled: false },
+			defaultCsvPath: undefined,
+			defaultDbfPath: undefined,
 		};
 	}
 	
@@ -169,13 +175,29 @@ export function setConfig(config: AppConfig): void {
 		throw new Error(`Ungültige Config: ${result.error.message}`);
 	}
 	
-	const storeTyped = store as unknown as { set: (key: string, value: unknown) => void };
+	const storeTyped = store as unknown as { 
+		set: (key: string, value: unknown) => void;
+		delete: (key: string) => void;
+	};
 	storeTyped.set("shop", result.data.shop);
 	storeTyped.set("defaultColumnMapping", result.data.defaultColumnMapping);
 	if (result.data.apiVersion) {
 		storeTyped.set("apiVersion", result.data.apiVersion);
+	} else {
+		storeTyped.delete("apiVersion");
 	}
 	storeTyped.set("autoSync", result.data.autoSync);
+	// Standard-Pfade speichern oder löschen
+	if (result.data.defaultCsvPath) {
+		storeTyped.set("defaultCsvPath", result.data.defaultCsvPath);
+	} else {
+		storeTyped.delete("defaultCsvPath");
+	}
+	if (result.data.defaultDbfPath) {
+		storeTyped.set("defaultDbfPath", result.data.defaultDbfPath);
+	} else {
+		storeTyped.delete("defaultDbfPath");
+	}
 }
 
 /**
@@ -387,8 +409,15 @@ export function setAutoSyncConfig(autoSyncConfig: AppConfig["autoSync"]): void {
  * @param csvPath - Pfad zur CSV-Datei (optional, null zum Löschen)
  */
 export function setDefaultCsvPath(csvPath: string | null): void {
-	const storeTyped = store as unknown as { set: (key: string, value: unknown) => void };
-	storeTyped.set("defaultCsvPath", csvPath || undefined);
+	const storeTyped = store as unknown as { 
+		set: (key: string, value: unknown) => void;
+		delete: (key: string) => void;
+	};
+	if (csvPath) {
+		storeTyped.set("defaultCsvPath", csvPath);
+	} else {
+		storeTyped.delete("defaultCsvPath");
+	}
 }
 
 /**
@@ -397,8 +426,15 @@ export function setDefaultCsvPath(csvPath: string | null): void {
  * @param dbfPath - Pfad zur DBF-Datei (optional, null zum Löschen)
  */
 export function setDefaultDbfPath(dbfPath: string | null): void {
-	const storeTyped = store as unknown as { set: (key: string, value: unknown) => void };
-	storeTyped.set("defaultDbfPath", dbfPath || undefined);
+	const storeTyped = store as unknown as { 
+		set: (key: string, value: unknown) => void;
+		delete: (key: string) => void;
+	};
+	if (dbfPath) {
+		storeTyped.set("defaultDbfPath", dbfPath);
+	} else {
+		storeTyped.delete("defaultDbfPath");
+	}
 }
 
 /**
