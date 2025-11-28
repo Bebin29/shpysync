@@ -105,7 +105,7 @@ export interface PlannedOperation {
 }
 
 export type LogLevel = "debug" | "info" | "warn" | "error";
-export type LogCategory = "csv" | "shopify" | "matching" | "inventory" | "price" | "system" | "cache" | "history" | "sync";
+export type LogCategory = "csv" | "shopify" | "matching" | "inventory" | "price" | "system" | "cache" | "history" | "sync" | "update";
 
 export interface SyncLog {
   id: string;
@@ -161,6 +161,11 @@ export interface AppConfig {
 	// Standard-Pfade für manuelle Sync (werden automatisch verwendet, wenn gesetzt)
 	defaultCsvPath?: string; // Standard-CSV-Pfad für manuelle Sync
 	defaultDbfPath?: string; // Standard-DBF-Pfad für manuelle Sync (wird bevorzugt, wenn gesetzt)
+	// Update-Konfiguration
+	update: {
+		autoCheckEnabled: boolean;
+		autoCheckInterval: number; // in Stunden (z.B. 24)
+	};
 }
 
 // CSV-Types
@@ -246,5 +251,22 @@ export interface SyncHistoryEntry {
 		locationName: string;
 		columnMapping: ColumnMapping;
 	};
+}
+
+// Update-Types
+export interface UpdateInfo {
+	version: string;
+	releaseDate: string;
+	releaseNotes?: string;
+}
+
+export interface UpdateStatus {
+	checking: boolean;
+	available: boolean;
+	downloaded: boolean;
+	downloading: boolean;
+	progress: number;
+	error: string | null;
+	info: UpdateInfo | null;
 }
 

@@ -290,6 +290,14 @@ export class SyncEngine {
 				throw new Error("Sync wurde abgebrochen");
 			}
 
+			// Cache aktualisieren nach erfolgreichen Updates (im Hintergrund)
+			if (totalSuccess > 0) {
+				// Asynchron im Hintergrund, blockiert nicht den Sync
+				this.refreshCacheAfterSync(config.shopConfig).catch((error) => {
+					// Fehler bereits in refreshCacheAfterSync geloggt
+				});
+			}
+
 			// Ergebnis senden
 			const endTime = new Date();
 			const result: SyncResult = {
@@ -460,6 +468,39 @@ export class SyncEngine {
 		}
 
 		return products;
+	}
+
+	/**
+	 * Aktualisiert den Cache nach erfolgreichen Updates.
+	 * Lädt alle Produkte von Shopify neu und speichert sie im Cache.
+	 * 
+	 * @param shopConfig - Shop-Konfiguration
+	 */
+	private async refreshCacheAfterSync(shopConfig: ShopConfig): Promise<void> {
+		try {
+			this.logger.info("cache", "Aktualisiere Cache nach erfolgreichen Updates...");
+
+			const products = await getAllProductsWithVariants(
+				{
+					shopUrl: shopConfig.shopUrl,
+					accessToken: shopConfig.accessToken,
+				},
+				shopConfig.locationId
+			);
+
+			const cacheService = getCacheService();
+			cacheService.initialize();
+			cacheService.saveProducts(products);
+
+			this.logger.info("cache", "Cache erfolgreich aktualisiert", {
+				productCount: products.length
+			});
+		} catch (error) {
+			// Fehler beim Cache-Update sollten den Sync nicht beeinträchtigen
+			this.logger.warn("cache", "Fehler beim Aktualisieren des Caches nach Sync", {
+				error: error instanceof Error ? error.message : String(error)
+			});
+		}
 	}
 
 	/**
@@ -1031,6 +1072,11 @@ export class SyncEngine {
 				this.logger.info("inventory", `Test-Sync erfolgreich! Bestand wurde von ${testOperation.oldValue} auf ${testOperation.newValue} aktualisiert.`, {
 					oldValue: testOperation.oldValue,
 					newValue: testOperation.newValue,
+				});
+
+				// Cache aktualisieren nach erfolgreichem Test-Update (im Hintergrund)
+				this.refreshCacheAfterSync(shopConfig).catch((error) => {
+					// Fehler bereits in refreshCacheAfterSync geloggt
 				});
 
 				// Fortschritt auf 100% setzen
