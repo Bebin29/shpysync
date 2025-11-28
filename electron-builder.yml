@@ -83,3 +83,12 @@ nsis:
 # TEMPORÄR DEAKTIVIERT: Test für ES Module Export-Problem
 asar: false
 
+# Update-Konfiguration für GitHub Releases
+publish:
+  provider: github
+  # owner und repo werden automatisch aus package.json repository Feld gelesen
+  # Falls nicht vorhanden, können sie hier manuell gesetzt werden:
+  # owner: dein-username
+  # repo: shpysync
+  private: false  # Setze auf true für private Repositories
+

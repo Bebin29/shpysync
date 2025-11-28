@@ -11,6 +11,7 @@ import { TestTube, Save, CheckCircle2, AlertCircle, Loader2, RefreshCw, Clock, P
 import { useConfig } from "@/app/hooks/use-config";
 import { useElectron } from "@/app/hooks/use-electron";
 import { Checkbox } from "@/components/ui/checkbox";
+import { UpdateSection } from "@/app/components/update-section";
 
 /**
  * Einstellungs-Seite für Shop-Konfiguration.
@@ -31,6 +32,10 @@ export default function SettingsPage() {
     startAutoSync,
     stopAutoSync,
     testAutoSync,
+    updateConfig,
+    updateConfigLoading,
+    loadUpdateConfig,
+    saveUpdateConfig,
   } = useConfig();
   
   const { csv } = useElectron();
@@ -876,6 +881,79 @@ export default function SettingsPage() {
             <p className="text-xs text-muted-foreground">
               Standard-CSV-Datei für manuelle Synchronisation (nur wenn keine DBF-Datei gesetzt)
             </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Updates */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Updates</CardTitle>
+          <CardDescription>
+            Automatische Update-Prüfung und Installation konfigurieren
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="update-auto-check-enabled"
+              checked={updateConfig?.autoCheckEnabled ?? true}
+              onCheckedChange={async (checked) => {
+                if (updateConfig) {
+                  try {
+                    await saveUpdateConfig({
+                      ...updateConfig,
+                      autoCheckEnabled: checked === true,
+                    });
+                  } catch (err) {
+                    console.error("Fehler beim Speichern der Update-Config:", err);
+                  }
+                }
+              }}
+            />
+            <Label htmlFor="update-auto-check-enabled" className="cursor-pointer">
+              Automatische Update-Prüfung aktivieren
+            </Label>
+          </div>
+
+          {updateConfig?.autoCheckEnabled && (
+            <div className="space-y-2">
+              <Label htmlFor="update-check-interval">Prüfungs-Intervall</Label>
+              <Select
+                value={updateConfig.autoCheckInterval.toString()}
+                onValueChange={async (value) => {
+                  if (updateConfig) {
+                    try {
+                      await saveUpdateConfig({
+                        ...updateConfig,
+                        autoCheckInterval: parseInt(value, 10),
+                      });
+                    } catch (err) {
+                      console.error("Fehler beim Speichern der Update-Config:", err);
+                    }
+                  }
+                }}
+              >
+                <SelectTrigger id="update-check-interval">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">Alle 1 Stunde</SelectItem>
+                  <SelectItem value="6">Alle 6 Stunden</SelectItem>
+                  <SelectItem value="12">Alle 12 Stunden</SelectItem>
+                  <SelectItem value="24">Täglich (24 Stunden)</SelectItem>
+                  <SelectItem value="168">Wöchentlich (7 Tage)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Wie oft die App automatisch auf Updates prüfen soll
+              </p>
+            </div>
+          )}
+
+          <div className="pt-4 border-t">
+            <Label className="mb-2 block">Manuelle Update-Prüfung</Label>
+            <UpdateSection />
           </div>
         </CardContent>
       </Card>

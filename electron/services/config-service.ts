@@ -24,6 +24,10 @@ const store = new Store<AppConfig>({
     },
     defaultCsvPath: undefined,
     defaultDbfPath: undefined,
+    update: {
+      autoCheckEnabled: true,
+      autoCheckInterval: 24, // Standard: 24 Stunden
+    },
   },
   encryptionKey: "wawisync-config-key", // TODO: In Produktion aus sicherer Quelle laden
 });
@@ -70,6 +74,12 @@ function migrateOldConfig(config: unknown): AppConfig | null {
 		autoSync: isObject(config.autoSync) ? (config.autoSync as AppConfig["autoSync"]) : { enabled: false },
 		defaultCsvPath: typeof config.defaultCsvPath === "string" ? config.defaultCsvPath : undefined,
 		defaultDbfPath: typeof config.defaultDbfPath === "string" ? config.defaultDbfPath : undefined,
+		update: isObject(config.update)
+			? (config.update as AppConfig["update"])
+			: {
+					autoCheckEnabled: true,
+					autoCheckInterval: 24,
+				},
 	};
 
 	// Prüfe, ob shop vorhanden ist
@@ -140,6 +150,7 @@ export function getConfig(): AppConfig {
 		autoSync: storeTyped.get("autoSync"),
 		defaultCsvPath: storeTyped.get("defaultCsvPath"),
 		defaultDbfPath: storeTyped.get("defaultDbfPath"),
+		update: storeTyped.get("update"),
 	};
 	
 	// Migration von alter Struktur
@@ -158,6 +169,10 @@ export function getConfig(): AppConfig {
 			autoSync: { enabled: false },
 			defaultCsvPath: undefined,
 			defaultDbfPath: undefined,
+			update: {
+				autoCheckEnabled: true,
+				autoCheckInterval: 24,
+			},
 		};
 	}
 	
@@ -492,5 +507,36 @@ export function validateShopConfig(config: ShopConfig): {
 			errors: [error instanceof Error ? error.message : String(error)],
 		};
 	}
+}
+
+/**
+ * Lädt die Update-Konfiguration.
+ * 
+ * @returns Update-Konfiguration
+ */
+export function getUpdateConfig(): AppConfig["update"] {
+	const config = getConfig();
+	return config.update;
+}
+
+/**
+ * Speichert die Update-Konfiguration.
+ * 
+ * @param updateConfig - Update-Konfiguration
+ * @throws Error wenn Konfiguration ungültig ist
+ */
+export function setUpdateConfig(updateConfig: AppConfig["update"]): void {
+	// Validierung
+	if (updateConfig.autoCheckInterval <= 0) {
+		throw new Error("Update-Prüfungs-Intervall muss größer als 0 sein");
+	}
+
+	// Speichere Config
+	const currentConfig = getConfig();
+	const updatedConfig: AppConfig = {
+		...currentConfig,
+		update: updateConfig,
+	};
+	setConfig(updatedConfig);
 }
 

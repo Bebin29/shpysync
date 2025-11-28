@@ -214,6 +214,57 @@ export function useConfig() {
     }
   }, []);
 
+  // Update-Config-State
+  const [updateConfig, setUpdateConfigState] = useState<AppConfig["update"] | null>(null);
+  const [updateConfigLoading, setUpdateConfigLoading] = useState(false);
+
+  // Lade Update-Config
+  const loadUpdateConfig = useCallback(async () => {
+    try {
+      setUpdateConfigLoading(true);
+      setError(null);
+
+      if (typeof window === "undefined" || !window.electron) {
+        setUpdateConfigLoading(false);
+        return;
+      }
+
+      const config = await window.electron.config.get();
+      setUpdateConfigState(config.update);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Fehler beim Laden der Update-Config");
+    } finally {
+      setUpdateConfigLoading(false);
+    }
+  }, []);
+
+  // Lade Update-Config beim Mount
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.electron) {
+      loadUpdateConfig();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Speichere Update-Config
+  const saveUpdateConfig = useCallback(async (config: AppConfig["update"]) => {
+    try {
+      setError(null);
+      if (typeof window !== "undefined" && window.electron) {
+        const currentConfig = await window.electron.config.get();
+        await window.electron.config.set({
+          ...currentConfig,
+          update: config,
+        });
+        setUpdateConfigState(config);
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Fehler beim Speichern der Update-Config";
+      setError(message);
+      throw err;
+    }
+  }, []);
+
   return {
     shopConfig,
     columnMapping,
@@ -234,6 +285,11 @@ export function useConfig() {
     startAutoSync,
     stopAutoSync,
     testAutoSync,
+    // Update-Config
+    updateConfig,
+    updateConfigLoading,
+    loadUpdateConfig,
+    saveUpdateConfig,
   };
 }
 

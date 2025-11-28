@@ -75,3 +75,4 @@ export function detectFileType(filePath: string): FileType {
   return detectFileTypeByExtension(filePath);
 }
 
+

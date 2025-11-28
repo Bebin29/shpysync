@@ -95,6 +95,16 @@ export const autoSyncSchema = z.object({
 export type AutoSyncSchema = z.infer<typeof autoSyncSchema>;
 
 /**
+ * Update-Config Schema.
+ */
+export const updateConfigSchema = z.object({
+	autoCheckEnabled: z.boolean(),
+	autoCheckInterval: z.number().positive(),
+});
+
+export type UpdateConfigSchema = z.infer<typeof updateConfigSchema>;
+
+/**
  * App-Config Schema.
  */
 export const appConfigSchema = z.object({
@@ -104,6 +114,7 @@ export const appConfigSchema = z.object({
 	autoSync: autoSyncSchema,
 	defaultCsvPath: z.string().optional(),
 	defaultDbfPath: z.string().optional(),
+	update: updateConfigSchema,
 });
 
 export type AppConfigSchema = z.infer<typeof appConfigSchema>;

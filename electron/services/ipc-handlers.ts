@@ -28,7 +28,8 @@ import { getAutoSyncService, type AutoSyncConfig, type AutoSyncStatus } from "./
 import { getCacheService } from "./cache-service.js";
 import { getSyncHistoryService } from "./sync-history-service.js";
 import { getAllProductsWithVariants } from "./shopify-product-service.js";
-import type { CacheStats, DashboardStats, SyncHistoryEntry } from "../types/ipc.js";
+import { getUpdateService } from "./update-service.js";
+import type { CacheStats, DashboardStats, SyncHistoryEntry, UpdateStatus } from "../types/ipc.js";
 
 /**
  * Registriert alle IPC-Handler für die Electron-App.
@@ -562,6 +563,54 @@ export function registerIpcHandlers(): void {
       const errorInfo = errorToErrorInfo(error);
       throw new Error(errorInfo.userMessage);
     }
+  });
+
+  // Update-Handler
+  ipcMain.handle("update:check", async (): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const updateService = getUpdateService();
+      await updateService.checkForUpdates();
+      return { success: true };
+    } catch (error) {
+      const errorInfo = errorToErrorInfo(error);
+      return {
+        success: false,
+        error: errorInfo.userMessage,
+      };
+    }
+  });
+
+  ipcMain.handle("update:download", async (): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const updateService = getUpdateService();
+      await updateService.downloadUpdate();
+      return { success: true };
+    } catch (error) {
+      const errorInfo = errorToErrorInfo(error);
+      return {
+        success: false,
+        error: errorInfo.userMessage,
+      };
+    }
+  });
+
+  ipcMain.handle("update:install", async (): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const updateService = getUpdateService();
+      await updateService.installUpdate();
+      return { success: true };
+    } catch (error) {
+      const errorInfo = errorToErrorInfo(error);
+      return {
+        success: false,
+        error: errorInfo.userMessage,
+      };
+    }
+  });
+
+  ipcMain.handle("update:get-status", async (): Promise<UpdateStatus> => {
+    const updateService = getUpdateService();
+    return updateService.getStatus();
   });
 }
 
