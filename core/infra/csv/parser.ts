@@ -1,7 +1,7 @@
 import * as fs from "fs";
 import { parse } from "csv-parse/sync";
 import { parse as parseStream } from "csv-parse";
-import * as iconv from "iconv-lite";
+import iconv from "iconv-lite";
 import { Transform } from "stream";
 import type { RawCsvRow, CsvRow } from "../../domain/types.js";
 import { columnLetterToIndex } from "../../utils/normalization.js";
