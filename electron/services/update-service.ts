@@ -32,6 +32,15 @@ export class UpdateService {
 	 * Initialisiert den Auto-Updater.
 	 */
 	private setupAutoUpdater(): void {
+		// GitHub Token aus Umgebungsvariable lesen (für private Repositories)
+		// electron-updater liest automatisch GH_TOKEN oder GITHUB_TOKEN aus process.env
+		const githubToken = process.env.GH_TOKEN || process.env.GITHUB_TOKEN;
+		if (githubToken) {
+			this.logger.info("update", "GitHub Token gefunden - Updates für private Repositories aktiviert");
+		} else {
+			this.logger.info("update", "Kein GitHub Token gesetzt - Updates nur für öffentliche Repositories");
+		}
+
 		// Konfiguration
 		autoUpdater.autoDownload = false; // Manuelles Download-Start
 		autoUpdater.autoInstallOnAppQuit = true; // Auto-Install beim App-Beenden
@@ -95,10 +104,21 @@ export class UpdateService {
 		});
 
 		autoUpdater.on("error", (error) => {
-			this.logger.error("update", `Update-Fehler: ${error.message}`);
-			this.status.checking = false;
-			this.status.error = error.message;
-			this.notifyRenderer("update-error", { message: error.message });
+			// 404-Fehler sind normal, wenn noch keine Releases vorhanden sind oder Repository privat ist
+			const is404Error = error.message.includes("404") || error.message.includes("Not Found");
+			
+			if (is404Error) {
+				this.logger.info("update", "Keine Releases gefunden oder Repository nicht öffentlich zugänglich");
+				this.status.checking = false;
+				this.status.available = false;
+				this.status.error = null; // Kein Fehler, einfach keine Updates verfügbar
+				this.notifyRenderer("update-not-available");
+			} else {
+				this.logger.error("update", `Update-Fehler: ${error.message}`);
+				this.status.checking = false;
+				this.status.error = error.message;
+				this.notifyRenderer("update-error", { message: error.message });
+			}
 		});
 
 		autoUpdater.on("download-progress", (progress) => {

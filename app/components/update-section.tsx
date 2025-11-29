@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Download, CheckCircle, AlertCircle, X, RefreshCw, Loader2 } from "lucide-react";
-import type { UpdateInfo, UpdateStatus } from "@/app/types/electron";
+import type { UpdateStatus } from "@/app/types/electron";
 
 /**
  * Update-Section Komponente für die Verwaltung von App-Updates.
@@ -37,15 +37,27 @@ export function UpdateSection() {
 			);
 		});
 
-		window.electron.update.onAvailable((info) => {
-			setStatus((prev) => ({
-				...prev,
-				checking: false,
-				available: true,
-				info,
-			}));
-			setShowNotification(true);
-		});
+	window.electron.update.onAvailable((info) => {
+		setStatus((prev) =>
+			prev
+				? {
+						...prev,
+						checking: false,
+						available: true,
+						info,
+					}
+				: {
+						checking: false,
+						available: true,
+						downloaded: false,
+						downloading: false,
+						progress: 0,
+						error: null,
+						info,
+					}
+		);
+		setShowNotification(true);
+	});
 
 		window.electron.update.onNotAvailable(() => {
 			setStatus((prev) =>
