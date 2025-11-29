@@ -25,14 +25,18 @@
 **Ziel:** Entwicklung einer modernen, benutzerfreundlichen Electron-App zur Synchronisation von Warenbeständen zwischen einem POS-System und Shopify.
 
 **Hauptfunktionen:**
-- CSV-Datei-Upload und -Verarbeitung
+- CSV/DBF-Datei-Upload und -Verarbeitung
 - Shopify-Verbindung konfigurieren
 - Spalten-Mapping (SKU, Name, Preis, Bestand)
 - Vorschau der Updates vor Ausführung
+- Test-Modus für einzelne Artikel
 - Echtzeit-Fortschrittsanzeige
 - Logging und Fehlerbehandlung
-- Automatische Synchronisation (optional)
-- Mehrere Shop-Konfigurationen verwalten
+- Automatische Synchronisation (Scheduler)
+- Automatische Updates über GitHub Releases
+- Sichere Token-Speicherung mit Verschlüsselung
+- Code-Signing Support
+- Mehrere Shop-Konfigurationen verwalten (v1.2)
 
 ---
 
@@ -45,12 +49,14 @@
 #### ✅ Muss-Features (v1.0)
 
 1. **Manuelle Synchronisation**
-   - CSV-Upload (Drag & Drop oder Dateiauswahl)
+   - CSV/DBF-Upload (Drag & Drop oder Dateiauswahl)
    - Spalten-Mapping (SKU, Name, Preis, Bestand)
    - Vorschau der geplanten Updates
    - Bestätigung vor Ausführung
    - Echtzeit-Fortschrittsanzeige
    - Ergebnis-Report mit Erfolg/Fehler-Statistiken
+   - **Test-Modus** für einzelne Artikel (Bestand > 0)
+   - Automatisches Überspringen von Schritten (wenn Pfad/Mapping gespeichert)
 
 2. **Shop-Konfiguration**
    - **Ein Shop** pro Installation
@@ -79,36 +85,59 @@
    - Logs exportieren
    - Nicht-gematchte Zeilen als CSV exportieren
 
+7. **Automatische Synchronisation** ✅ (v1.0)
+   - Scheduler-basierte Auto-Sync
+   - Konfigurierbares Intervall (15, 30, 60, 120 Minuten)
+   - CSV/DBF-Pfad-Konfiguration
+   - Auto-Sync-Status und Historie
+   - Start/Stop-Funktionalität
+
+8. **Update-Service** ✅ (v1.0)
+   - Automatische Update-Prüfung über GitHub Releases
+   - Konfigurierbares Prüf-Intervall
+   - Manuelles Update-Check
+   - Download und Installation von Updates
+   - Unterstützung für öffentliche und private Repositories
+
+9. **Code-Signing Support** ✅ (v1.0)
+   - Self-Signed-Zertifikat für Entwicklung
+   - Support für echte Code-Signing-Zertifikate
+   - Automatische Signierung im Build-Prozess
+
 #### ❌ Nicht im MVP (Post-MVP)
 
-- **Automatische Synchronisation** (Phase 10) → v1.1
 - **Multi-Shop-Management** → v1.2
-- **Auto-Updater** (Teile von Phase 12) → v1.1
 - **API-Version-Manager** (automatische Updates) → v1.2
 - **Multi-Location-Support** → v1.2
 - **E2E-Tests** (Unit- und Integration-Tests reichen für MVP) → v1.1
 
 ### MVP-Success-Kriterien
 
-- ✅ CSV kann hochgeladen und verarbeitet werden
+- ✅ CSV/DBF kann hochgeladen und verarbeitet werden
 - ✅ Spalten können gemappt werden
 - ✅ Vorschau zeigt alle geplanten Updates korrekt an
 - ✅ Sync führt Updates erfolgreich aus (Preise + Bestände)
+- ✅ Test-Modus für einzelne Artikel funktioniert
 - ✅ Fehler werden benutzerfreundlich angezeigt
 - ✅ Partial-Success funktioniert (einige Updates fehlgeschlagen, andere erfolgreich)
 - ✅ Ergebnisse können exportiert werden
 - ✅ Matching-Logik identisch zum Python-Skript (Paritäts-Tests bestehen)
+- ✅ Auto-Sync funktioniert mit konfigurierbarem Intervall
+- ✅ Update-Service prüft automatisch auf neue Releases
+- ✅ Code-Signing wird unterstützt
 
 ---
 
 ## 🚀 Post-MVP Features (v1.1+)
 
-### v1.1 - Automatisierung & Stabilität
+### v1.1 - Erweiterte Features & Stabilität
 
-- Automatische Synchronisation (Scheduler)
-- Auto-Updater
+- ✅ Automatische Synchronisation (Scheduler) - **Bereits in v1.0 implementiert**
+- ✅ Auto-Updater - **Bereits in v1.0 implementiert**
 - Erweiterte E2E-Tests
 - Performance-Optimierungen
+- Erweiterte Export-Formate (JSON, Excel)
+- **Remote Error Monitoring & Fernwartung mit Sentry** 🆕
 
 ### v1.2 - Multi-Shop & Erweiterungen
 
@@ -126,14 +155,384 @@
 
 ---
 
+## 🔍 Remote Error Monitoring & Fernwartung (v1.1)
+
+### Übersicht
+
+**Ziel:** Fehler aus der Ferne überwachen und analysieren, um Support zu verbessern und Probleme schneller zu beheben.
+
+**Szenario:** Ein Benutzer hat einen Fehler mit dem Tool, meldet sich beim Entwickler, und dieser kann dann im Sentry-Dashboard die Fehlermeldung, den Stack-Trace und den Kontext sehen, um schnell den Fehler zu identifizieren und zu beheben.
+
+### Sentry Integration
+
+**Service:** [Sentry](https://sentry.io/) - Kostenloser Plan
+- **5.000 Events/Monat** (ausreichend für kritische Fehler)
+- **1 Projekt**
+- **30 Tage Datenaufbewahrung**
+- **Source Maps Support** für besseres Debugging
+- **Breadcrumbs** für Kontext-Tracking
+- **User Context** (anonymisiert)
+- **E-Mail-Alerts** bei neuen Fehlern
+
+**Vorteile:**
+- ✅ Gute Electron-Unterstützung (`@sentry/electron`)
+- ✅ Einfache Integration
+- ✅ Source Maps für lesbare Stack-Traces
+- ✅ Breadcrumbs für besseren Kontext
+- ✅ Automatische Gruppierung ähnlicher Fehler
+- ✅ Release-Tracking
+
+### Features
+
+#### 1. Automatische Fehlerberichterstattung
+
+- **Alle `WawiError` werden automatisch erfasst:**
+  - Fehler-Code und Schweregrad
+  - Stack-Trace mit Source Maps
+  - Kontext-Informationen (App-Version, OS, Sync-Status)
+  - Breadcrumbs (letzte Aktionen vor dem Fehler)
+
+- **Nur kritische Fehler senden:**
+  - `error` und `fatal` Severity
+  - `warning` nur bei wichtigen System-Fehlern
+  - `info` wird nicht gesendet (spart Events)
+
+#### 2. Benutzer-Kontext (anonymisiert)
+
+**Gesendete Informationen:**
+- App-Version (z.B. "1.0.0")
+- Betriebssystem und Version (z.B. "Windows 10", "macOS 14.0")
+- Electron-Version
+- Fehler-Zeitpunkt
+- Sync-Status (während Sync oder nicht)
+- Fehler-Code und Kategorie
+- **Keine persönlichen Daten:**
+  - ❌ Keine Namen
+  - ❌ Keine E-Mails
+  - ❌ Keine Shop-URLs im Klartext (nur Hash)
+  - ❌ Keine Access-Tokens
+  - ❌ Keine CSV-Daten
+
+#### 3. Opt-in/Opt-out
+
+- **Einstellung in Settings:**
+  - Toggle: "Fehlerberichte an Entwickler senden"
+  - Standard: **Opt-in** (aber mit klarer Information)
+  - Benutzer kann jederzeit deaktivieren
+  - Link zu Datenschutzerklärung
+
+- **Transparenz:**
+  - Klare Information, was gesendet wird
+  - Was nicht gesendet wird (Datenschutz)
+  - Warum es hilfreich ist (schnellere Fehlerbehebung)
+
+#### 4. Support-Workflow
+
+**Ablauf:**
+1. Benutzer erlebt Fehler in der App
+2. Fehler wird automatisch an Sentry gesendet (wenn Opt-in aktiviert)
+3. Benutzer meldet sich beim Entwickler (z.B. per E-Mail)
+4. Entwickler kann im Sentry-Dashboard:
+   - Fehler-ID sehen (wenn Benutzer sie mitteilt)
+   - Stack-Trace analysieren
+   - Kontext-Informationen prüfen
+   - Breadcrumbs durchsehen
+   - Ähnliche Fehler finden
+5. Schnelle Fehleranalyse und Fix
+
+**Fehler-ID:**
+- Jeder Fehler hat eine eindeutige ID
+- Kann in der UI angezeigt werden (optional)
+- Benutzer kann diese ID beim Support angeben
+
+### Implementierung
+
+#### 1. Dependencies
+
+```bash
+npm install @sentry/electron
+```
+
+#### 2. Service-Implementierung
+
+**Datei:** `electron/services/error-monitoring-service.ts`
+
+```typescript
+import * as Sentry from "@sentry/electron";
+import { app } from "electron";
+import { getConfig } from "./config-service.js";
+
+/**
+ * Error Monitoring Service für Sentry Integration.
+ * 
+ * Sendet Fehler automatisch an Sentry für Remote-Monitoring.
+ */
+export class ErrorMonitoringService {
+  private isInitialized = false;
+  private isEnabled = false;
+
+  /**
+   * Initialisiert Sentry mit DSN und Konfiguration.
+   */
+  initialize(): void {
+    if (this.isInitialized) {
+      return;
+    }
+
+    const config = getConfig();
+    this.isEnabled = config.errorReporting?.enabled ?? true; // Default: Opt-in
+
+    if (!this.isEnabled) {
+      return;
+    }
+
+    // Sentry DSN aus Umgebungsvariable oder Config
+    const dsn = process.env.SENTRY_DSN || config.errorReporting?.dsn;
+    
+    if (!dsn) {
+      console.warn("Sentry DSN nicht konfiguriert. Error Monitoring deaktiviert.");
+      return;
+    }
+
+    Sentry.init({
+      dsn,
+      environment: app.isPackaged ? "production" : "development",
+      release: app.getVersion(),
+      // Nur kritische Fehler senden
+      beforeSend(event, hint) {
+        // Filtere nur error und fatal
+        if (event.level === "info" || event.level === "warning") {
+          return null; // Nicht senden
+        }
+        return event;
+      },
+      // Anonymisiere sensible Daten
+      beforeBreadcrumb(breadcrumb) {
+        // Entferne sensible Daten aus Breadcrumbs
+        if (breadcrumb.data) {
+          // Entferne Token-ähnliche Strings
+          Object.keys(breadcrumb.data).forEach(key => {
+            const value = breadcrumb.data[key];
+            if (typeof value === "string" && (value.includes("shpat_") || value.includes("token"))) {
+              breadcrumb.data[key] = "[REDACTED]";
+            }
+          });
+        }
+        return breadcrumb;
+      },
+    });
+
+    // Setze User Context (anonymisiert)
+    Sentry.setUser({
+      id: undefined, // Keine User-ID
+      username: undefined, // Kein Username
+      email: undefined, // Keine E-Mail
+      // Nur technische Informationen
+      ip_address: undefined, // Keine IP
+    });
+
+    // Setze Tags
+    Sentry.setTag("app_version", app.getVersion());
+    Sentry.setTag("electron_version", process.versions.electron);
+    Sentry.setTag("platform", process.platform);
+
+    this.isInitialized = true;
+    console.log("Sentry Error Monitoring initialisiert");
+  }
+
+  /**
+   * Sendet einen Fehler an Sentry.
+   */
+  captureError(error: Error, context?: Record<string, unknown>): void {
+    if (!this.isEnabled || !this.isInitialized) {
+      return;
+    }
+
+    // Setze zusätzlichen Kontext
+    if (context) {
+      Sentry.setContext("error_context", context);
+    }
+
+    // Sende Fehler
+    Sentry.captureException(error);
+  }
+
+  /**
+   * Sendet eine benutzerdefinierte Nachricht.
+   */
+  captureMessage(message: string, level: Sentry.SeverityLevel = "error"): void {
+    if (!this.isEnabled || !this.isInitialized) {
+      return;
+    }
+
+    Sentry.captureMessage(message, level);
+  }
+
+  /**
+   * Aktiviert oder deaktiviert Error Monitoring.
+   */
+  setEnabled(enabled: boolean): void {
+    this.isEnabled = enabled;
+    
+    if (enabled && !this.isInitialized) {
+      this.initialize();
+    }
+  }
+
+  /**
+   * Gibt zurück, ob Error Monitoring aktiviert ist.
+   */
+  getEnabled(): boolean {
+    return this.isEnabled && this.isInitialized;
+  }
+}
+
+// Singleton-Instanz
+let errorMonitoringServiceInstance: ErrorMonitoringService | null = null;
+
+export function getErrorMonitoringService(): ErrorMonitoringService {
+  if (!errorMonitoringServiceInstance) {
+    errorMonitoringServiceInstance = new ErrorMonitoringService();
+  }
+  return errorMonitoringServiceInstance;
+}
+```
+
+#### 3. Integration in Error-Handler
+
+**Datei:** `electron/services/error-handler.ts` (erweitern)
+
+```typescript
+import { getErrorMonitoringService } from "./error-monitoring-service.js";
+import { WawiError } from "../../core/domain/errors.js";
+
+export function handleError(error: unknown, context?: Record<string, unknown>): void {
+  const errorMonitoring = getErrorMonitoringService();
+  
+  // Konvertiere zu Error-Objekt
+  let errorObj: Error;
+  if (error instanceof WawiError) {
+    errorObj = error;
+    // Setze zusätzlichen Kontext für Sentry
+    errorMonitoring.captureError(errorObj, {
+      code: error.code,
+      severity: error.severity,
+      details: error.details,
+      ...context,
+    });
+  } else if (error instanceof Error) {
+    errorObj = error;
+    errorMonitoring.captureError(errorObj, context);
+  } else {
+    errorObj = new Error(String(error));
+    errorMonitoring.captureError(errorObj, context);
+  }
+}
+```
+
+#### 4. Config-Erweiterung
+
+**Datei:** `electron/types/ipc.ts` (erweitern)
+
+```typescript
+export interface AppConfig {
+  // ... bestehende Felder
+  errorReporting?: {
+    enabled: boolean;
+    dsn?: string; // Optional, kann auch über Umgebungsvariable gesetzt werden
+  };
+}
+```
+
+#### 5. Settings-UI
+
+**Datei:** `app/settings/page.tsx` (erweitern)
+
+- Toggle für "Fehlerberichte an Entwickler senden"
+- Information über Datenschutz
+- Link zu Datenschutzerklärung
+- Optional: Anzeige der letzten gesendeten Fehler
+
+#### 6. Main Process Initialisierung
+
+**Datei:** `electron/main.ts` (erweitern)
+
+```typescript
+import { getErrorMonitoringService } from "./services/error-monitoring-service.js";
+
+// Initialisiere Error Monitoring beim App-Start
+app.whenReady().then(() => {
+  const errorMonitoring = getErrorMonitoringService();
+  errorMonitoring.initialize();
+  
+  // ... restliche Initialisierung
+});
+```
+
+### Datenschutz & Sicherheit
+
+**Gesendete Daten:**
+- ✅ App-Version
+- ✅ Betriebssystem und Version
+- ✅ Electron-Version
+- ✅ Fehler-Code und Stack-Trace
+- ✅ Breadcrumbs (letzte Aktionen)
+- ✅ Zeitpunkt des Fehlers
+
+**Nicht gesendete Daten:**
+- ❌ Persönliche Informationen (Namen, E-Mails)
+- ❌ Shop-URLs im Klartext (nur Hash, falls nötig)
+- ❌ Access-Tokens
+- ❌ CSV-Daten
+- ❌ Produktdaten
+- ❌ IP-Adressen
+
+**Anonymisierung:**
+- Alle sensiblen Daten werden vor dem Senden entfernt
+- Breadcrumbs werden gefiltert
+- User Context enthält keine persönlichen Daten
+
+### Konfiguration
+
+**Sentry DSN:**
+- Kann über Umgebungsvariable `SENTRY_DSN` gesetzt werden
+- Oder in der Config gespeichert (optional)
+- Für Production: DSN sollte nicht im Code hardcoded sein
+
+**Setup-Schritte:**
+1. Sentry-Account erstellen (kostenlos)
+2. Neues Projekt erstellen (Electron)
+3. DSN kopieren
+4. DSN als Umgebungsvariable setzen oder in Config speichern
+5. Source Maps für Production-Builds hochladen (optional, aber empfohlen)
+
+### Vorteile
+
+- ✅ **Schnellere Fehlerbehebung:** Stack-Traces und Kontext sofort verfügbar
+- ✅ **Proaktive Fehlererkennung:** Siehst Fehler, bevor Benutzer sich melden
+- ✅ **Besseres Verständnis:** Welche Fehler treten häufig auf?
+- ✅ **Professioneller Support:** Kannst Benutzern gezielt helfen
+- ✅ **Release-Tracking:** Siehst, welche Version welche Fehler hat
+
+### Metriken & Limits
+
+**Kostenloser Plan:**
+- 5.000 Events/Monat
+- **Strategie:** Nur kritische Fehler senden (error/fatal)
+- **Schätzung:** Bei 100 aktiven Benutzern und durchschnittlich 1 kritischem Fehler pro Monat = ~100 Events/Monat (weit unter Limit)
+
+---
+
 ## 🔍 Analyse des Python-Skripts
 
 ### Kernfunktionalitäten
 
-1. **CSV-Verarbeitung**
+1. **CSV/DBF-Verarbeitung**
    - Robuste Encoding-Erkennung (UTF-8-SIG, UTF-8, CP1252, Latin1)
-   - Semikolon-getrennte Dateien
+   - Semikolon-getrennte CSV-Dateien
+   - DBF-Datei-Unterstützung (dBase-Format)
    - Spalten-Mapping via Buchstaben (A, B, C, etc.)
+   - Automatische Standard-Pfad-Erkennung (defaultCsvPath/defaultDbfPath)
 
 2. **Shopify GraphQL Admin API Integration**
    - **API-Version:** `2025-07` (im Skript) → **Aktualisierung auf `2025-10` erforderlich**
@@ -264,6 +663,92 @@
 3. **Core Domain → Infrastructure:** Shopify API, CSV-Parsing, Cache
 4. **Main Process → UI (IPC):** Fortschritt, Logs, Ergebnisse
 5. **Persistenz:** SQLite für Cache, electron-store für Config
+
+---
+
+## 🛠️ Implementierte Services (v1.0)
+
+### Auto-Sync-Service
+
+**Zweck:** Automatische, zeitgesteuerte Synchronisation von Preisen und Beständen.
+
+**Features:**
+- Scheduler-basierte Ausführung (konfigurierbares Intervall: 15, 30, 60, 120 Minuten)
+- CSV/DBF-Pfad-Konfiguration
+- Start/Stop-Funktionalität
+- Status-Tracking und Historie
+- Läuft nur, solange die App geöffnet ist
+
+**Implementierung:**
+- `electron/services/auto-sync-service.ts`
+- IPC-Handler für Auto-Sync-Konfiguration
+- UI-Komponente in Settings-Seite
+
+### Update-Service
+
+**Zweck:** Automatische Update-Prüfung und Installation über GitHub Releases.
+
+**Features:**
+- Automatische Update-Prüfung (konfigurierbares Intervall)
+- Manuelles Update-Check
+- Download und Installation von Updates
+- Unterstützung für öffentliche und private Repositories
+- GitHub Token-Support (optional)
+
+**Implementierung:**
+- `electron/services/update-service.ts`
+- Verwendet `electron-updater`
+- Konfigurierbar über Settings
+
+### Code-Signing-Support
+
+**Zweck:** Signierung von Build-Artefakten für vertrauenswürdige Installation.
+
+**Features:**
+- Self-Signed-Zertifikat für Entwicklung
+- Support für echte Code-Signing-Zertifikate
+- Automatische Signierung im Build-Prozess
+- Windows, macOS und Linux Support
+
+**Implementierung:**
+- `scripts/create-cert.ps1` (Windows)
+- `scripts/build-with-signing.js`
+- Konfiguration über Umgebungsvariablen (`CSC_LINK`, `CSC_KEY_PASSWORD`)
+
+### DBF-Parser
+
+**Zweck:** Unterstützung für dBase-Format Dateien (zusätzlich zu CSV).
+
+**Features:**
+- DBF-Datei-Parsing
+- Encoding-Erkennung
+- Spalten-Mapping-Unterstützung
+- Automatische Standard-Pfad-Erkennung (defaultDbfPath)
+
+**Implementierung:**
+- `core/infra/dbf/parser.ts`
+- Integration in CSV-Service
+
+### Test-Modus
+
+**Zweck:** Testen von Synchronisationen an einzelnen Artikeln.
+
+**Features:**
+- Auswahl einzelner Artikel (nur Bestand > 0)
+- Test-Synchronisation ohne vollständigen Sync
+- Ergebnis-Anzeige für Test-Operationen
+
+**Implementierung:**
+- UI-Komponente in Sync-Wizard (Schritt 3)
+- `sync.test()` IPC-Handler
+
+### Verbesserte UI-Features
+
+**Features:**
+- Automatisches Überspringen von Schritten (wenn Pfad/Mapping gespeichert)
+- Standard-Pfad-Unterstützung (defaultCsvPath/defaultDbfPath)
+- Mapping-Persistierung
+- Verbesserte Fehlerbehandlung (404-Fehler bei Updates)
 
 ---
 
@@ -2692,12 +3177,16 @@ const mainWindow = new BrowserWindow({
 ## 📊 Erfolgsmetriken
 
 ### Funktionale Anforderungen
-- ✅ CSV-Upload funktioniert
+- ✅ CSV/DBF-Upload funktioniert
 - ✅ Spalten-Mapping funktioniert
 - ✅ Matching identisch zum Python-Skript
 - ✅ Updates werden korrekt ausgeführt
+- ✅ Test-Modus funktioniert
 - ✅ Fortschritt wird angezeigt
 - ✅ Fehler werden behandelt
+- ✅ Auto-Sync funktioniert mit konfigurierbarem Intervall
+- ✅ Update-Service prüft automatisch auf neue Releases
+- ✅ Code-Signing wird unterstützt
 
 ### Nicht-funktionale Anforderungen
 - ⚡ Sync-Geschwindigkeit: > 1000 Updates/Minute
@@ -2762,6 +3251,66 @@ const mainWindow = new BrowserWindow({
 - **Scopes:** https://shopify.dev/docs/api/usage/access-scopes
 
 ---
+
+---
+
+## 🎉 v1.0 Release-Zusammenfassung
+
+**Release-Datum:** 29. November 2025  
+**Version:** v1.0.0
+
+### ✅ Implementierte Features
+
+#### Core-Funktionalität
+- ✅ CSV/DBF-Datei-Upload und -Verarbeitung
+- ✅ Shopify GraphQL Admin API Integration
+- ✅ Spalten-Mapping (SKU, Name, Preis, Bestand)
+- ✅ Intelligentes Matching (SKU, Name, Barcode)
+- ✅ Vorschau-Funktion vor Synchronisation
+- ✅ Test-Modus für einzelne Artikel
+- ✅ Echtzeit-Fortschrittsanzeige
+- ✅ Detaillierte Logs und Fehlerbehandlung
+- ✅ Export-Funktionalität (CSV, Logs)
+
+#### Automatisierung
+- ✅ Auto-Sync-Service mit Scheduler
+- ✅ Update-Service über GitHub Releases
+- ✅ Automatisches Überspringen von Schritten (wenn Pfad/Mapping gespeichert)
+
+#### Sicherheit & Qualität
+- ✅ Verschlüsselte Token-Speicherung
+- ✅ Code-Signing Support
+- ✅ Context Isolation aktiviert
+- ✅ IPC-basierte Kommunikation
+
+#### Benutzerfreundlichkeit
+- ✅ Moderne UI mit Next.js 14+ und React 18+
+- ✅ Wizard-basierter Sync-Workflow
+- ✅ Standard-Pfad-Unterstützung
+- ✅ Mapping-Persistierung
+- ✅ Verbesserte Fehlerbehandlung
+
+### 📦 Technologie-Stack
+
+- **Frontend:** Next.js 14+ (App Router), React 18+, TypeScript, Tailwind CSS
+- **Backend:** Electron 28+, Node.js
+- **Datenbank:** SQLite (better-sqlite3)
+- **API:** Shopify GraphQL Admin API (2025-10)
+- **Build:** electron-builder
+- **Testing:** Vitest
+
+### 🚀 Nächste Schritte (v1.1+)
+
+**v1.1 - Erweiterte Features & Stabilität:**
+- Erweiterte E2E-Tests mit Playwright
+- Performance-Optimierungen
+- Erweiterte Export-Formate (JSON, Excel)
+- **Remote Error Monitoring & Fernwartung mit Sentry** 🆕
+
+**v1.2 - Multi-Shop & Erweiterungen:**
+- Multi-Shop-Management
+- Multi-Location-Support
+- API-Version-Manager (automatische Updates)
 
 ---
 
