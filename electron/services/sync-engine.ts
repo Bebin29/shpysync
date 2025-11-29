@@ -261,6 +261,13 @@ export class SyncEngine {
 					duration: endTime.getTime() - startTime.getTime(),
 				};
 
+				// Finalen Progress-Event senden
+				this.sendProgress({
+					current: 100,
+					total: 100,
+					stage: "complete",
+					message: "Dry-Run abgeschlossen",
+				});
 				this.sendComplete(result);
 				return result;
 			}
@@ -313,6 +320,13 @@ export class SyncEngine {
 				duration: endTime.getTime() - startTime.getTime(),
 			};
 
+			// Finalen Progress-Event senden
+			this.sendProgress({
+				current: 100,
+				total: 100,
+				stage: "complete",
+				message: "Synchronisation erfolgreich abgeschlossen",
+			});
 			this.sendComplete(result);
 
 			// Historie speichern
@@ -357,6 +371,13 @@ export class SyncEngine {
 				duration: endTime.getTime() - startTime.getTime(),
 			};
 
+			// Finalen Progress-Event senden (auch bei Fehlern)
+			this.sendProgress({
+				current: 100,
+				total: 100,
+				stage: "complete",
+				message: "Synchronisation abgeschlossen (mit Fehlern)",
+			});
 			this.sendComplete(result);
 
 			// Historie speichern (auch bei Fehlern)

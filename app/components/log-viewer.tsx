@@ -98,6 +98,7 @@ export function LogViewer({ logs, maxHeight = "400px" }: LogViewerProps) {
 			cache: "Cache",
 			history: "Historie",
 			sync: "Sync",
+			update: "Update",
 		};
 		return labels[category] || category;
 	};

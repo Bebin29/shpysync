@@ -2,6 +2,9 @@ appId: com.wawisync.app
 productName: WAWISync
 copyright: Copyright © 2025
 
+# Electron-Version explizit setzen (muss mit package.json devDependencies übereinstimmen)
+electronVersion: 28.2.0
+
 # Setze "type": "module" nur für Electron im Build-Prozess
 extraMetadata:
   type: module
@@ -86,9 +89,7 @@ asar: false
 # Update-Konfiguration für GitHub Releases
 publish:
   provider: github
-  # owner und repo werden automatisch aus package.json repository Feld gelesen
-  # Falls nicht vorhanden, können sie hier manuell gesetzt werden:
-  # owner: dein-username
-  # repo: shpysync
-  private: false  # Setze auf true für private Repositories
+  owner: Bebin29
+  repo: shpysync
+  private: false  # Repository ist öffentlich
 

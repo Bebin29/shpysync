@@ -188,9 +188,17 @@ export default function SyncPage() {
 			const result = await csv.getHeaders(filePath);
 			if (result.success) {
 				setCsvHeaders(result.headers);
-				// Wenn Header geladen wurden, gehe zu Schritt 2
+				// Wenn Header geladen wurden, prüfe ob Mapping vorhanden ist
 				if (result.headers.length > 0) {
-					setCurrentStep(2);
+					// Wenn Mapping bereits vorhanden ist, automatisch Vorschau laden (überspringe Schritt 2)
+					if (columnMapping.sku || columnMapping.name) {
+						// Mapping ist vorhanden, lade Vorschau automatisch
+						// Die Vorschau wird in einem separaten useEffect geladen
+						setCurrentStep(2); // Temporär zu Schritt 2, wird dann automatisch zu 3 gewechselt
+					} else {
+						// Kein Mapping vorhanden, zeige Mapping-Schritt
+						setCurrentStep(2);
+					}
 				} else {
 					setCsvError("Die CSV-Datei enthält keine Header.");
 				}
@@ -202,7 +210,7 @@ export default function SyncPage() {
 			setCsvError(`Fehler beim Laden der CSV-Datei: ${errorMessage}`);
 			console.error("Fehler beim Laden der CSV-Header:", error);
 		}
-	}, [csv]);
+	}, [csv, columnMapping]);
 
 	const handleMappingChange = useCallback((mapping: ColumnMapping) => {
 		setColumnMapping(mapping);
@@ -285,6 +293,22 @@ export default function SyncPage() {
 		}
 	}, [csvFilePath, columnMapping, shopConfig, updatePrices, updateInventory, sync]);
 
+	// Wenn Pfad, Header und Mapping vorhanden sind, automatisch Vorschau laden (überspringe Schritt 2)
+	useEffect(() => {
+		if (
+			csvFilePath &&
+			csvHeaders.length > 0 &&
+			(columnMapping.sku || columnMapping.name) &&
+			shopConfig &&
+			currentStep === 2 &&
+			!previewData &&
+			!isLoadingPreview
+		) {
+			// Automatisch Vorschau laden, wenn alle Voraussetzungen erfüllt sind
+			handleLoadPreview();
+		}
+	}, [csvFilePath, csvHeaders, columnMapping, shopConfig, currentStep, previewData, isLoadingPreview, handleLoadPreview]);
+
 	// Sync-Event-Handler registrieren
 	useEffect(() => {
 		if (!sync) return;
@@ -313,6 +337,13 @@ export default function SyncPage() {
 			setIsTestRunning(false);
 			setStep("completed");
 			setResult(result);
+			// Progress auf 100% und stage auf "complete" setzen
+			setSyncProgress({
+				current: 100,
+				total: 100,
+				stage: "complete",
+				message: "Synchronisation erfolgreich abgeschlossen",
+			});
 		};
 
 		sync.onProgress(handleProgress);

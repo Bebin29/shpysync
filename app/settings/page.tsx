@@ -33,8 +33,6 @@ export default function SettingsPage() {
     stopAutoSync,
     testAutoSync,
     updateConfig,
-    updateConfigLoading,
-    loadUpdateConfig,
     saveUpdateConfig,
   } = useConfig();
   
