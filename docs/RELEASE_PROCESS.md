@@ -20,6 +20,14 @@ Dieser Fehler tritt auf, wenn ein GitHub Release existiert, aber die notwendigen
    ```
 
 3. **Build mit automatischem Upload:**
+
+   **Option A: Alle Plattformen auf einmal (Empfohlen)**
+   ```bash
+   npm run electron:build:all:publish
+   ```
+   Dieses Script baut automatisch für Windows, macOS und Linux und lädt alle Artefakte hoch.
+
+   **Option B: Einzelne Plattformen**
    ```bash
    # Für macOS
    npm run electron:build:mac:publish
@@ -32,9 +40,9 @@ Dieser Fehler tritt auf, wenn ein GitHub Release existiert, aber die notwendigen
    ```
 
    **Wichtig:** Die `--publish always` Option lädt automatisch:
-   - `latest-mac.yml` (bzw. `latest.yml` für Windows)
-   - Die Installer-Dateien (.dmg, .exe, etc.)
-   - Alle notwendigen Checksums
+   - `latest-mac.yml`, `latest.yml`, `latest-linux.yml` (Metadaten für Updates)
+   - Die Installer-Dateien (.dmg, .exe, .AppImage, etc.)
+   - Alle notwendigen Checksums und Blockmaps
 
 4. **GitHub Token (optional, nur für private Repos):**
    ```bash

@@ -17,6 +17,7 @@
     "electron:build:mac:publish": "npm run build && npm run fix:html && npm run electron:build:ts && electron-builder --mac --publish always",
     "electron:build:win:publish": "npm run build && npm run fix:html && npm run electron:build:ts && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win --publish always",
     "electron:build:linux:publish": "npm run build && npm run fix:html && npm run electron:build:ts && electron-builder --linux --publish always",
+    "electron:build:all:publish": "node scripts/build-all-platforms-publish.js",
     "electron:build:prod": "node scripts/build-with-signing.js",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
