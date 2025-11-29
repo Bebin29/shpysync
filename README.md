@@ -1,57 +1,77 @@
 # WAWISync
 
-Electron-App zur Synchronisation von Warenbeständen zwischen einem POS-System und Shopify.
+<div align="center">
 
-## 🚀 Projekt-Status
+**Eine moderne Electron-App zur automatischen Synchronisation von Warenbeständen zwischen POS-Systemen und Shopify**
 
-**Aktuell:** Phase 1 - Projekt-Setup ✅
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.5-blue.svg)](https://www.typescriptlang.org/)
+[![Electron](https://img.shields.io/badge/Electron-28.2-brightgreen.svg)](https://www.electronjs.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-14-black.svg)](https://nextjs.org/)
 
-## 📋 Technologie-Stack
+</div>
 
-- **Frontend:** Next.js 14+ (App Router), React 18+, TypeScript, Tailwind CSS
-- **Backend:** Electron 28+, Node.js
-- **Datenbank:** SQLite (better-sqlite3) für Produkt-/Variant-Cache
-- **Konfiguration:** electron-store
-- **Testing:** Vitest
+## ✨ Features
 
-## 🛠️ Entwicklung
+- 🔄 **Automatische Synchronisation** von Preisen und Beständen zwischen POS-System und Shopify
+- 📊 **CSV/DBF-Unterstützung** für flexible Datenquellen
+- 🎯 **Intelligentes Matching** von Produkten über SKU oder Name
+- 🔍 **Vorschau-Funktion** vor der Synchronisation
+- 🧪 **Test-Modus** für einzelne Artikel
+- ⚙️ **Automatische Updates** über GitHub Releases
+- 🔒 **Sichere Token-Speicherung** mit Verschlüsselung
+- 📈 **Detaillierte Logs** und Synchronisations-Historie
 
-### Voraussetzungen
-
-- Node.js 18+ (aktuell: v22.11.0)
-- npm oder yarn
+## 🚀 Schnellstart
 
 ### Installation
 
 ```bash
+# Repository klonen
+git clone https://github.com/Bebin29/shpysync.git
+cd shpysync
+
+# Dependencies installieren
 npm install
 ```
 
-### Entwicklung starten
+### Entwicklung
 
 ```bash
-# Next.js Dev-Server starten
-npm run dev
-
-# Electron-App starten (in separatem Terminal)
+# Development-Modus starten
 npm run electron:dev
 ```
 
-### Build
+### Production Build
 
 ```bash
-# Production-Build
-npm run build
-
-# Electron-App bauen (ohne Code-Signing)
+# App bauen
 npm run electron:build
 
-# Electron-App bauen (mit Code-Signing)
-# Siehe docs/CODE_SIGNING.md für Setup-Anleitung
-npm run electron:build:prod
+# Für macOS
+npm run electron:build:mac
+
+# Für Windows
+npm run electron:build
+
+# Für Linux
+npm run electron:build:linux
 ```
 
-**Hinweis:** Für Code-Signing siehe [docs/CODE_SIGNING.md](docs/CODE_SIGNING.md)
+## 🛠️ Technologie-Stack
+
+- **Frontend:** Next.js 14+ (App Router), React 18+, TypeScript, Tailwind CSS
+- **Backend:** Electron 28+, Node.js
+- **Datenbank:** SQLite (better-sqlite3) für Produkt-/Variant-Cache
+- **API:** Shopify GraphQL Admin API
+- **Konfiguration:** electron-store
+- **Testing:** Vitest
+- **Build:** electron-builder
+
+## 📖 Dokumentation
+
+- [Projektplan](./PROJEKTPLAN.md) - Detaillierte Projektplanung und Architektur
+- [Code-Signing Setup](./docs/CODE_SIGNING.md) - Anleitung für Code-Signing
 
 ### Automatische Updates
 
@@ -75,30 +95,55 @@ Falls das Repository später privat gestellt wird, kann ein GitHub Personal Acce
 ## 📁 Projektstruktur
 
 ```
-wawisync/
-├── app/                    # Next.js App Router
+shpysync/
+├── app/                    # Next.js App Router (Frontend)
+│   ├── components/        # React-Komponenten
+│   ├── hooks/             # Custom React Hooks
+│   └── stores/            # Zustand State Management
 ├── electron/               # Electron Main Process
 │   ├── main.ts            # Electron Entry Point
-│   ├── preload.ts         # Preload Script
+│   ├── preload.ts         # Preload Script (IPC Bridge)
 │   ├── services/          # Backend-Services
+│   │   ├── sync-engine.ts      # Synchronisations-Engine
+│   │   ├── shopify-service.ts  # Shopify API Client
+│   │   └── config-service.ts   # Konfigurations-Management
 │   └── types/             # IPC-Type-Definitionen
-├── core/                   # Core Domain Layer (wird erstellt)
-├── tests/                  # Tests (wird erstellt)
+├── core/                   # Core Domain Layer
+│   ├── domain/            # Domain-Logik (Matching, Validierung)
+│   └── infra/              # Infrastructure (CSV/DBF Parser)
+├── tests/                  # Test-Suite
+│   ├── unit/              # Unit-Tests
+│   └── integration/        # Integration-Tests
 └── public/                 # Statische Assets
 ```
 
-## 📖 Dokumentation
-
-Siehe [PROJEKTPLAN.md](./PROJEKTPLAN.md) für detaillierte Projektplanung.
-
 ## 🔒 Sicherheit
 
-- `contextIsolation: true` - Verhindert XSS → RCE
-- `nodeIntegration: false` - Kein direkter Node-Zugriff im Renderer
-- Alle FS/Netzwerk-Zugriffe laufen über Main Process
-- Access-Tokens werden verschlüsselt gespeichert
+WAWISync wurde mit Sicherheit als oberste Priorität entwickelt:
+
+- ✅ **Context Isolation** - Verhindert XSS → RCE Angriffe
+- ✅ **Node Integration deaktiviert** - Kein direkter Node-Zugriff im Renderer
+- ✅ **Verschlüsselte Token-Speicherung** - Access-Tokens werden sicher gespeichert
+- ✅ **IPC-basierte Kommunikation** - Alle kritischen Operationen laufen über den Main Process
+- ✅ **Code-Signing Support** - Optional für zusätzliche Sicherheit
+
+## 🤝 Beitragen
+
+Beiträge sind willkommen! Bitte erstelle ein Issue oder einen Pull Request.
 
 ## 📝 Lizenz
 
-MIT
+Dieses Projekt ist unter der MIT-Lizenz lizenziert - siehe [LICENSE](LICENSE) für Details.
+
+## 👤 Autor
+
+**Bebin29**
+
+- GitHub: [@Bebin29](https://github.com/Bebin29)
+
+## 🙏 Danksagungen
+
+- [Electron](https://www.electronjs.org/) - Cross-platform Desktop Apps
+- [Next.js](https://nextjs.org/) - React Framework
+- [Shopify](https://www.shopify.com/) - E-Commerce Platform
 
