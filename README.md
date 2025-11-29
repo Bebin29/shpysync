@@ -53,6 +53,25 @@ npm run electron:build:prod
 
 **Hinweis:** Für Code-Signing siehe [docs/CODE_SIGNING.md](docs/CODE_SIGNING.md)
 
+### Automatische Updates
+
+Die App unterstützt automatische Updates über GitHub Releases. Da das Repository öffentlich ist, ist **kein GitHub Token erforderlich**.
+
+**Für private Repositories (optional):**
+Falls das Repository später privat gestellt wird, kann ein GitHub Personal Access Token verwendet werden:
+
+1. **Token erstellen:**
+   - Gehe zu https://github.com/settings/tokens
+   - Erstelle ein neues Token mit `repo` Berechtigung
+   - Kopiere das Token
+
+2. **Token konfigurieren:**
+   - Erstelle eine `.env` Datei im Projekt-Root (siehe `.env.example`)
+   - Füge das Token hinzu: `GH_TOKEN=your_github_token_here`
+   - Oder setze es als Umgebungsvariable: `export GH_TOKEN=your_github_token_here`
+
+**Wichtig:** Die `.env` Datei ist bereits in `.gitignore` enthalten und wird nicht ins Repository committed.
+
 ## 📁 Projektstruktur
 
 ```
