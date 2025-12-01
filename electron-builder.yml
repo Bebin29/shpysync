@@ -87,6 +87,8 @@ nsis:
 asar: false
 
 # Update-Konfiguration für GitHub Releases
+# Die publish-Konfiguration wird von electron-builder verwendet, um Releases zu erstellen
+# Die Runtime-Update-Konfiguration erfolgt im Update-Service (electron/services/update-service.ts)
 publish:
   provider: github
   owner: Bebin29

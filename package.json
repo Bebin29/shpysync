@@ -1,6 +1,6 @@
 {
   "name": "wawisync",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Electron App zur Synchronisation von Warenbeständen zwischen POS-System und Shopify",
   "main": "electron/dist/electron/main.js",
   "scripts": {

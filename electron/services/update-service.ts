@@ -41,6 +41,16 @@ export class UpdateService {
 			this.logger.info("update", "Kein GitHub Token gesetzt - Updates nur für öffentliche Repositories");
 		}
 
+		// Explizit Update-Feed konfigurieren, um immer das neueste Release zu prüfen
+		// Dies verhindert, dass electron-updater nach einer spezifischen Version sucht
+		autoUpdater.setFeedURL({
+			provider: "github",
+			owner: "Bebin29",
+			repo: "shpysync",
+			private: false,
+		});
+		this.logger.info("update", "Update-Feed konfiguriert: GitHub Releases (Bebin29/shpysync)");
+
 		// Konfiguration
 		autoUpdater.autoDownload = false; // Manuelles Download-Start
 		autoUpdater.autoInstallOnAppQuit = true; // Auto-Install beim App-Beenden
