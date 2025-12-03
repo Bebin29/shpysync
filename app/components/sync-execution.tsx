@@ -1,11 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ProgressView } from "./progress-view";
 import { LogViewer } from "./log-viewer";
-import { CheckCircle2, XCircle, AlertCircle, X, Download } from "lucide-react";
+import { CheckCircle2, XCircle, AlertCircle, X, Download, Home } from "lucide-react";
 import type { SyncProgress, SyncResult, SyncLog } from "../../electron/types/ipc";
 
 interface SyncExecutionProps {
@@ -50,6 +51,7 @@ export function SyncExecution({
 	};
 
 	const summary = getResultSummary();
+	const isCompleted = result && !isRunning;
 
 	return (
 		<div className="space-y-6">
@@ -149,6 +151,18 @@ export function SyncExecution({
 						<X className="mr-2 h-4 w-4" />
 						Synchronisation abbrechen
 					</Button>
+				</div>
+			)}
+
+			{/* Dashboard-Button (wenn abgeschlossen) */}
+			{isCompleted && (
+				<div className="flex justify-center gap-4">
+					<Link href="/">
+						<Button>
+							<Home className="mr-2 h-4 w-4" />
+							Zum Dashboard
+						</Button>
+					</Link>
 				</div>
 			)}
 		</div>

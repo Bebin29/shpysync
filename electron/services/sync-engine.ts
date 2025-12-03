@@ -8,8 +8,8 @@ import { processCsvToUpdates, groupPriceUpdatesByProduct } from "../../core/doma
 import { getAllProductsWithVariants, updateVariantPrices } from "./shopify-product-service.js";
 import { setInventoryQuantities } from "./shopify-inventory-service.js";
 import { getLogger } from "./logger.js";
-import { getCacheService } from "./cache-service.js";
 import { getSyncHistoryService } from "./sync-history-service.js";
+import { getCacheService } from "./cache-service.js";
 import * as path from "path";
 
 /**
@@ -195,7 +195,7 @@ export class SyncEngine {
 				message: "Produkte von Shopify werden geladen...",
 			});
 
-			const products = await this.loadProducts(config.shopConfig, true);
+			const products = await this.loadProducts(config.shopConfig);
 			
 			if (this.checkCancelled()) {
 				throw new Error("Sync wurde abgebrochen");
@@ -297,11 +297,15 @@ export class SyncEngine {
 				throw new Error("Sync wurde abgebrochen");
 			}
 
-			// Cache aktualisieren nach erfolgreichen Updates (im Hintergrund)
+			// Cache aktualisieren nach erfolgreichen Updates (nur für Dashboard-Stats)
+			// WICHTIG: Im Sync-Prozess werden immer die neuesten Daten von Shopify geladen!
 			if (totalSuccess > 0) {
 				// Asynchron im Hintergrund, blockiert nicht den Sync
-				this.refreshCacheAfterSync(config.shopConfig).catch((error) => {
-					// Fehler bereits in refreshCacheAfterSync geloggt
+				this.updateCacheAfterSync(config.shopConfig, products).catch((error) => {
+					// Fehler beim Cache-Update sollten den Sync nicht beeinträchtigen
+					this.logger.warn("cache", "Fehler beim Aktualisieren des Caches nach Sync", {
+						error: error instanceof Error ? error.message : String(error),
+					});
 				});
 			}
 
@@ -444,33 +448,12 @@ export class SyncEngine {
 	}
 
 	/**
-	 * Lädt alle Produkte von Shopify (mit Cache-Unterstützung).
+	 * Lädt alle Produkte von Shopify.
 	 * 
-	 * Strategie:
-	 * 1. Zuerst Cache prüfen (falls vorhanden und gültig)
-	 * 2. Falls Cache veraltet/fehlt: Shopify abfragen
-	 * 3. Nach erfolgreichem Laden: Cache aktualisieren
+	 * Lädt immer die neuesten Daten direkt von Shopify, ohne Cache.
+	 * Der Cache wird NUR für Dashboard-Stats verwendet, nicht im Sync-Prozess!
 	 */
-	private async loadProducts(shopConfig: ShopConfig, useCache: boolean = true): Promise<Product[]> {
-		const cacheService = getCacheService();
-
-		// Cache initialisieren (lazy)
-		try {
-			cacheService.initialize();
-		} catch (error) {
-			this.logger.warn("cache", "Cache-Initialisierung fehlgeschlagen, verwende Shopify direkt", { error: error instanceof Error ? error.message : String(error) });
-			useCache = false;
-		}
-
-		if (useCache) {
-			const cached = cacheService.getProducts();
-			if (cached.length > 0 && cacheService.isCacheValid()) {
-				this.logger.info("sync", "Produkte aus Cache geladen", { count: cached.length });
-				return cached;
-			}
-		}
-
-		// Shopify abfragen
+	private async loadProducts(shopConfig: ShopConfig): Promise<Product[]> {
 		this.logger.info("sync", "Lade Produkte von Shopify...");
 		const products = await getAllProductsWithVariants(
 			{
@@ -480,49 +463,35 @@ export class SyncEngine {
 			shopConfig.locationId // Location-ID für Inventory-Levels übergeben
 		);
 
-		// Cache aktualisieren
-		try {
-			cacheService.saveProducts(products);
-			this.logger.info("sync", "Cache aktualisiert", { count: products.length });
-		} catch (error) {
-			this.logger.warn("cache", "Fehler beim Aktualisieren des Caches", { error: error instanceof Error ? error.message : String(error) });
-		}
-
 		return products;
 	}
 
 	/**
 	 * Aktualisiert den Cache nach erfolgreichen Updates.
-	 * Lädt alle Produkte von Shopify neu und speichert sie im Cache.
+	 * 
+	 * WICHTIG: Diese Methode wird NUR für Dashboard-Stats verwendet.
+	 * Im Sync-Prozess werden IMMER die neuesten Daten direkt von Shopify geladen.
 	 * 
 	 * @param shopConfig - Shop-Konfiguration
+	 * @param products - Die bereits geladenen Produkte (werden nicht neu geladen)
 	 */
-	private async refreshCacheAfterSync(shopConfig: ShopConfig): Promise<void> {
+	private async updateCacheAfterSync(shopConfig: ShopConfig, products: Product[]): Promise<void> {
 		try {
-			this.logger.info("cache", "Aktualisiere Cache nach erfolgreichen Updates...");
-
-			const products = await getAllProductsWithVariants(
-				{
-					shopUrl: shopConfig.shopUrl,
-					accessToken: shopConfig.accessToken,
-				},
-				shopConfig.locationId
-			);
-
 			const cacheService = getCacheService();
 			cacheService.initialize();
 			cacheService.saveProducts(products);
 
-			this.logger.info("cache", "Cache erfolgreich aktualisiert", {
-				productCount: products.length
+			this.logger.info("cache", "Cache für Dashboard-Stats aktualisiert", {
+				productCount: products.length,
 			});
 		} catch (error) {
 			// Fehler beim Cache-Update sollten den Sync nicht beeinträchtigen
 			this.logger.warn("cache", "Fehler beim Aktualisieren des Caches nach Sync", {
-				error: error instanceof Error ? error.message : String(error)
+				error: error instanceof Error ? error.message : String(error),
 			});
 		}
 	}
+
 
 	/**
 	 * Generiert Vorschau mit Matching-Ergebnissen (ohne Ausführung).
@@ -543,8 +512,8 @@ export class SyncEngine {
 		// Schritt 1: CSV parsen
 		const csvRows = await this.parseFileWithMapping(config.csvPath, config.columnMapping);
 
-		// Schritt 2: Shopify-Produkte/Varianten laden (mit Cache)
-		const products = await this.loadProducts(config.shopConfig, true);
+		// Schritt 2: Shopify-Produkte/Varianten laden (immer neueste Daten, kein Cache)
+		const products = await this.loadProducts(config.shopConfig);
 
 		// Schritt 3-6: Matching und Update-Planung
 		const syncMode = getSyncMode(config.options);
@@ -1095,10 +1064,6 @@ export class SyncEngine {
 					newValue: testOperation.newValue,
 				});
 
-				// Cache aktualisieren nach erfolgreichem Test-Update (im Hintergrund)
-				this.refreshCacheAfterSync(shopConfig).catch((error) => {
-					// Fehler bereits in refreshCacheAfterSync geloggt
-				});
 
 				// Fortschritt auf 100% setzen
 				this.sendProgress({
