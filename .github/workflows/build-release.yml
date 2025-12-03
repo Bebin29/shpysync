@@ -1,0 +1,227 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build-windows:
+    name: Build Windows
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Next.js
+        run: npm run build
+
+      - name: Fix HTML base tag
+        run: npm run fix:html
+
+      - name: Build Electron TypeScript
+        run: npm run electron:build:ts
+
+      - name: Setup Windows Code Signing
+        if: ${{ secrets.WINDOWS_SIGNING_CERT != '' }}
+        env:
+          WINDOWS_SIGNING_CERT: ${{ secrets.WINDOWS_SIGNING_CERT }}
+          WINDOWS_SIGNING_PASSWORD: ${{ secrets.WINDOWS_SIGNING_PASSWORD }}
+        run: |
+          $certContent = [System.Convert]::FromBase64String($env:WINDOWS_SIGNING_CERT)
+          $certPath = "$env:TEMP\certificate.pfx"
+          [System.IO.File]::WriteAllBytes($certPath, $certContent)
+          echo "CSC_LINK=$certPath" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          echo "CSC_KEY_PASSWORD=$env:WINDOWS_SIGNING_PASSWORD" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          echo "CSC_IDENTITY_AUTO_DISCOVERY=false" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Build Electron for Windows
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: ${{ secrets.WINDOWS_SIGNING_CERT != '' && 'false' || 'false' }}
+        run: npm run electron:build
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-build
+          path: |
+            dist/*.exe
+            dist/*.blockmap
+          retention-days: 30
+
+  build-macos:
+    name: Build macOS
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Next.js
+        run: npm run build
+
+      - name: Fix HTML base tag
+        run: npm run fix:html
+
+      - name: Build Electron TypeScript
+        run: npm run electron:build:ts
+
+      - name: Build Electron for macOS
+        env:
+          APPLE_ID: ${{ secrets.MACOS_APPLE_ID }}
+          APPLE_ID_PASSWORD: ${{ secrets.MACOS_APPLE_ID_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.MACOS_TEAM_ID }}
+        run: npm run electron:build:mac
+
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-build
+          path: |
+            dist/*.dmg
+            dist/*.zip
+            dist/*.blockmap
+          retention-days: 30
+
+  build-linux:
+    name: Build Linux
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Next.js
+        run: npm run build
+
+      - name: Fix HTML base tag
+        run: npm run fix:html
+
+      - name: Build Electron TypeScript
+        run: npm run electron:build:ts
+
+      - name: Build Electron for Linux
+        run: npm run electron:build:linux
+
+      - name: Upload Linux artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-build
+          path: |
+            dist/*.AppImage
+            dist/*.deb
+            dist/*.blockmap
+          retention-days: 30
+
+  create-release:
+    name: Create Release
+    needs: [build-windows, build-macos, build-linux]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download Windows artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-build
+          path: artifacts/windows
+
+      - name: Download macOS artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-build
+          path: artifacts/macos
+
+      - name: Download Linux artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-build
+          path: artifacts/linux
+
+      - name: Generate checksums
+        run: |
+          cd artifacts
+          find . -type f \( -name "*.exe" -o -name "*.dmg" -o -name "*.zip" -o -name "*.AppImage" -o -name "*.deb" \) -exec sh -c 'sha256sum "$1" > "$1.sha256"' _ {} \;
+
+      - name: Extract version from tag
+        id: get_version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Generate release notes
+        id: release_notes
+        run: |
+          TAG=${{ steps.get_version.outputs.tag }}
+          if [ -f CHANGELOG.md ]; then
+            # Extract changelog section for this version
+            awk "/^## \[$TAG\]/,/^## \[/" CHANGELOG.md | sed '$d' > release_notes.txt || true
+            if [ ! -s release_notes.txt ]; then
+              # Fallback if section not found: Generate from git commits
+              PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+              if [ -n "$PREV_TAG" ]; then
+                git log --pretty=format:"- %s (%h)" ${PREV_TAG}..HEAD > release_notes.txt
+              else
+                git log --pretty=format:"- %s (%h)" -10 > release_notes.txt
+              fi
+            fi
+          else
+            # Fallback: Generate from git commits
+            PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+            if [ -n "$PREV_TAG" ]; then
+              git log --pretty=format:"- %s (%h)" ${PREV_TAG}..HEAD > release_notes.txt
+            else
+              git log --pretty=format:"- %s (%h)" -10 > release_notes.txt
+            fi
+          fi
+          echo "notes<<EOF" >> $GITHUB_OUTPUT
+          cat release_notes.txt >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.get_version.outputs.tag }}
+          name: Release ${{ steps.get_version.outputs.version }}
+          body: ${{ steps.release_notes.outputs.notes }}
+          files: |
+            artifacts/**/*.exe
+            artifacts/**/*.dmg
+            artifacts/**/*.zip
+            artifacts/**/*.AppImage
+            artifacts/**/*.deb
+            artifacts/**/*.sha256
+            artifacts/**/*.blockmap
+          draft: false
+          prerelease: false

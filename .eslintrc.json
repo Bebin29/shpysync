@@ -1,8 +1,23 @@
 {
-  "extends": ["next/core-web-vitals", "next/typescript"],
+  "extends": ["next/core-web-vitals", "next/typescript", "plugin:jsx-a11y/recommended"],
+  "plugins": ["jsx-a11y", "security"],
   "rules": {
     "@typescript-eslint/no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
-    "@typescript-eslint/no-explicit-any": "warn"
+    "@typescript-eslint/no-explicit-any": "warn",
+    // Accessibility-Regeln
+    "jsx-a11y/alt-text": "error",
+    "jsx-a11y/anchor-is-valid": "warn",
+    "jsx-a11y/click-events-have-key-events": "warn",
+    "jsx-a11y/no-noninteractive-element-interactions": "warn",
+    // Security-Regeln (manuell konfiguriert, da plugin:security/recommended Probleme verursacht)
+    "security/detect-object-injection": "warn",
+    "security/detect-non-literal-fs-filename": "warn",
+    "security/detect-eval-with-expression": "error",
+    "security/detect-no-csrf-before-method-override": "error",
+    "security/detect-non-literal-regexp": "warn",
+    "security/detect-non-literal-require": "warn",
+    "security/detect-possible-timing-attacks": "warn",
+    "security/detect-pseudoRandomBytes": "warn"
   },
   "overrides": [
     {
@@ -11,9 +26,32 @@
         // Electron-spezifische Regeln
         "@typescript-eslint/no-var-requires": "off",
         "@typescript-eslint/no-require-imports": "off",
-        "no-console": ["warn", { "allow": ["warn", "error"] }]
+        "no-console": "off", // Console-Logs sind in Electron Main Process erlaubt
+        // Security-Regeln für Electron Main Process (weniger restriktiv)
+        "security/detect-non-literal-fs-filename": "off",
+        "security/detect-child-process": "warn"
+      }
+    },
+    {
+      "files": ["scripts/**/*.js", "*.js"],
+      "rules": {
+        // Node.js-Scripts dürfen require() verwenden
+        "@typescript-eslint/no-require-imports": "off",
+        "@typescript-eslint/no-var-requires": "off",
+        // Security-Regeln für Scripts (weniger restriktiv)
+        "security/detect-non-literal-fs-filename": "off",
+        "security/detect-non-literal-regexp": "warn",
+        "security/detect-object-injection": "warn"
+      }
+    },
+    {
+      "files": ["app/**/*.tsx", "components/**/*.tsx"],
+      "rules": {
+        // React/Next.js spezifische Accessibility-Regeln
+        "jsx-a11y/anchor-is-valid": "error",
+        "jsx-a11y/click-events-have-key-events": "error",
+        "jsx-a11y/no-static-element-interactions": "warn"
       }
     }
   ]
 }
-

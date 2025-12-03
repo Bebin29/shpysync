@@ -70,8 +70,30 @@ npm run electron:build:linux
 
 ## 📖 Dokumentation
 
+### Für Benutzer
+
+- [Installation](./docs/user/installation.md) - Installations-Anleitung
+- [Erste Schritte](./docs/user/getting-started.md) - Schnellstart-Anleitung
+- [Features](./docs/user/features.md) - Feature-Dokumentation
+- [FAQ](./docs/user/faq.md) - Häufig gestellte Fragen
+- [Troubleshooting](./docs/TROUBLESHOOTING.md) - Problemlösungs-Guide
+
+### Für Entwickler
+
 - [Projektplan](./PROJEKTPLAN.md) - Detaillierte Projektplanung und Architektur
+- [API-Dokumentation](./docs/API.md) - IPC-API-Dokumentation
+- [Contributing](./CONTRIBUTING.md) - Beitrags-Richtlinien
+- [Developer Documentation](./docs/developer/) - Entwickler-Dokumentation
+  - [Secrets Management](./docs/developer/secrets-management.md) - Secrets-Verwaltung
+  - [Rate Limiting](./docs/developer/rate-limiting.md) - Rate-Limiting-Strategie
+  - [Input Validation](./docs/developer/input-validation.md) - Input-Validierung
+- [Architecture Decision Records](./docs/adr/) - Architektur-Entscheidungen
+
+### Weitere Dokumentation
+
 - [Code-Signing Setup](./docs/CODE_SIGNING.md) - Anleitung für Code-Signing
+- [Release Process](./docs/RELEASE_PROCESS.md) - Release-Prozess
+- [Security Policy](./SECURITY.md) - Security-Policy
 
 ### Automatische Updates
 
@@ -146,4 +168,3 @@ Dieses Projekt ist unter der MIT-Lizenz lizenziert - siehe [LICENSE](LICENSE) f�
 - [Electron](https://www.electronjs.org/) - Cross-platform Desktop Apps
 - [Next.js](https://nextjs.org/) - React Framework
 - [Shopify](https://www.shopify.com/) - E-Commerce Platform
-

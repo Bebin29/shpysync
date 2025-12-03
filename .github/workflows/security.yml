@@ -1,0 +1,79 @@
+name: Security Scanning
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: "0 2 * * *"
+
+jobs:
+  dependency-scan:
+    name: Dependency Vulnerability Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run npm audit
+        id: audit
+        continue-on-error: true
+        run: |
+          npm audit --audit-level=moderate --json > audit-report.json || true
+          npm audit --audit-level=moderate
+
+      - name: Upload audit report
+        uses: actions/upload-artifact@v4
+        with:
+          name: audit-report
+          path: audit-report.json
+          retention-days: 30
+
+      - name: Check for critical vulnerabilities
+        run: |
+          if [ -f audit-report.json ]; then
+            CRITICAL=$(jq -r '.metadata.vulnerabilities.critical // 0' audit-report.json)
+            HIGH=$(jq -r '.metadata.vulnerabilities.high // 0' audit-report.json)
+            
+            if [ "$CRITICAL" -gt 0 ] || [ "$HIGH" -gt 5 ]; then
+              echo "❌ Critical or high vulnerabilities found!"
+              echo "Critical: $CRITICAL"
+              echo "High: $HIGH"
+              exit 1
+            else
+              echo "✅ No critical vulnerabilities and acceptable high vulnerabilities count"
+              echo "Critical: $CRITICAL"
+              echo "High: $HIGH"
+            fi
+          fi
+
+  secrets-scan:
+    name: Secrets Detection
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Full history for better detection
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          args: --verbose --redact
