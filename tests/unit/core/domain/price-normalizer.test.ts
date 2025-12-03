@@ -92,11 +92,11 @@ describe("normalizePrice", () => {
 
   describe("Edge Cases - Null und Undefined", () => {
     it("sollte bei null einen Fehler werfen", () => {
-      expect(() => normalizePrice(null as any)).toThrow("Preis ist null oder undefined");
+      expect(() => normalizePrice(null)).toThrow("Preis ist null oder undefined");
     });
 
     it("sollte bei undefined einen Fehler werfen", () => {
-      expect(() => normalizePrice(undefined as any)).toThrow("Preis ist null oder undefined");
+      expect(() => normalizePrice(undefined)).toThrow("Preis ist null oder undefined");
     });
   });
 
@@ -133,8 +133,3 @@ describe("normalizePrice", () => {
     });
   });
 });
-
-
-
-
-

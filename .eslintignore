@@ -1,0 +1,17 @@
+# Build outputs
+dist/
+build/
+out/
+.next/
+node_modules/
+
+# Config files
+.lintstagedrc.js
+*.config.js
+
+# Ignore .lintstagedrc.js explizit für ESLint
+!.lintstagedrc.js
+
+# Test outputs
+coverage/
+

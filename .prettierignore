@@ -1,0 +1,53 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+.next/
+out/
+dist/
+electron/dist/
+build/
+
+# Cache
+.cache/
+*.tsbuildinfo
+
+# Logs
+*.log
+
+# Coverage
+coverage/
+
+# Lock files
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Generated files
+*.d.ts
+next-env.d.ts
+
+# Binary files
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.ico
+*.icns
+*.dmg
+*.exe
+*.AppImage
+*.deb
+*.zip
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Test fixtures
+tests/fixtures/
+
+# Documentation (optional - kann auch formatiert werden)
+# *.md
+

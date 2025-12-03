@@ -4,7 +4,7 @@ import { loadFixture } from "../helpers/test-utils.js";
 
 /**
  * Python-Referenz-Implementierung (aus working_script.py).
- * 
+ *
  * Portiert von Python `normalize_price_to_money_str()` Funktion.
  * Diese Implementierung dient als Referenz für Paritäts-Tests.
  */
@@ -12,15 +12,15 @@ function pythonNormalizePrice(val: string | null | undefined): string {
   if (val === null || val === undefined) {
     throw new Error("Preis ist None");
   }
-  
+
   let s = val.trim();
-  
+
   // Währungen/Leerzeichen/Sondertrennzeichen entfernen
   for (const t of ["€", "EUR", "eur"]) {
     s = s.replace(t, "");
   }
   s = s.replace(/\s+/g, "").replace(/'/g, "");
-  
+
   // Fälle:
   //  - sowohl Komma & Punkt vorhanden -> prüfe Position: letztes Trennzeichen entscheidet
   //  - nur Komma -> Dezimal-Komma
@@ -31,7 +31,7 @@ function pythonNormalizePrice(val: string | null | undefined): string {
     //        Wenn das letzte Trennzeichen ein Komma ist -> europäisch (Punkt = Tausender)
     const lastComma = s.lastIndexOf(",");
     const lastDot = s.lastIndexOf(".");
-    
+
     if (lastDot > lastComma) {
       // Amerikanisch: Komma = Tausender, Punkt = Dezimal
       s = s.replace(/,/g, ""); // Entferne alle Kommas (Tausender-Trennzeichen)
@@ -44,13 +44,13 @@ function pythonNormalizePrice(val: string | null | undefined): string {
     s = s.replace(",", ".");
   }
   // Sonst: schon ok (nur Punkt oder keine Trennzeichen)
-  
+
   // Als Float parsen und auf 2 Nachkommastellen formatieren
   const amount = parseFloat(s);
   if (isNaN(amount)) {
     throw new Error(`Preis konnte nicht geparst werden: "${val}"`);
   }
-  
+
   return amount.toFixed(2);
 }
 
@@ -80,12 +80,12 @@ describe("Price Normalization Parity", () => {
 
   describe("Edge Cases", () => {
     it("sollte bei null identisch zu Python sein", () => {
-      expect(() => normalizePrice(null as any)).toThrow();
+      expect(() => normalizePrice(null)).toThrow();
       expect(() => pythonNormalizePrice(null)).toThrow();
     });
 
     it("sollte bei undefined identisch zu Python sein", () => {
-      expect(() => normalizePrice(undefined as any)).toThrow();
+      expect(() => normalizePrice(undefined)).toThrow();
       expect(() => pythonNormalizePrice(undefined)).toThrow();
     });
 
@@ -101,9 +101,7 @@ describe("Price Normalization Parity", () => {
         "expected-outputs.json"
       );
 
-      for (const [input, expectedOutput] of Object.entries(
-        expectedOutputs.priceNormalization
-      )) {
+      for (const [input, expectedOutput] of Object.entries(expectedOutputs.priceNormalization)) {
         const result = normalizePrice(input);
         expect(result).toBe(expectedOutput);
       }
@@ -133,4 +131,3 @@ describe("Price Normalization Parity", () => {
     });
   });
 });
-
