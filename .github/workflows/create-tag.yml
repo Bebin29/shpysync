@@ -1,0 +1,190 @@
+name: Create Release Tag
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version (z.B. 1.0.4) - leer lassen für automatische Version aus package.json"
+        required: false
+        type: string
+      auto_create:
+        description: "Automatisch Tag erstellen und pushen"
+        required: false
+        type: boolean
+        default: true
+  push:
+    branches:
+      - main
+    paths:
+      - "package.json"
+
+jobs:
+  create-tag:
+    name: Create Git Tag
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get version from package.json
+        id: package_version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "📦 Version in package.json: $VERSION"
+
+      - name: Check if version changed (auto-trigger only)
+        if: github.event_name == 'push'
+        id: version_changed
+        run: |
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          PREV_VERSION=$(git show HEAD~1:package.json 2>/dev/null | node -p "JSON.parse(require('fs').readFileSync(0, 'utf-8')).version" 2>/dev/null || echo "")
+
+          if [ -z "$PREV_VERSION" ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "ℹ️  Keine vorherige Version gefunden (erster Commit?)"
+          elif [ "$CURRENT_VERSION" != "$PREV_VERSION" ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "✅ Version wurde geändert: $PREV_VERSION → $CURRENT_VERSION"
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "⏭️  Version wurde nicht geändert ($CURRENT_VERSION)"
+          fi
+
+      - name: Determine version to use
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            # Manuell getriggert: Verwende Input oder package.json
+            if [ -n "${{ github.event.inputs.version }}" ]; then
+              VERSION="${{ github.event.inputs.version }}"
+            else
+              VERSION="${{ steps.package_version.outputs.version }}"
+            fi
+          else
+            # Automatisch getriggert: Verwende package.json
+            VERSION="${{ steps.package_version.outputs.version }}"
+          fi
+
+          # Entferne 'v' Prefix falls vorhanden
+          VERSION=${VERSION#v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "🏷️  Zu verwendende Version: $VERSION"
+
+      - name: Check if tag already exists
+        id: check_tag
+        run: |
+          TAG="v${{ steps.version.outputs.version }}"
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "⚠️  Tag $TAG existiert bereits!"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "✅ Tag $TAG existiert noch nicht"
+          fi
+
+      - name: Validate version format
+        id: validate_version
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          if [[ ! $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9-]+)?(\+[a-zA-Z0-9-]+)?$ ]]; then
+            echo "❌ Ungültiges Versionsformat: $VERSION"
+            echo "   Erwartetes Format: X.Y.Z (z.B. 1.0.4)"
+            exit 1
+          fi
+          echo "✅ Versionsformat ist gültig"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Update CHANGELOG.md
+        if: steps.check_tag.outputs.exists == 'false'
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          node scripts/update-changelog.js "$VERSION"
+
+          # Prüfe, ob CHANGELOG.md geändert wurde
+          if git diff --quiet CHANGELOG.md; then
+            echo "changelog_updated=false" >> $GITHUB_ENV
+            echo "ℹ️  CHANGELOG.md wurde nicht aktualisiert (Version existiert bereits?)"
+          else
+            echo "changelog_updated=true" >> $GITHUB_ENV
+            echo "✅ CHANGELOG.md wurde aktualisiert"
+          fi
+
+      - name: Commit CHANGELOG.md changes
+        if: env.changelog_updated == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add CHANGELOG.md
+          git commit -m "chore: update CHANGELOG.md for version ${{ steps.version.outputs.version }}"
+
+          echo "✅ CHANGELOG.md Änderungen committed"
+
+      - name: Push CHANGELOG.md changes
+        if: env.changelog_updated == 'true'
+        run: |
+          git push origin HEAD:${{ github.ref_name }}
+          echo "✅ CHANGELOG.md Änderungen gepusht"
+
+      - name: Create and push tag
+        if: |
+          steps.check_tag.outputs.exists == 'false' && 
+          (github.event_name == 'workflow_dispatch' || 
+           (github.event_name == 'push' && steps.version_changed.outputs.changed == 'true'))
+        run: |
+          TAG="v${{ steps.version.outputs.version }}"
+          VERSION="${{ steps.version.outputs.version }}"
+
+          # Git-Konfiguration (bereits gesetzt, aber zur Sicherheit)
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Erstelle Tag mit Nachricht
+          git tag -a "$TAG" -m "Release $VERSION"
+
+          # Push Tag
+          git push origin "$TAG"
+
+          echo "✅ Tag $TAG erfolgreich erstellt und gepusht"
+
+      - name: Skip tag creation (tag exists)
+        if: steps.check_tag.outputs.exists == 'true'
+        run: |
+          echo "⏭️  Tag existiert bereits, überspringe Erstellung"
+          echo "   Um einen neuen Tag zu erstellen, aktualisiere die Version in package.json"
+
+      - name: Skip tag creation (version unchanged)
+        if: github.event_name == 'push' && steps.version_changed.outputs.changed == 'false'
+        run: |
+          echo "⏭️  Version in package.json wurde nicht geändert"
+          echo "   Tag-Erstellung übersprungen"
+
+      - name: Output summary
+        run: |
+          echo "## 📋 Zusammenfassung" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version:** ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Tag:** v${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Tag existiert:** ${{ steps.check_tag.outputs.exists }}" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ github.event_name }}" == "push" ]; then
+            echo "- **Version geändert:** ${{ steps.version_changed.outputs.changed }}" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [ "${{ steps.check_tag.outputs.exists }}" == "false" ]; then
+            if [ "${{ github.event_name }}" == "push" ] && [ "${{ steps.version_changed.outputs.changed }}" == "false" ]; then
+              echo "- **Status:** ⏭️  Version nicht geändert, Tag-Erstellung übersprungen" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "- **Status:** ✅ Tag wurde erstellt" >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "- **Status:** ⏭️  Tag existiert bereits" >> $GITHUB_STEP_SUMMARY
+          fi

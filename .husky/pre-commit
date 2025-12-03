@@ -1,0 +1,3 @@
+#!/usr/bin/env sh
+# Führe lint-staged aus, um nur geänderte Dateien zu prüfen
+npx lint-staged

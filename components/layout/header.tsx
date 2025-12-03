@@ -60,6 +60,7 @@ export function Header() {
     },
   };
 
+  // eslint-disable-next-line security/detect-object-injection
   const status = statusConfig[connectionStatus];
   const StatusIcon = status.icon;
 
@@ -77,4 +78,3 @@ export function Header() {
     </header>
   );
 }
-

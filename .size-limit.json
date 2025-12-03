@@ -1,0 +1,23 @@
+[
+  {
+    "name": "Next.js Static Export (Main Bundle)",
+    "path": "out/_next/static/chunks/main*.js",
+    "limit": "2 MB",
+    "webpack": false,
+    "gzip": false
+  },
+  {
+    "name": "Electron Main Process",
+    "path": "electron/dist/electron/main.js",
+    "limit": "500 KB",
+    "webpack": false,
+    "gzip": false
+  },
+  {
+    "name": "Electron Preload Script",
+    "path": "electron/dist/electron/preload.js",
+    "limit": "100 KB",
+    "webpack": false,
+    "gzip": false
+  }
+]
