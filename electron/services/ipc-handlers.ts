@@ -469,6 +469,7 @@ export function registerIpcHandlers(): void {
   );
 
   // Cache-Handler
+  // WICHTIG: Cache wird NUR für Dashboard-Stats verwendet, nicht im Sync-Prozess!
   ipcMain.handle("cache:get-stats", async (): Promise<CacheStats> => {
     try {
       const cacheService = getCacheService();
@@ -496,7 +497,7 @@ export function registerIpcHandlers(): void {
         shopConfig.locationId // Location-ID für Inventory-Levels übergeben
       );
 
-      // Cache aktualisieren
+      // Cache aktualisieren (nur für Dashboard-Stats)
       const cacheService = getCacheService();
       cacheService.initialize();
       cacheService.saveProducts(products);
