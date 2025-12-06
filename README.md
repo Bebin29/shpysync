@@ -8,6 +8,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.5-blue.svg)](https://www.typescriptlang.org/)
 [![Electron](https://img.shields.io/badge/Electron-28.2-brightgreen.svg)](https://www.electronjs.org/)
 [![Next.js](https://img.shields.io/badge/Next.js-14-black.svg)](https://nextjs.org/)
+[![Test Coverage](https://img.shields.io/badge/coverage-80%25-brightgreen)](./coverage)
 
 </div>
 
@@ -65,7 +66,8 @@ npm run electron:build:linux
 - **Datenbank:** SQLite (better-sqlite3) für Produkt-/Variant-Cache
 - **API:** Shopify GraphQL Admin API
 - **Konfiguration:** electron-store
-- **Testing:** Vitest
+- **Testing:** Vitest (Unit, Integration, Parity, Accessibility)
+- **Test Coverage:** > 80% (siehe [Coverage-Report](./coverage))
 - **Build:** electron-builder
 
 ## 📖 Dokumentation

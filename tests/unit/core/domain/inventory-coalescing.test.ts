@@ -71,7 +71,7 @@ describe("coalesceInventoryUpdates", () => {
   describe("Große Listen mit vielen Duplikaten", () => {
     it("sollte große Listen mit vielen Duplikaten effizient verarbeiten", () => {
       const updates: Array<{ inventoryItemId: string; quantity: number }> = [];
-      
+
       // Erstelle 100 Updates für 10 verschiedene Items (jedes Item 10x)
       for (let i = 0; i < 10; i++) {
         for (let j = 0; j < 10; j++) {
@@ -84,7 +84,7 @@ describe("coalesceInventoryUpdates", () => {
 
       const result = coalesceInventoryUpdates(updates);
       expect(result).toHaveLength(10);
-      
+
       // Jedes Item sollte den letzten Wert (90) haben
       for (let i = 0; i < 10; i++) {
         const item = result.find((u) => u.inventoryItemId === `item${i}`);
@@ -136,8 +136,3 @@ describe("coalesceInventoryUpdates", () => {
     });
   });
 });
-
-
-
-
-

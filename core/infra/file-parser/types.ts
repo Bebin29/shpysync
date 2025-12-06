@@ -25,5 +25,3 @@ export interface FileStreamResult {
   fileType: FileType;
   rows: AsyncGenerator<RawCsvRow, void, unknown>;
 }
-
-
