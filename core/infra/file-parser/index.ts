@@ -1,6 +1,6 @@
 /**
  * Factory-Funktion für Dateiformat-Parser.
- * 
+ *
  * Stellt eine einheitliche Schnittstelle für CSV und DBF-Parser bereit.
  */
 
@@ -14,7 +14,7 @@ import { parseDbfPreview, type DbfParseResult } from "../dbf/parser.js";
 
 /**
  * Parst eine Datei im Streaming-Modus basierend auf dem Dateityp.
- * 
+ *
  * @param filePath - Pfad zur Datei
  * @param fileType - Optional: Dateityp (wird automatisch erkannt, falls nicht angegeben)
  * @returns Stream-Ergebnis mit Headers, Encoding und AsyncIterator für Rows
@@ -46,7 +46,7 @@ export async function parseFileStream(
 
 /**
  * Parst eine Datei im Preview-Modus (nur erste N Zeilen).
- * 
+ *
  * @param filePath - Pfad zur Datei
  * @param maxRows - Maximale Anzahl von Datenzeilen (Standard: 200)
  * @param fileType - Optional: Dateityp (wird automatisch erkannt, falls nicht angegeben)
@@ -79,5 +79,3 @@ export async function parseFilePreview(
     };
   }
 }
-
-

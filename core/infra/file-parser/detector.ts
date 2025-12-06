@@ -8,7 +8,7 @@ import type { FileType } from "../../domain/validators.js";
 
 /**
  * Erkennt den Dateityp basierend auf der Dateiendung.
- * 
+ *
  * @param filePath - Pfad zur Datei
  * @returns Erkanntes Dateiformat
  */
@@ -22,7 +22,7 @@ export function detectFileTypeByExtension(filePath: string): FileType {
 
 /**
  * Erkennt den Dateityp basierend auf Magic Bytes (Dateiinhalt).
- * 
+ *
  * @param filePath - Pfad zur Datei
  * @returns Erkanntes Dateiformat oder null, falls nicht erkannt
  */
@@ -34,7 +34,7 @@ export function detectFileTypeByMagicBytes(filePath: string): FileType | null {
     fs.closeSync(fd);
 
     // DBF Magic Bytes: 0x03, 0x83, 0x8B, 0x30, 0x31, 0x32, 0xF5
-    const dbfMagicBytes = [0x03, 0x83, 0x8B, 0x30, 0x31, 0x32, 0xF5];
+    const dbfMagicBytes = [0x03, 0x83, 0x8b, 0x30, 0x31, 0x32, 0xf5];
     if (dbfMagicBytes.includes(buffer[0])) {
       return "dbf";
     }
@@ -60,10 +60,10 @@ export function detectFileTypeByMagicBytes(filePath: string): FileType | null {
 
 /**
  * Erkennt den Dateityp mit Fallback-Strategie.
- * 
+ *
  * 1. Versuche Magic Bytes
  * 2. Fallback auf Dateiendung
- * 
+ *
  * @param filePath - Pfad zur Datei
  * @returns Erkanntes Dateiformat
  */
@@ -74,5 +74,3 @@ export function detectFileType(filePath: string): FileType {
   }
   return detectFileTypeByExtension(filePath);
 }
-
-
