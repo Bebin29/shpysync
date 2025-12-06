@@ -181,6 +181,54 @@ Der Scope sollte den betroffenen Bereich angeben:
 - `cache` - Cache-Service
 - `docs` - Dokumentation
 
+### Automatische Releases
+
+**Wichtig:** WAWISync verwendet [semantic-release](https://github.com/semantic-release/semantic-release) für vollautomatische Releases basierend auf Conventional Commits.
+
+**Wie funktioniert es:**
+
+- Commits mit `feat:` erzeugen automatisch **Minor Releases** (1.0.3 → 1.1.0)
+- Commits mit `fix:` erzeugen automatisch **Patch Releases** (1.0.3 → 1.0.4)
+- Commits mit `BREAKING CHANGE:` erzeugen automatisch **Major Releases** (1.0.3 → 2.0.0)
+- Commits mit `docs:`, `chore:`, `test:`, `ci:` erzeugen **keine Releases** (nur CHANGELOG-Updates)
+
+**Beispiele für automatische Releases:**
+
+```bash
+# Minor Release (1.0.3 → 1.1.0)
+feat(sync): add support for DBF file format
+
+# Patch Release (1.0.3 → 1.0.4)
+fix(config): resolve token storage encryption issue
+
+# Major Release (1.0.3 → 2.0.0)
+feat(api): redesign IPC communication
+
+BREAKING CHANGE: IPC API has been completely redesigned.
+All existing IPC handlers need to be updated.
+```
+
+**Kein Release (nur CHANGELOG-Update):**
+
+```bash
+# Kein Release, nur CHANGELOG-Update
+docs(api): update IPC API documentation
+chore(deps): update dependencies
+test(sync): add integration tests
+```
+
+**Vorteile:**
+
+- ✅ Automatische Versionierung
+- ✅ Automatische CHANGELOG.md Aktualisierung
+- ✅ Automatische Release Notes Generierung
+- ✅ Keine manuellen Schritte erforderlich
+
+**Weitere Informationen:**
+
+- [Release Process](./docs/RELEASE_PROCESS.md) - Vollständiger Release-Prozess
+- [Release Checklist](./docs/RELEASE_CHECKLIST.md) - Pre-Release Checklist
+
 ## Pull-Request-Prozess
 
 ### Vor dem Pull Request
@@ -244,12 +292,14 @@ Kurze Beschreibung der Änderungen
 1. **Unit-Tests:** Für einzelne Funktionen/Klassen
 2. **Integration-Tests:** Für Service-Integrationen
 3. **Paritäts-Tests:** Für Daten-Konsistenz
+4. **Accessibility-Tests:** Für UI-Komponenten (WCAG 2.1 Level AA)
+5. **E2E-Tests:** Für vollständige User-Flows
 
 ### Test-Struktur
 
-- **Location:** `tests/unit/`, `tests/integration/`, `tests/parity/`
-- **Naming:** `*.test.ts` oder `*.spec.ts`
-- **Framework:** Vitest
+- **Location:** `tests/unit/`, `tests/integration/`, `tests/parity/`, `tests/accessibility/`
+- **Naming:** `*.test.ts` oder `*.spec.ts` (`.test.tsx` für React-Komponenten)
+- **Framework:** Vitest (mit jsdom für React-Komponenten)
 
 ### Test-Beispiel
 

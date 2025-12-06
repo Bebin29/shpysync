@@ -112,5 +112,3 @@ describe("Dateityp-Erkennung", () => {
     });
   });
 });
-
-

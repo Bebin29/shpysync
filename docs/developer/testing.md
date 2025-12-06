@@ -4,11 +4,13 @@ Diese Dokumentation beschreibt die Testing-Strategie für WAWISync.
 
 ## Übersicht
 
-WAWISync verwendet Vitest für Testing. Die Test-Strategie umfasst:
+WAWISync verwendet Vitest und Playwright für Testing. Die Test-Strategie umfasst:
 
 - Unit-Tests für Domain-Logik
 - Integration-Tests für Services
 - Paritäts-Tests für Python-Skript-Kompatibilität
+- Accessibility-Tests für UI-Komponenten (WCAG 2.1 Level AA)
+- E2E-Tests für kritische User-Flows
 
 ## Test-Struktur
 
@@ -111,14 +113,42 @@ describe("Matching Parity", () => {
 
 ### Ziel
 
-- Mindestens 80% Test-Coverage
-- 100% Coverage für kritische Domain-Logik
+- **Mindestens 80% Test-Coverage** für alle Metriken (Lines, Functions, Branches, Statements)
+- **100% Coverage** für kritische Domain-Logik
+- **Coverage-Thresholds** werden automatisch in CI/CD geprüft
+
+### Coverage-Thresholds
+
+Die folgenden Thresholds sind in `vitest.config.ts` konfiguriert:
+
+- **Lines:** 80%
+- **Functions:** 80%
+- **Branches:** 80%
+- **Statements:** 80%
 
 ### Coverage-Report
 
 ```bash
+# Coverage-Report generieren
 npm run test:coverage
+
+# Coverage-Report wird in coverage/ gespeichert
+# - coverage/index.html: HTML-Report
+# - coverage/coverage-summary.json: JSON-Report
 ```
+
+### Coverage-Tracking
+
+- **CI/CD:** Coverage-Reports werden automatisch in GitHub Actions generiert
+- **Artifacts:** Coverage-Reports werden als Artifacts gespeichert (30 Tage)
+- **Badge:** Coverage-Badge im README zeigt aktuellen Coverage-Status
+
+### Coverage-Verbesserung
+
+1. **Identifiziere ungetestete Bereiche:** Öffne `coverage/index.html`
+2. **Priorisiere kritische Bereiche:** Domain-Logik sollte 100% Coverage haben
+3. **Schreibe Tests:** Füge Tests für ungetestete Bereiche hinzu
+4. **Prüfe Thresholds:** Stelle sicher, dass Thresholds erfüllt sind
 
 ## Test-Best-Practices
 
@@ -181,12 +211,163 @@ vi.mock("../../electron/services/shopify-service", () => ({
 
 **`tests/fixtures/`**
 
+Siehe [tests/fixtures/README.md](../../tests/fixtures/README.md) für eine vollständige Dokumentation aller verfügbaren Fixtures.
+
 ### Verwendung
 
+#### Fixtures laden
+
 ```typescript
-import { sampleProducts } from "../fixtures/sample-products.json";
-import { sampleCsv } from "../fixtures/sample.csv";
+import { loadFixture } from "../helpers/test-utils";
+
+// CSV-Datei laden
+const csvContent = loadFixture<string>("sample.csv");
+
+// JSON-Datei laden
+const products = loadFixture<Product[]>("sample-products.json");
 ```
+
+#### Mock-Daten generieren
+
+```typescript
+import {
+  createMockProduct,
+  createMockCsvRow,
+  createMockProducts,
+  createMockCsvRows,
+  createMockProductWithVariants,
+  createMockProductEdgeCase,
+  createMockCsvRowWithPriceFormat,
+  createMockSyncTestData,
+} from "../helpers/mock-generators";
+
+// Einzelnes Produkt erstellen
+const product = createMockProduct({ title: "Custom Product" });
+
+// Mehrere Produkte erstellen
+const products = createMockProducts(10);
+
+// CSV-Zeile erstellen
+const csvRow = createMockCsvRow({ sku: "CUSTOM-SKU" });
+
+// Edge-Cases testen
+const emptySkuProduct = createMockProductEdgeCase("empty-sku");
+const specialCharsProduct = createMockProductEdgeCase("special-chars");
+
+// Verschiedene Preisformate testen
+const commaPrice = createMockCsvRowWithPriceFormat("comma");
+const currencyPrice = createMockCsvRowWithPriceFormat("currency");
+
+// Vollständigen Sync-Test-Datensatz erstellen
+const { products, csvRows } = createMockSyncTestData(10, 10);
+```
+
+### Verfügbare Fixtures
+
+- **Standard:** `sample.csv`, `sample-products.json`, `expected-outputs.json`
+- **Edge-Cases:** `csv-edge-cases.csv`
+- **Encoding:** `csv-encodings.csv`
+- **Formate:** `csv-tab-delimited.csv`
+- **Performance:** `shopify-products-large.json`
+
+## Accessibility-Tests
+
+### Übersicht
+
+Accessibility-Tests prüfen WCAG 2.1 Level AA Compliance für alle UI-Komponenten.
+
+**Location:** `tests/accessibility/`
+
+### Setup
+
+Accessibility-Tests verwenden:
+
+- `jest-axe` für automatische Accessibility-Checks
+- `@testing-library/react` für React-Komponenten-Tests
+- `jsdom` als Test-Environment
+
+### Beispiel
+
+```typescript
+import { describe, it, expect } from "vitest";
+import { render } from "@testing-library/react";
+import { axe, toHaveNoViolations } from "jest-axe";
+import { CsvUpload } from "../../app/components/csv-upload";
+
+describe("CsvUpload Component", () => {
+  it("should have no accessibility violations", async () => {
+    const { container } = render(
+      <CsvUpload onFileSelected={vi.fn()} />
+    );
+
+    const results = await axe(container);
+    expect(results).toHaveNoViolations();
+  });
+});
+```
+
+### Ausführung
+
+```bash
+# Nur Accessibility-Tests
+npm run test:a11y
+
+# Alle Tests inkl. Accessibility
+npm run test:all
+```
+
+### Getestete Aspekte
+
+- ARIA-Labels und -Attribute
+- Keyboard-Navigation
+- Color-Contrast
+- Heading-Hierarchy
+- Form-Labels
+- Table-Semantics
+
+## E2E-Tests
+
+### Übersicht
+
+E2E-Tests testen vollständige User-Flows über die gesamte Anwendung.
+
+**Location:** `tests/e2e/`
+**Framework:** Playwright
+
+### Test-Szenarien
+
+- **Sync-Workflow:** CSV-Upload → Mapping → Vorschau → Sync → Ergebnis
+- **Settings-Konfiguration:** Shop-Konfiguration, Auto-Sync-Einstellungen
+- **Dashboard-Navigation:** Dashboard-Ansicht, Historie-Anzeige
+
+### Beispiel
+
+```typescript
+import { test, expect } from "@playwright/test";
+
+test.describe("Sync Workflow", () => {
+  test("should display sync page", async ({ page }) => {
+    await page.goto("/sync");
+    await expect(page).toHaveTitle(/WAWISync/i);
+  });
+});
+```
+
+### Ausführung
+
+```bash
+# E2E-Tests ausführen
+npm run test:e2e
+
+# E2E-Tests mit UI (Playwright UI Mode)
+npm run test:e2e:ui
+```
+
+### Hinweise
+
+- E2E-Tests erfordern eine laufende Next.js-Dev-Server (wird automatisch gestartet)
+- Electron-spezifische Tests erfordern zusätzliche Konfiguration
+- Tests werden in CI/CD automatisch ausgeführt
 
 ## Continuous Integration
 
@@ -197,6 +378,7 @@ Tests werden automatisch in CI ausgeführt:
 - Bei jedem Push
 - Bei Pull Requests
 - Für verschiedene Node.js-Versionen
+- Unit-Tests, Integration-Tests, Paritäts-Tests und Accessibility-Tests
 
 ## Weitere Informationen
 

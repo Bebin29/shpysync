@@ -1,0 +1,10 @@
+SKU;Name;Preis;Bestand
+EMPTY-SKU;;50.00;50
+NO-PRICE;Produkt ohne Preis;;60
+NO-STOCK;Produkt ohne Bestand;25.00;
+EMPTY-ALL;;;;
+SPECIAL-CHARS;Produkt !@#$%^&*();30.00;100
+LONG-NAME;Dies ist ein sehr langer Produktname der über mehrere Zeilen gehen könnte und verschiedene Sonderzeichen enthält wie: äöü, ß, ñ, é, à, ç und auch Zahlen 123456789;99.99;200
+UNICODE;测试 🚀 ñáéíóú;42.00;75
+
+

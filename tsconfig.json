@@ -28,8 +28,8 @@
     "next-env.d.ts",
     "**/*.ts",
     "**/*.tsx",
-    ".next/types/**/*.ts"
+    ".next/types/**/*.ts",
+    "tests/accessibility/**/*.d.ts"
   ],
   "exclude": ["node_modules", "electron-builder"]
 }
-

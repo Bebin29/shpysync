@@ -80,6 +80,15 @@ jobs:
       - name: Run parity tests
         run: npm run test:parity
 
+      - name: Run accessibility tests
+        run: npm run test:a11y
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run E2E tests
+        run: npm run test:e2e
+
   coverage:
     name: Test Coverage
     runs-on: ubuntu-latest
@@ -105,3 +114,20 @@ jobs:
           name: coverage-report
           path: coverage/
           retention-days: 30
+
+      - name: Generate coverage summary
+        run: |
+          if [ -f coverage/coverage-summary.json ]; then
+            echo "## Coverage Summary" >> $GITHUB_STEP_SUMMARY
+            echo "| Type | Coverage |" >> $GITHUB_STEP_SUMMARY
+            echo "|------|----------|" >> $GITHUB_STEP_SUMMARY
+            node -e "
+              const fs = require('fs');
+              const coverage = JSON.parse(fs.readFileSync('coverage/coverage-summary.json', 'utf8'));
+              const total = coverage.total;
+              console.log(\`Lines: \${total.lines.pct}%\`);
+              console.log(\`Functions: \${total.functions.pct}%\`);
+              console.log(\`Branches: \${total.branches.pct}%\`);
+              console.log(\`Statements: \${total.statements.pct}%\`);
+            " >> $GITHUB_STEP_SUMMARY
+          fi

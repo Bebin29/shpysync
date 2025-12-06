@@ -1,0 +1,43 @@
+[
+  {
+    "id": "gid://shopify/Product/1",
+    "title": "Large Dataset Product 1",
+    "variants": [
+      {
+        "id": "gid://shopify/ProductVariant/1",
+        "productId": "gid://shopify/Product/1",
+        "sku": "LARGE-001",
+        "barcode": "1234567890123",
+        "title": "Standard",
+        "price": "10.00",
+        "inventoryItemId": "gid://shopify/InventoryItem/1"
+      }
+    ]
+  },
+  {
+    "id": "gid://shopify/Product/2",
+    "title": "Large Dataset Product 2",
+    "variants": [
+      {
+        "id": "gid://shopify/ProductVariant/2",
+        "productId": "gid://shopify/Product/2",
+        "sku": "LARGE-002",
+        "barcode": "1234567890124",
+        "title": "Standard",
+        "price": "20.00",
+        "inventoryItemId": "gid://shopify/InventoryItem/2"
+      },
+      {
+        "id": "gid://shopify/ProductVariant/3",
+        "productId": "gid://shopify/Product/2",
+        "sku": "LARGE-002-VAR",
+        "barcode": "1234567890125",
+        "title": "Variante 1",
+        "price": "25.00",
+        "inventoryItemId": "gid://shopify/InventoryItem/3"
+      }
+    ]
+  }
+]
+
+

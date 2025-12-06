@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["node", "vitest/globals", "@testing-library/jest-dom"],
+    "typeRoots": ["./node_modules/@types", "./tests/accessibility"]
+  },
+  "include": [
+    "tests/accessibility/**/*.ts",
+    "tests/accessibility/**/*.tsx",
+    "tests/accessibility/**/*.d.ts"
+  ]
+}
