@@ -1,15 +1,15 @@
 /**
  * Preis-Normalisierung für Shopify-kompatibles Format.
- * 
+ *
  * Portiert von Python `normalize_price_to_money_str()` Funktion.
- * 
+ *
  * Unterstützt verschiedene Formate:
  * - '6,5' → '6.50'
  * - '6.5' → '6.50'
  * - '1.234,56' → '1234.56'
  * - '1,234.56' → '1234.56'
  * - '  12 € ' → '12.00'
- * 
+ *
  * @param val - Preis-String in beliebigem Format
  * @returns Shopify-kompatibler Money-String (z.B. "12.50")
  * @throws Error wenn val null/undefined oder nicht parsebar
@@ -38,7 +38,7 @@ export function normalizePrice(val: string | null | undefined): string {
     //        Wenn das letzte Trennzeichen ein Komma ist -> europäisch (Punkt = Tausender)
     const lastComma = s.lastIndexOf(",");
     const lastDot = s.lastIndexOf(".");
-    
+
     if (lastDot > lastComma) {
       // Amerikanisch: Komma = Tausender, Punkt = Dezimal
       s = s.replace(/,/g, ""); // Entferne alle Kommas (Tausender-Trennzeichen)
@@ -60,4 +60,3 @@ export function normalizePrice(val: string | null | undefined): string {
 
   return amount.toFixed(2);
 }
-

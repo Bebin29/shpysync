@@ -1,6 +1,7 @@
 # Projektplan: WAWISync - Electron App mit Next.js
 
 ## 📋 Inhaltsverzeichnis
+
 1. [Projektübersicht](#projektübersicht)
 2. [MVP-Definition (v1.0)](#mvp-definition-v10)
 3. [Post-MVP Features (v1.1+)](#post-mvp-features-v11)
@@ -25,6 +26,7 @@
 **Ziel:** Entwicklung einer modernen, benutzerfreundlichen Electron-App zur Synchronisation von Warenbeständen zwischen einem POS-System und Shopify.
 
 **Hauptfunktionen:**
+
 - CSV/DBF-Datei-Upload und -Verarbeitung
 - Shopify-Verbindung konfigurieren
 - Spalten-Mapping (SKU, Name, Preis, Bestand)
@@ -166,6 +168,7 @@
 ### Sentry Integration
 
 **Service:** [Sentry](https://sentry.io/) - Kostenloser Plan
+
 - **5.000 Events/Monat** (ausreichend für kritische Fehler)
 - **1 Projekt**
 - **30 Tage Datenaufbewahrung**
@@ -175,6 +178,7 @@
 - **E-Mail-Alerts** bei neuen Fehlern
 
 **Vorteile:**
+
 - ✅ Gute Electron-Unterstützung (`@sentry/electron`)
 - ✅ Einfache Integration
 - ✅ Source Maps für lesbare Stack-Traces
@@ -200,6 +204,7 @@
 #### 2. Benutzer-Kontext (anonymisiert)
 
 **Gesendete Informationen:**
+
 - App-Version (z.B. "1.0.0")
 - Betriebssystem und Version (z.B. "Windows 10", "macOS 14.0")
 - Electron-Version
@@ -229,6 +234,7 @@
 #### 4. Support-Workflow
 
 **Ablauf:**
+
 1. Benutzer erlebt Fehler in der App
 2. Fehler wird automatisch an Sentry gesendet (wenn Opt-in aktiviert)
 3. Benutzer meldet sich beim Entwickler (z.B. per E-Mail)
@@ -241,6 +247,7 @@
 5. Schnelle Fehleranalyse und Fix
 
 **Fehler-ID:**
+
 - Jeder Fehler hat eine eindeutige ID
 - Kann in der UI angezeigt werden (optional)
 - Benutzer kann diese ID beim Support angeben
@@ -264,7 +271,7 @@ import { getConfig } from "./config-service.js";
 
 /**
  * Error Monitoring Service für Sentry Integration.
- * 
+ *
  * Sendet Fehler automatisch an Sentry für Remote-Monitoring.
  */
 export class ErrorMonitoringService {
@@ -288,7 +295,7 @@ export class ErrorMonitoringService {
 
     // Sentry DSN aus Umgebungsvariable oder Config
     const dsn = process.env.SENTRY_DSN || config.errorReporting?.dsn;
-    
+
     if (!dsn) {
       console.warn("Sentry DSN nicht konfiguriert. Error Monitoring deaktiviert.");
       return;
@@ -311,9 +318,12 @@ export class ErrorMonitoringService {
         // Entferne sensible Daten aus Breadcrumbs
         if (breadcrumb.data) {
           // Entferne Token-ähnliche Strings
-          Object.keys(breadcrumb.data).forEach(key => {
+          Object.keys(breadcrumb.data).forEach((key) => {
             const value = breadcrumb.data[key];
-            if (typeof value === "string" && (value.includes("shpat_") || value.includes("token"))) {
+            if (
+              typeof value === "string" &&
+              (value.includes("shpat_") || value.includes("token"))
+            ) {
               breadcrumb.data[key] = "[REDACTED]";
             }
           });
@@ -373,7 +383,7 @@ export class ErrorMonitoringService {
    */
   setEnabled(enabled: boolean): void {
     this.isEnabled = enabled;
-    
+
     if (enabled && !this.isInitialized) {
       this.initialize();
     }
@@ -408,7 +418,7 @@ import { WawiError } from "../../core/domain/errors.js";
 
 export function handleError(error: unknown, context?: Record<string, unknown>): void {
   const errorMonitoring = getErrorMonitoringService();
-  
+
   // Konvertiere zu Error-Objekt
   let errorObj: Error;
   if (error instanceof WawiError) {
@@ -464,7 +474,7 @@ import { getErrorMonitoringService } from "./services/error-monitoring-service.j
 app.whenReady().then(() => {
   const errorMonitoring = getErrorMonitoringService();
   errorMonitoring.initialize();
-  
+
   // ... restliche Initialisierung
 });
 ```
@@ -472,6 +482,7 @@ app.whenReady().then(() => {
 ### Datenschutz & Sicherheit
 
 **Gesendete Daten:**
+
 - ✅ App-Version
 - ✅ Betriebssystem und Version
 - ✅ Electron-Version
@@ -480,6 +491,7 @@ app.whenReady().then(() => {
 - ✅ Zeitpunkt des Fehlers
 
 **Nicht gesendete Daten:**
+
 - ❌ Persönliche Informationen (Namen, E-Mails)
 - ❌ Shop-URLs im Klartext (nur Hash, falls nötig)
 - ❌ Access-Tokens
@@ -488,6 +500,7 @@ app.whenReady().then(() => {
 - ❌ IP-Adressen
 
 **Anonymisierung:**
+
 - Alle sensiblen Daten werden vor dem Senden entfernt
 - Breadcrumbs werden gefiltert
 - User Context enthält keine persönlichen Daten
@@ -495,11 +508,13 @@ app.whenReady().then(() => {
 ### Konfiguration
 
 **Sentry DSN:**
+
 - Kann über Umgebungsvariable `SENTRY_DSN` gesetzt werden
 - Oder in der Config gespeichert (optional)
 - Für Production: DSN sollte nicht im Code hardcoded sein
 
 **Setup-Schritte:**
+
 1. Sentry-Account erstellen (kostenlos)
 2. Neues Projekt erstellen (Electron)
 3. DSN kopieren
@@ -517,6 +532,7 @@ app.whenReady().then(() => {
 ### Metriken & Limits
 
 **Kostenloser Plan:**
+
 - 5.000 Events/Monat
 - **Strategie:** Nur kritische Fehler senden (error/fatal)
 - **Schätzung:** Bei 100 aktiven Benutzern und durchschnittlich 1 kritischem Fehler pro Monat = ~100 Events/Monat (weit unter Limit)
@@ -570,11 +586,13 @@ app.whenReady().then(() => {
 ## 💡 Verbesserungsvorschläge für das Skript
 
 ### 1. Code-Qualität
+
 - **Doppelte Validierung:** `stock_raw` wird zweimal validiert (Zeilen 473-478 und 489-492)
 - **Redundanter Code:** Preis-Validierung doppelt (Zeilen 467-471 und 484-487)
 - **Hardcoded Credentials:** Shop-URL und Access-Token sollten aus Konfiguration kommen
 
 ### 2. Funktionalität
+
 - **Fehlende Features:**
   - Keine Option, nur Preise ODER nur Bestände zu aktualisieren
   - Keine Validierung der Spaltenindizes vor CSV-Verarbeitung
@@ -583,17 +601,20 @@ app.whenReady().then(() => {
   - Keine Möglichkeit, Updates rückgängig zu machen
 
 ### 3. Benutzerfreundlichkeit
+
 - **Fehlende Validierung:**
   - Keine Überprüfung, ob Spalten existieren
   - Keine Warnung bei leeren CSV-Dateien
   - Keine Zusammenfassung der nicht gematchten Zeilen
 
 ### 4. Performance
+
 - **Optimierungen:**
   - Produktdaten könnten gecacht werden
   - Inventory-Item-IDs könnten beim ersten Laden gespeichert werden (statt bei jeder Zeile zu suchen)
 
 ### 5. Sicherheit
+
 - **Sicherheitslücken:**
   - Access-Token im Klartext im Code
   - Keine Verschlüsselung für gespeicherte Credentials
@@ -673,6 +694,7 @@ app.whenReady().then(() => {
 **Zweck:** Automatische, zeitgesteuerte Synchronisation von Preisen und Beständen.
 
 **Features:**
+
 - Scheduler-basierte Ausführung (konfigurierbares Intervall: 15, 30, 60, 120 Minuten)
 - CSV/DBF-Pfad-Konfiguration
 - Start/Stop-Funktionalität
@@ -680,6 +702,7 @@ app.whenReady().then(() => {
 - Läuft nur, solange die App geöffnet ist
 
 **Implementierung:**
+
 - `electron/services/auto-sync-service.ts`
 - IPC-Handler für Auto-Sync-Konfiguration
 - UI-Komponente in Settings-Seite
@@ -689,6 +712,7 @@ app.whenReady().then(() => {
 **Zweck:** Automatische Update-Prüfung und Installation über GitHub Releases.
 
 **Features:**
+
 - Automatische Update-Prüfung (konfigurierbares Intervall)
 - Manuelles Update-Check
 - Download und Installation von Updates
@@ -696,6 +720,7 @@ app.whenReady().then(() => {
 - GitHub Token-Support (optional)
 
 **Implementierung:**
+
 - `electron/services/update-service.ts`
 - Verwendet `electron-updater`
 - Konfigurierbar über Settings
@@ -705,12 +730,14 @@ app.whenReady().then(() => {
 **Zweck:** Signierung von Build-Artefakten für vertrauenswürdige Installation.
 
 **Features:**
+
 - Self-Signed-Zertifikat für Entwicklung
 - Support für echte Code-Signing-Zertifikate
 - Automatische Signierung im Build-Prozess
 - Windows, macOS und Linux Support
 
 **Implementierung:**
+
 - `scripts/create-cert.ps1` (Windows)
 - `scripts/build-with-signing.js`
 - Konfiguration über Umgebungsvariablen (`CSC_LINK`, `CSC_KEY_PASSWORD`)
@@ -720,12 +747,14 @@ app.whenReady().then(() => {
 **Zweck:** Unterstützung für dBase-Format Dateien (zusätzlich zu CSV).
 
 **Features:**
+
 - DBF-Datei-Parsing
 - Encoding-Erkennung
 - Spalten-Mapping-Unterstützung
 - Automatische Standard-Pfad-Erkennung (defaultDbfPath)
 
 **Implementierung:**
+
 - `core/infra/dbf/parser.ts`
 - Integration in CSV-Service
 
@@ -734,17 +763,20 @@ app.whenReady().then(() => {
 **Zweck:** Testen von Synchronisationen an einzelnen Artikeln.
 
 **Features:**
+
 - Auswahl einzelner Artikel (nur Bestand > 0)
 - Test-Synchronisation ohne vollständigen Sync
 - Ergebnis-Anzeige für Test-Operationen
 
 **Implementierung:**
+
 - UI-Komponente in Sync-Wizard (Schritt 3)
 - `sync.test()` IPC-Handler
 
 ### Verbesserte UI-Features
 
 **Features:**
+
 - Automatisches Überspringen von Schritten (wenn Pfad/Mapping gespeichert)
 - Standard-Pfad-Unterstützung (defaultCsvPath/defaultDbfPath)
 - Mapping-Persistierung
@@ -784,13 +816,13 @@ electron/core/
 // core/domain/types.ts
 
 export interface Product {
-  id: string;              // Shopify GID
+  id: string; // Shopify GID
   title: string;
   variants: Variant[];
 }
 
 export interface Variant {
-  id: string;              // Shopify GID
+  id: string; // Shopify GID
   productId: string;
   sku: string | null;
   barcode: string | null;
@@ -851,10 +883,7 @@ export interface MatchResult {
 
 ```typescript
 // electron/core/domain/matching.ts
-export function findVariantId(
-  csvRow: CsvRow,
-  products: Product[]
-): MatchResult;
+export function findVariantId(csvRow: CsvRow, products: Product[]): MatchResult;
 
 // electron/core/domain/price-normalizer.ts
 export function normalizePrice(price: string): string;
@@ -902,11 +931,13 @@ Persistenz-Schicht:
 ### 1. Konfiguration (electron-store)
 
 **Verwendung:**
+
 - Shop-Konfiguration (URL, Token)
 - Spalten-Mapping (Standard)
 - UI-Einstellungen
 
 **Sicherheit:**
+
 - Tokens verschlüsselt speichern
 - Optional: OS Keychain (Windows Credential Manager, macOS Keychain)
 
@@ -943,7 +974,7 @@ CREATE INDEX idx_variants_barcode ON variants(barcode) WHERE barcode IS NOT NULL
 **Cache-Strategie:**
 
 1. **Erstes Laden:** Alle Produkte/Varianten von Shopify laden und in SQLite speichern
-2. **Wiederholte Syncs:** 
+2. **Wiederholte Syncs:**
    - Zuerst aus Cache matchen
    - Nur bei Cache-Miss oder nach X Stunden Shopify abfragen
    - Cache bei erfolgreichem Sync aktualisieren
@@ -954,6 +985,7 @@ CREATE INDEX idx_variants_barcode ON variants(barcode) WHERE barcode IS NOT NULL
    - Automatische Invalidierung nach 24 Stunden (optional)
 
 **Vorteile:**
+
 - Schnellere Wiederholungs-Syncs
 - Reduzierte API-Calls (Rate-Limit-Schonung)
 - Offline-Matching möglich (für Vorschau)
@@ -977,6 +1009,7 @@ interface SyncHistoryEntry {
 ```
 
 **Speicherung:**
+
 - Letzte 10 Syncs in `sync-history.json`
 - Ältere Einträge automatisch löschen
 - Export-Funktion für alle Historie
@@ -992,6 +1025,7 @@ interface SyncHistoryEntry {
 ## 🛠️ Technologie-Stack
 
 ### Frontend
+
 - **Next.js 14+** (App Router)
 - **React 18+**
 - **TypeScript**
@@ -1004,6 +1038,7 @@ interface SyncHistoryEntry {
 - **Recharts** oder **Chart.js** (Visualisierungen)
 
 ### Backend (Electron Main Process)
+
 - **TypeScript**
 - **Node.js** (via Electron)
 - **electron-store** (Konfigurations-Persistierung)
@@ -1014,11 +1049,13 @@ interface SyncHistoryEntry {
 - **keytar** (optional, für OS Keychain-Integration)
 
 ### Electron
+
 - **Electron 28+**
 - **electron-builder** (Build & Distribution)
 - **electron-updater** (Auto-Updates)
 
 ### Development Tools
+
 - **ESLint** (Linting)
 - **Prettier** (Code-Formatierung)
 - **Vitest** (Testing)
@@ -1123,6 +1160,7 @@ wawisync-app/
 **Ziel:** Next.js (App Router) und Electron laufen zusammen im Dev-Modus. Electron lädt die Next-Oberfläche, TypeScript wird sauber für Electron kompiliert, IPC funktioniert minimal (Ping/Pong).
 
 #### 1.1 Projekt initialisieren
+
 ```bash
 # Next.js App erstellen
 npx create-next-app@latest wawisync-app --typescript --tailwind --app
@@ -1143,17 +1181,17 @@ npm install --save-dev tsc-esm-fix
 ```
 
 **Optional:** `.tsc-esm-fix.json` Konfiguration erstellen (falls bestimmte Dateien ausgeschlossen werden sollen):
+
 ```json
 {
-  "exclude": [
-    "electron/dist/electron/main.js",
-    "electron/dist/electron/preload.js"
-  ]
+  "exclude": ["electron/dist/electron/main.js", "electron/dist/electron/preload.js"]
 }
 ```
+
 **Hinweis:** Diese Konfiguration ist optional. Das Problem mit Variablennamen wurde durch Umbenennung gelöst (siehe Phase 1.3).
 
 #### 1.2 Verzeichnisstruktur anlegen
+
 ```
 wawisync-app/
 ├── electron/
@@ -1168,7 +1206,9 @@ wawisync-app/
 ```
 
 #### 1.3 TypeScript für Electron konfigurieren
+
 - `electron/tsconfig.json` anlegen:
+
 ```jsonc
 {
   "extends": "../tsconfig.json",
@@ -1181,42 +1221,50 @@ wawisync-app/
     "moduleResolution": "node",
     "esModuleInterop": true,
     "resolveJsonModule": true,
-    "strict": true
+    "strict": true,
   },
   "include": ["**/*.ts", "../core/**/*.ts"],
-  "exclude": ["node_modules", "dist"]
+  "exclude": ["node_modules", "dist"],
 }
 ```
+
 - **Hinweis:** ES Modules werden verwendet (nicht CommonJS), da der Code `import/export` nutzt
 - **Wichtig:** `rootDir` wird weggelassen, damit TypeScript automatisch den gemeinsamen Root für `electron/` und `core/` bestimmt. Dies führt dazu, dass TypeScript die Dateien nach `electron/dist/electron/` kompiliert (nicht `electron/dist/`). Daher muss `package.json` auf `electron/dist/electron/main.js` zeigen.
 - **Wichtig:** Alle relativen Imports müssen mit `.js`-Endungen versehen werden, da Node.js bei ES Modules explizite Dateiendungen erfordert. Beispiel:
+
   ```typescript
   // ✅ Korrekt (im TypeScript-Quellcode)
   import { registerIpcHandlers } from "./services/ipc-handlers.js";
   import type { ShopConfig } from "../types/ipc.js";
   import { parseCsvStream } from "../../core/infra/csv/parser.js";
-  
+
   // ❌ Falsch (funktioniert nicht in kompiliertem Code)
   import { registerIpcHandlers } from "./services/ipc-handlers";
   import type { ShopConfig } from "../types/ipc";
   ```
+
   **Hinweis:** TypeScript entfernt die `.js`-Endungen beim Kompilieren (bei `moduleResolution: "node"`), aber Node.js benötigt sie zur Laufzeit. Daher wird `tsc-esm-fix` verwendet, um die `.js`-Endungen nach der Kompilierung automatisch wieder hinzuzufügen. Das Tool wird im Build-Script nach `tsc` ausgeführt:
+
   ```json
   "electron:build:ts": "tsc -p electron/tsconfig.json && tsc-esm-fix --target electron/dist"
   ```
+
   **Wichtig:** `tsc-esm-fix` kann Variablennamen fälschlich transformieren. Daher sollten `__filename` und `__dirname` vermieden werden. Stattdessen verwende `filename` und `dirnamePath`:
+
   ```typescript
   // ❌ Problem: TypeScript transformiert diese falsch
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = dirname(__filename);
-  
+
   // ✅ Korrekt: Alternative Variablennamen verwenden
   const filename = fileURLToPath(import.meta.url);
   const dirnamePath = dirname(filename);
   ```
+
   Dies gilt für alle relativen Imports in `electron/` und `core/` Dateien.
 
 #### 1.4 Electron Main-Prozess (minimal)
+
 - `electron/main.ts`:
   - `BrowserWindow` mit:
     - `contextIsolation: true`
@@ -1238,6 +1286,7 @@ wawisync-app/
   - `ipcMain.handle("ping", ...)` implementieren
 
 #### 1.5 Preload-Skript
+
 - `electron/preload.ts`:
   - `contextBridge.exposeInMainWorld("electron", { ping: () => ipcRenderer.invoke("ping"), ... })`
   - Sicherheitsanforderung: Renderer hat keine Node-APIs, nur das explizit exponierte API-Objekt
@@ -1246,12 +1295,13 @@ wawisync-app/
     - Electron lädt Preload-Scripts standardmäßig als CommonJS, auch wenn die `package.json` `"type": "module"` hat
     - Das Preload-Script muss als CommonJS kompiliert werden, um den Fehler "Cannot use import statement outside a module" zu vermeiden
     - Lösung: Separate TypeScript-Konfiguration `electron/tsconfig.preload.json` erstellen:
+
     ```jsonc
     {
       "extends": "./tsconfig.json",
       "compilerOptions": {
         "target": "ES2020",
-        "module": "CommonJS",  // WICHTIG: CommonJS statt ES2020
+        "module": "CommonJS", // WICHTIG: CommonJS statt ES2020
         "lib": ["ES2020"],
         "outDir": "./dist/electron",
         "noEmit": false,
@@ -1261,33 +1311,39 @@ wawisync-app/
         "forceConsistentCasingInFileNames": true,
         "resolveJsonModule": true,
         "moduleResolution": "node",
-        "types": ["node"]
+        "types": ["node"],
       },
       "include": ["preload.ts"],
-      "exclude": ["node_modules", "dist"]
+      "exclude": ["node_modules", "dist"],
     }
     ```
+
     - Das Preload-Script muss aus der Haupt-TypeScript-Konfiguration ausgeschlossen werden:
+
     ```jsonc
     // electron/tsconfig.json
     {
-      "exclude": ["node_modules", "dist", "preload.ts"]  // preload.ts ausschließen
+      "exclude": ["node_modules", "dist", "preload.ts"], // preload.ts ausschließen
     }
     ```
+
     - Build-Script anpassen, um beide Kompilierungen auszuführen:
+
     ```jsonc
     {
       "scripts": {
-        "electron:build:ts": "tsc -p electron/tsconfig.json && tsc -p electron/tsconfig.preload.json && tsc-esm-fix --target electron/dist"
-      }
+        "electron:build:ts": "tsc -p electron/tsconfig.json && tsc -p electron/tsconfig.preload.json && tsc-esm-fix --target electron/dist",
+      },
     }
     ```
-    - **Ergebnis:** 
+
+    - **Ergebnis:**
       - Main Process (`main.ts`) wird als ES Module kompiliert (mit `import/export`)
       - Preload Script (`preload.ts`) wird als CommonJS kompiliert (mit `require`)
     - **Debugging:** Preload-Pfad muss absolut sein (verwende `path.resolve()` statt `path.join()`)
 
 #### 1.6 Renderer – einfacher IPC-Test
+
 - TypeScript-Definitionen in `app/types/electron.d.ts`:
   ```typescript
   declare global {
@@ -1303,6 +1359,7 @@ wawisync-app/
   - Wird im Dashboard angezeigt, um IPC-Verbindung zu verifizieren
 
 #### 1.7 Scripts in `package.json`
+
 ```jsonc
 {
   "scripts": {
@@ -1311,16 +1368,18 @@ wawisync-app/
     "start": "next start",
     "electron:build:ts": "tsc -p electron/tsconfig.json && tsc -p electron/tsconfig.preload.json && tsc-esm-fix --target electron/dist",
     "electron:dev": "npm run electron:build:ts && concurrently \"npm run dev\" \"wait-on http://localhost:3000 && electron .\"",
-    "electron:build": "npm run build && npm run electron:build:ts && electron-builder"
+    "electron:build": "npm run build && npm run electron:build:ts && electron-builder",
   },
-  "main": "electron/dist/electron/main.js"
+  "main": "electron/dist/electron/main.js",
 }
 ```
+
 - **Hinweis:** `wait-on` stellt sicher, dass Next.js läuft, bevor Electron startet
 - **Wichtig:** `tsc-esm-fix` wird nach der TypeScript-Kompilierung ausgeführt, um die `.js`-Endungen zu relativen Imports hinzuzufügen, die Node.js bei ES Modules benötigt
 - **Wichtig:** `main` verweist auf `electron/dist/electron/main.js` (nicht `electron/dist/main.js`), da TypeScript die Dateien in eine verschachtelte Struktur kompiliert
 
 #### 1.8 ESLint/Prettier/Tailwind
+
 - ESLint-Konfiguration erweitern (`.eslintrc.json`):
   - Overrides für `electron/**/*.ts` und `core/**/*.ts` hinzufügen
   - Electron-spezifische Regeln (z.B. `no-console` als warn statt error)
@@ -1328,6 +1387,7 @@ wawisync-app/
 - shadcn/ui initialisieren
 
 **Deliverables Phase 1:**
+
 - ✅ `npm run electron:dev` startet Next-Dev und Electron
 - ✅ Fenster öffnet deine Next-Seite
 - ✅ IPC-Ping-Test funktioniert (`"pong"` wird angezeigt) - Test-Komponente im Dashboard
@@ -1351,52 +1411,61 @@ wawisync-app/
 **Ziel:** Grundlayout der App steht (Dashboard, Sync, Settings), getrennt in dumb UI-Komponenten und "smarte" Seiten mit IPC-Anbindung. Basis-State für Sync ist definiert.
 
 #### 2.1 Layout & Navigation
+
 - App-Shell:
   - Sidebar mit Navigation: Dashboard, Sync, Einstellungen
   - Header mit Status-Indikator (z. B. aktiver Shop, Verbindung Shopify)
 - Responsives Layout (Tailwind)
 
 #### 2.2 Seitenstruktur
+
 - `src/app/page.tsx`: Dashboard
 - `src/app/sync/page.tsx`: Sync-Ansicht
 - `src/app/settings/page.tsx`: Einstellungen
 - Diese Seiten nutzen nur eigene Hooks und Komponenten, keine direkte Electron-Logik
 
 #### 2.3 Trennung UI vs. Backend
+
 - `src/components/ui/*`: rein visuelle Komponenten (Buttons, Inputs, Cards, Tabellen)
 - "Smarte" Komponenten:
   - z. B. `SyncPage`, `SettingsPage` greifen ausschließlich über Hooks wie `useElectron`, `useSyncStore`, `useConfig` auf Backend-Daten zu
   - Renderer enthält keinerlei Shopify-/FS-Code; alles läuft über IPC
 
 #### 2.4 Sync-UI-State definieren
+
 - In `src/stores/sync-store.ts` (Zustand):
+
 ```typescript
 type SyncStep = "idle" | "mapping" | "preview" | "running" | "completed" | "error";
 
 interface SyncUIState {
   step: SyncStep;
-  progress: number;          // 0–100
-  currentAction?: string;    // "CSV wird geparst", "Produkte laden", ...
+  progress: number; // 0–100
+  currentAction?: string; // "CSV wird geparst", "Produkte laden", ...
   logEntries: LogEntry[];
   previewRows: PreviewRow[]; // z. B. max 200 Zeilen
   result?: SyncResult;
 }
 ```
+
 - Phase 2: zunächst mit Dummy-Daten befüllen
 
 #### 2.5 Hooks-Grundgerüst
+
 - `src/hooks/use-electron.ts`:
   - Stellt typsichere Wrapper für IPC-Aufrufe bereit (z. B. `invoke("sync:start", ...)`)
 - `src/hooks/use-config.ts`:
   - Greift auf gespeicherte Konfiguration via IPC zu (Platzhalter für später)
 
 #### 2.6 Basis-Komponenten
+
 - Button, Input, Select (shadcn/ui)
 - Card, Dialog, Alert
 - Table für Datenanzeige
 - Progress-Bar
 
 **Deliverables Phase 2:**
+
 - ✅ Navigation funktioniert (Dashboard, Sync, Settings)
 - ✅ Layout ist grob fertig (MainLayout mit Sidebar und Header)
 - ✅ Header mit Status-Indikator (Shop-Verbindung)
@@ -1415,6 +1484,7 @@ interface SyncUIState {
 **Ziel:** Klare Schichten: Shopify-Client (infra), Domänen-Services (Products/Inventory), CSV-Parser und Domain-Logik (Matching, Preis-Normalisierung) sind getrennt und in TS getypt.
 
 #### 3.0 Shopify API-Vorbereitung
+
 - GraphiQL Explorer testen (https://shopify.dev/api/usage/api-exploration/admin-graphiql-explorer)
 - Queries/Mutations validieren
 - API-Version `2025-10` konfigurieren
@@ -1422,16 +1492,18 @@ interface SyncUIState {
 - API-Version-Verwaltung implementieren (für zukünftige Updates)
 
 #### 3.1 Shopify-Infra-Layer
+
 - `electron/services/shopify-client.ts`:
   - Zentrale Funktion:
-```typescript
+
+````typescript
     interface ShopifyClientConfig {
       shopUrl: string;
       accessToken: string;
       apiVersion: string;
       fetchImpl?: typeof fetch;
     }
-    
+
     class ShopifyClient {
       constructor(config: ShopifyClientConfig, logger: Logger) { ... }
       request<T>(query: string, variables?: Record<string, unknown>): Promise<T> { ... }
@@ -1448,14 +1520,14 @@ interface SyncUIState {
 #### 3.2 Shopify-Domain-Services
 - `electron/services/shopify-product-service.ts`:
   - Nutzt `core/infra/shopify/client.ts`
-  - Methoden: 
+  - Methoden:
     - `getAllProductsWithVariants()` (Cursor-Pagination, max 250/Seite)
     - `updateVariantPrices()` (Bulk-Update pro Produkt)
   - Paging via Cursor
   - Lädt API-Version automatisch aus Config
 - `electron/services/shopify-inventory-service.ts`:
   - Nutzt `core/infra/shopify/client.ts`
-  - Methoden: 
+  - Methoden:
     - `getLocations()` (Cursor-Pagination)
     - `setInventoryQuantities(...)` (Batches von 250)
   - Lädt API-Version automatisch aus Config
@@ -1516,7 +1588,7 @@ interface SyncUIState {
     locationId: string;
     locationName: string;
   }
-  
+
   // Shop-Config für Persistierung (mit Token-Referenz)
   interface ShopConfigStored {
     shopUrl: string;
@@ -1524,7 +1596,7 @@ interface SyncUIState {
     locationId: string;
     locationName: string;
   }
-  
+
   interface AppConfig {
     shop: ShopConfigStored | null; // Gespeicherte Config mit accessTokenRef
     defaultColumnMapping: ColumnMapping | null;
@@ -1535,10 +1607,12 @@ interface SyncUIState {
       schedule?: string;
     };
   }
-  ```
+````
+
 - **Hinweis:** MVP unterstützt nur einen Shop. Multi-Shop-Management kommt in v1.2.
 
 #### 4.2 Zod-Validierung
+
 - `electron/lib/validators.ts`:
   - Zod-Schemas für `ShopConfig`, `ShopConfigStored`, `AppConfig`, `ColumnMapping`
   - Type-safe Validierung mit automatischer Fehlerbehandlung
@@ -1546,6 +1620,7 @@ interface SyncUIState {
 - Fallback auf Defaults bei ungültiger Config
 
 #### 4.3 Config-Manager
+
 - `electron/services/config-service.ts`:
   - Nutzt `electron-store` für verschlüsselte Speicherung
   - Methoden:
@@ -1561,6 +1636,7 @@ interface SyncUIState {
     - Validierung gegen Zod-Schema mit Fallback
 
 #### 4.4 IPC-Endpunkte für Config
+
 - Im Main-Prozess (`electron/services/ipc-handlers.ts`):
   - `ipcMain.handle("config:get", ...)` - lädt gesamte App-Config
   - `ipcMain.handle("config:set", ...)` - speichert gesamte App-Config
@@ -1574,6 +1650,7 @@ interface SyncUIState {
 - **Hinweis:** MVP unterstützt nur einen Shop. Multi-Shop-Endpunkte (`getAllShops`, `deleteShop`) kommen in v1.2.
 
 #### 4.5 Token-Speicherung
+
 - Access-Token wird nicht im Klartext in `AppConfig` gespeichert
 - Implementierung: `electron/services/token-store.ts`
   - Separater `electron-store` nur für Tokens (zusätzliche Sicherheitsschicht)
@@ -1589,6 +1666,7 @@ interface SyncUIState {
 - **Optional (zukünftig):** OS-Keychain-Integration via `keytar` für zusätzliche Sicherheit
 
 #### 4.6 Settings-UI
+
 - Shop-Konfiguration (URL, Token)
   - URL-Validierung (`.myshopify.com` Domain)
   - Token-Format-Validierung (`shpat_` oder `shpca_`)
@@ -1600,6 +1678,7 @@ interface SyncUIState {
 - API-Version-Anzeige (Info)
 
 **Deliverables Phase 4:**
+
 - ✅ App kann einen Shop verwalten (MVP: ein Shop pro Installation)
 - ✅ Konfiguration wird persistiert und beim Start geladen
 - ✅ Zod-Validierung für alle Config-Types (type-safe)
@@ -1615,12 +1694,14 @@ interface SyncUIState {
 **Ziel:** CSV-Datei wird über UI ausgewählt, Pfad an den Main-Prozess übergeben, Mapping konfiguriert, Vorschau generiert. Mapping ist pro Shop konfigurierbar.
 
 #### 5.1 CSV-Upload im Renderer
+
 - `csv-upload.tsx`:
   - `<input type="file">` oder Drag&Drop
   - Nur Datei-Metadaten im Renderer nutzen
 - **Wichtig:** Über IPC an Main-Prozess wird nur der **Dateipfad** übergeben (keine Datei-Inhalte)
 
 #### 5.2 IPC: CSV-Preview
+
 - `ipcMain.handle("csv:preview", ...)`:
   - Input: `{ filePath, mapping, maxRows }`
   - Nutzt `csv-parser` im Preview-Modus
@@ -1628,6 +1709,7 @@ interface SyncUIState {
 - Renderer zeigt Vorschau-Tabelle anhand dieser Daten
 
 #### 5.3 Spalten-Mapping UI
+
 - `column-mapping.tsx`:
   - Dropdowns mit Spaltennamen (aus CSV-Header)
   - Zuordnung zu logischen Feldern (SKU, Name, Preis, Bestand)
@@ -1638,10 +1720,12 @@ interface SyncUIState {
     - beim Speichern in `ShopConfig.columnMapping` persistiert (per `config:saveShop`)
 
 #### 5.4 Shop-spezifisches Mapping
+
 - Beim Wechsel des aktiven Shops:
   - Mapping aus der entsprechenden `ShopConfig` laden und UI vorbelegen
 
 **Deliverables Phase 5:**
+
 - ✅ CSV-Datei kann ausgewählt werden
 - ✅ Spalten-Mapping kann definiert und gespeichert werden
 - ✅ Vorschau (z. B. erste 100–200 Zeilen) wird angezeigt
@@ -1656,6 +1740,7 @@ interface SyncUIState {
 **Ziel:** Die Sync-Engine im Main-Prozess setzt den vollständigen Pipeline-Flow um. Fortschritt und Logs werden über IPC an den Renderer gesendet.
 
 #### 6.1 Pipeline-Definition
+
 - `electron/services/sync-engine.ts`:
   - Schritte:
     1. CSV → `ParsedRow` (Streaming)
@@ -1668,6 +1753,7 @@ interface SyncUIState {
     8. Ausführung in Batches (nach Bestätigung)
 
 #### 6.2 Fortschrittsberechnung
+
 - Definiere "Work Units":
   - z. B.:
     - `CSV_ROWS` (Anzahl Zeilen)
@@ -1678,6 +1764,7 @@ interface SyncUIState {
 - Sync-Engine sendet regelmäßig `sync:progress` Events via IPC
 
 #### 6.3 IPC-Schnittstellen
+
 - `ipcMain.handle("sync:preview", ...)`:
   - Input: `SyncPreviewRequest` (csvPath, columnMapping, shopConfig, options)
   - Generiert Vorschau mit Matching-Ergebnissen OHNE Updates auszuführen
@@ -1695,6 +1782,7 @@ interface SyncUIState {
   - `sync:complete` (SyncResult)
 
 #### 6.4 Modus-Auswahl (Preis/Bestand)
+
 - In der Pipeline:
   - Branching je nach `mode`:
     - Nur Preis-Updates generieren
@@ -1702,6 +1790,7 @@ interface SyncUIState {
     - Beides
 
 **Deliverables Phase 6:**
+
 - ✅ Manuelles Starten des Sync (ohne UI-Feinheiten) funktioniert
 - ✅ Fortschritt und Logs kommen im Renderer an
 - ✅ Vorschau-Daten (PlannedOperations) werden erzeugt
@@ -1714,10 +1803,12 @@ interface SyncUIState {
 **Ziel:** Alle geplanten Änderungen werden strukturiert angezeigt, filterbar, und die Ausführung erfolgt erst nach expliziter Bestätigung.
 
 #### 7.1 Datenmodell für geplante/ausgeführte Updates
+
 - `core/domain/sync-types.ts`:
+
   ```typescript
   type OperationType = "price" | "inventory";
-  
+
   interface PlannedOperation {
     id: string;
     type: OperationType;
@@ -1727,15 +1818,15 @@ interface SyncUIState {
     oldValue?: string | number | null;
     newValue: string | number;
   }
-  
+
   type OperationStatus = "planned" | "success" | "failed" | "skipped";
-  
+
   interface OperationExecution extends PlannedOperation {
     status: OperationStatus;
     message?: string;
     errorCode?: string;
   }
-  
+
   interface SyncPreviewResult {
     planned: PlannedOperation[];
     unmatchedRows: Array<{
@@ -1747,7 +1838,9 @@ interface SyncUIState {
     }>;
   }
   ```
+
 - `electron/types/ipc.ts`:
+
   ```typescript
   interface SyncPreviewRequest {
     csvPath: string;
@@ -1758,7 +1851,7 @@ interface SyncUIState {
       updateInventory: boolean;
     };
   }
-  
+
   interface SyncPreviewResponse {
     success: boolean;
     data?: {
@@ -1767,7 +1860,7 @@ interface SyncUIState {
     };
     error?: string;
   }
-  
+
   interface SyncResult {
     totalPlanned: number;
     totalExecuted: number;
@@ -1781,12 +1874,14 @@ interface SyncUIState {
     duration?: number;
   }
   ```
+
 - **Hinweis:** `OperationExecution` wird nicht verwendet. Stattdessen wird `OperationResult` (IPC-Type) verwendet, da es mehr Informationen enthält (`csvRow`, `variantId`).
 - **Hinweis:** `SyncResult.planned` ist optional, da es nur gesetzt wird, wenn eine Vorschau generiert wurde (bei normalem Sync).
 - Vorschau zeigt `planned` (über `sync:preview` Endpunkt)
 - Nach Ausführung enthält `SyncResult` `operations` (mit Status-Informationen)
 
 #### 7.2 Vorschau-UI
+
 - **Wichtig:** Vorschau wird VOR dem Sync generiert über `sync:preview` IPC-Endpunkt
 - `preview-table.tsx`:
   - Tabellen-Ansicht mit Filter:
@@ -1799,6 +1894,7 @@ interface SyncUIState {
 - **IPC-Endpunkt:** `sync:preview` generiert Vorschau mit Matching-Ergebnissen ohne Updates auszuführen
 
 #### 7.3 Bestätigungs-Dialog
+
 - Zusammenfassung:
   - "X Preis-Updates, Y Inventory-Updates"
   - "Z nicht-gematchte Zeilen"
@@ -1809,12 +1905,14 @@ interface SyncUIState {
   - "Sync ausführen"
 
 #### 7.4 Export-Funktionen
+
 - Sync-Ergebnisse als CSV exportieren
   - Spalten: Zeit, SKU, Name, Alter Wert, Neuer Wert, Status, Fehlermeldung
 - Nicht-gematchte Zeilen als CSV exportieren
 - Logs exportieren (Text-Datei)
 
 **Deliverables Phase 7:**
+
 - ✅ Vorschau zeigt alle geplanten Änderungen strukturiert
 - ✅ Vorschau wird VOR der Bestätigung generiert (über `sync:preview`)
 - ✅ Matching-Ergebnisse werden angezeigt (nicht nur CSV-Rohdaten)
@@ -1831,11 +1929,13 @@ interface SyncUIState {
 **Hinweis:** Vorschau wird bereits in Phase 7 VOR dem Sync generiert (über `sync:preview`). Die Fortschrittsanzeige in Phase 8 bezieht sich auf die tatsächliche Ausführung der Updates.
 
 #### 8.1 Log-Modell
+
 - `LogEntry`:
+
   ```typescript
   type LogLevel = "debug" | "info" | "warn" | "error";
   type LogCategory = "csv" | "shopify" | "matching" | "inventory" | "price" | "system";
-  
+
   interface LogEntry {
     id: string;
     timestamp: string;
@@ -1847,6 +1947,7 @@ interface SyncUIState {
   ```
 
 #### 8.2 Logger-Service
+
 - `electron/services/logger.ts`:
   - Stellt Methoden bereit: `log(level, category, message, context?)`
   - Schreibt:
@@ -1854,12 +1955,14 @@ interface SyncUIState {
     - broadcastet über IPC an Renderer (`sync:log`)
 
 #### 8.3 UI für Fortschritt
+
 - `progress-view.tsx`:
   - Fortschrittsbalken (0–100 %)
   - Text "Aktuelle Aktion" (`currentAction` aus `SyncUIState`)
   - Optional: geschätzte Restzeit (WorkUnits / Rate)
 
 #### 8.4 Log-Viewer-UI
+
 - `log-viewer.tsx`:
   - Live-Stream der LogEntries
   - Filter nach:
@@ -1869,6 +1972,7 @@ interface SyncUIState {
     - Export als Text/CSV
 
 **Deliverables Phase 8:**
+
 - ✅ Während des Syncs wird Fortschritt klar angezeigt
 - ✅ Logs werden in Echtzeit angezeigt und bei Bedarf gefiltert/exportiert
 - ✅ Abbruch des Syncs über UI ist möglich
@@ -1882,10 +1986,12 @@ interface SyncUIState {
 **Ziel:** Eindeutige Fehlertypen, saubere Darstellung in der UI, klare Unterscheidung zwischen User- und Systemfehlern.
 
 #### 9.1 Zentraler Error-Typ
+
 - `electron/core/domain/errors.ts`:
+
   ```typescript
   type ErrorSeverity = "info" | "warning" | "error" | "fatal";
-  
+
   type ErrorCode =
     | "CSV_INVALID_FORMAT"
     | "CSV_MISSING_COLUMN"
@@ -1897,16 +2003,18 @@ interface SyncUIState {
     | "NETWORK_ERROR"
     | "CONFIG_INVALID"
     | "INTERNAL_UNEXPECTED";
-  
+
   interface WawiError extends Error {
     code: ErrorCode;
     severity: ErrorSeverity;
     details?: unknown;
   }
   ```
+
 - Alle internen Fehler werden in `WawiError` gewrappt
 
 #### 9.2 Validierungspunkte
+
 - CSV:
   - Datei existiert
   - Header vorhanden
@@ -1919,6 +2027,7 @@ interface SyncUIState {
   - Scopes ausreichend
 
 #### 9.3 UI-Fehlerdarstellung
+
 - Eigenes Fehler-Panel:
   - Zusammenfassende Meldungen mit konkreten Hinweisen
 - Fehler-Level:
@@ -1926,6 +2035,7 @@ interface SyncUIState {
   - `error`/`fatal`: Sync abgebrochen, Benutzer sieht klare Ursache
 
 **Deliverables Phase 9:**
+
 - ✅ Fehler werden konsistent als `WawiError` behandelt
 - ✅ UI zeigt eindeutige und verständliche Fehlermeldungen
 - ✅ Validierungen verhindern typische Benutzerfehler frühzeitig
@@ -1937,26 +2047,31 @@ interface SyncUIState {
 **Ziel:** Zeitgesteuerte Syncs für fortgeschrittene Nutzer, rein im Main-Prozess, ohne versteckte Hintergrundprozesse außerhalb der App.
 
 #### 10.1 Scheduler im Main-Prozess
+
 - Einfacher Intervall-Scheduler (z. B. `node-cron` oder eigener Timer)
 - Konfigurierbare Intervalle:
   - alle X Minuten
   - bestimmte Uhrzeit pro Tag
 
 #### 10.2 Konfiguration
+
 - Felder in `ShopConfig` oder `AppConfig`:
   - `autoSyncEnabled`, `autoSyncSchedule` (z. B. Cron-String oder vordefinierte Intervalle)
 
 #### 10.3 UI
+
 - In Settings:
   - Checkbox "Automatische Synchronisation aktivieren"
   - Auswahlfeld für Intervall
 - **Klarer Hinweis:** Auto-Sync läuft nur, solange die App offen ist
 
 #### 10.4 Ergebnisdarstellung
+
 - Auto-Sync-Sessions werden im Dashboard gelistet ("letzte Syncs")
 - Fehler / Warnungen aus Auto-Syncs erscheinen im Log
 
 **Deliverables Phase 10:**
+
 - ✅ Auto-Sync kann pro Shop aktiviert/deaktiviert werden
 - ✅ Zeitgesteuerter Sync läuft, solange die App geöffnet ist
 - ✅ Ergebnisse sind im Dashboard und Log ersichtlich
@@ -1968,6 +2083,7 @@ interface SyncUIState {
 **Ziel:** Hohe Testabdeckung der Domain-Logik, Integrationstests für die Pipeline, E2E-Tests des wichtigsten Workflows. Parität zum Python-Skript wird geprüft.
 
 #### 11.1 Unit-Tests (Vitest)
+
 - `core/domain`:
   - `price-normalizer` (verschiedene Preisformate)
   - `matching` (verschiedene Kombinationen von SKU/Name/Barcode)
@@ -1975,6 +2091,7 @@ interface SyncUIState {
 - `shopify-product-service` und `shopify-inventory-service` mit gemocktem `ShopifyClient`
 
 #### 11.2 Paritäts-Tests zum Python-Skript
+
 - `tests/fixtures/`:
   - Beispiel-CSV-Dateien
   - Erwartete Match-/Update-Ergebnisse (JSON), idealerweise aus Python-Skript generiert
@@ -1982,6 +2099,7 @@ interface SyncUIState {
   - Gleiche CSV → Domain-Layer → `UpdateOperations` → Vergleich mit erwarteten JSONs
 
 #### 11.3 Integrationstests
+
 - `sync-engine`:
   - `generatePreview()` Methode:
     - CSV-Fixture + Shopify-Mock → `SyncPreviewResponse`
@@ -1995,6 +2113,7 @@ interface SyncUIState {
     - `SyncResult.planned` wird gesetzt
 
 #### 11.4 E2E-Tests (Playwright)
+
 - Setup:
   - Playwright nutzt dein Electron-Build oder dev-Electron
 - Szenario:
@@ -2002,6 +2121,7 @@ interface SyncUIState {
 - **Wichtig:** E2E-Test muss `sync:preview` Endpunkt testen, nicht nur `sync:start`
 
 **Deliverables Phase 11:**
+
 - ✅ Unit-Test-Coverage der Domain-Logik > 80%
 - ✅ Integrationstests für die Sync-Pipeline vorhanden
 - ✅ Mindestens ein E2E-Workflow testet den kompletten Weg
@@ -2013,6 +2133,7 @@ interface SyncUIState {
 **Ziel:** Erzeugung von lauffähigen `.exe` (und optional `.dmg`/`.AppImage`), bei denen Electron die statisch exportierte Next-App lädt.
 
 #### 12.1 Renderer-Build-Strategie
+
 - Entscheidung: Static Export
 - Scripts:
   ```jsonc
@@ -2020,13 +2141,14 @@ interface SyncUIState {
     "scripts": {
       "build:renderer": "next build && next export -o renderer",
       "build:electron": "tsc -p tsconfig.electron.json",
-      "build:desktop": "npm run build:renderer && npm run build:electron && electron-builder"
-    }
+      "build:desktop": "npm run build:renderer && npm run build:electron && electron-builder",
+    },
   }
   ```
 - `renderer/` enthält dann `index.html` + Assets
 
 #### 12.2 Main-Prozess Prod-Path
+
 - In `main.ts` (Prod-Zweig):
   ```typescript
   const prodIndex = path.join(__dirname, "..", "renderer", "index.html");
@@ -2034,6 +2156,7 @@ interface SyncUIState {
   ```
 
 #### 12.3 electron-builder Konfiguration
+
 - In `package.json`:
   ```jsonc
   {
@@ -2042,33 +2165,31 @@ interface SyncUIState {
       "productName": "WAWISync",
       "directories": {
         "buildResources": "build",
-        "output": "dist"
+        "output": "dist",
       },
-      "files": [
-        "dist-electron/**/*",
-        "renderer/**/*",
-        "package.json"
-      ],
+      "files": ["dist-electron/**/*", "renderer/**/*", "package.json"],
       "win": {
-        "target": "nsis"
+        "target": "nsis",
       },
       "mac": {
-        "target": "dmg"
+        "target": "dmg",
       },
       "linux": {
-        "target": "AppImage"
-      }
-    }
+        "target": "AppImage",
+      },
+    },
   }
   ```
 
 #### 12.4 Test der Installer
+
 - Auf Windows:
   - `.exe` installieren, Startmenü-Eintrag prüfen
 - Optional macOS/Linux:
   - `.dmg`/`.AppImage` testen
 
 **Deliverables Phase 12:**
+
 - ✅ `npm run build:desktop` erzeugt lauffähige Installer
 - ✅ Electron lädt die statische Next-App im Prod-Modus
 - ✅ `.exe` startet sauber und verhält sich identisch zum Dev-Setup (abzüglich DevTools)
@@ -2080,21 +2201,25 @@ interface SyncUIState {
 ##### Problem 1: ES Module vs CommonJS Konflikt
 
 **Symptom:**
+
 ```
 ReferenceError: require is not defined in ES module scope
 ```
 
 **Ursache:**
+
 - `"type": "module"` in `package.json` macht alle `.js` Dateien zu ES Modules
 - Build-Scripts (`scripts/build-with-signing.js`) nutzen `require()` (CommonJS)
 - Konflikt zwischen ES Modules und CommonJS
 
 **Lösung:**
+
 - ❌ **NICHT:** `"type": "module"` in Haupt-`package.json` setzen
 - ✅ **Richtig:** `extraMetadata: { type: 'module' }` in `electron-builder.yml` setzen
 - Dadurch wird ES Module nur für die gepackte Electron-App verwendet, nicht für Build-Scripts
 
 **Konfiguration:**
+
 ```yaml
 # electron-builder.yml
 extraMetadata:
@@ -2104,24 +2229,29 @@ extraMetadata:
 ##### Problem 2: Asset-Pfade im `file://` Protokoll
 
 **Symptom:**
+
 ```
 Failed to load resource: net::ERR_FILE_NOT_FOUND
 ```
+
 - CSS/JS Assets werden nicht geladen
 - Pfade wie `/_next/static/...` funktionieren nicht im `file://` Kontext
 
 **Ursache:**
+
 - Next.js generiert standardmäßig absolute Pfade (`/_next/static/...`)
 - Electron lädt HTML über `file://` Protokoll
 - Relative Pfade werden falsch aufgelöst ohne `<base>` Tag
 
 **Lösung:**
+
 1. **Next.js Config:** Relative Asset-Pfade aktivieren
+
    ```javascript
    // next.config.js
    const nextConfig = {
-     output: 'export',
-     assetPrefix: './',  // ✅ Relative Pfade
+     output: "export",
+     assetPrefix: "./", // ✅ Relative Pfade
      trailingSlash: true, // ✅ Trailing Slash für Routen
    };
    ```
@@ -2146,16 +2276,19 @@ Failed to load resource: net::ERR_FILE_NOT_FOUND
 ##### Problem 3: Navigation im `file://` Kontext
 
 **Symptom:**
+
 ```
 Not allowed to load local resource: file:///C:/sync/
 ```
 
 **Ursache:**
+
 - Next.js generiert Links wie `/sync` (absolute Pfade)
 - Im `file://` Kontext wird das zu `file:///C:/sync` (falsch)
 - Electron blockiert Navigation zu nicht-existierenden Dateien
 
 **Lösung:**
+
 1. **Next.js Config:** `trailingSlash: true` aktivieren
    - Generiert Routen wie `/sync/index.html` statt `/sync`
    - Bessere Kompatibilität mit `file://` Protokoll
@@ -2179,15 +2312,18 @@ Not allowed to load local resource: file:///C:/sync/
 ##### Problem 4: Pfad-Auflösung im Production Build
 
 **Symptom:**
+
 ```
 Not allowed to load local resource: file:///C:/.../out/index.html
 ```
 
 **Ursache:**
+
 - `app.getAppPath()` gibt unterschiedliche Pfade in Dev vs. Production
 - Im Production Build ist die Struktur anders (app.asar)
 
 **Lösung:**
+
 ```typescript
 // electron/main.ts
 const isDev = !app.isPackaged;
@@ -2206,15 +2342,18 @@ if (isDev) {
 ##### Problem 5: ES Module Export-Fehler im Production Build
 
 **Symptom:**
+
 ```
 SyntaxError: The requested module './api-version-manager.js' does not provide an export named 'getApiVersionFromConfig'
 ```
 
 **Ursache:**
+
 - ES Module Exporte werden im Production Build (ASAR-Archiv) nicht korrekt erkannt
 - Möglicherweise ein Problem mit der Art, wie electron-builder ES Modules im ASAR-Archiv behandelt
 
 **Lösung:**
+
 - ✅ **Exporte sind korrekt:** Funktionen sind mit `export function` definiert
 - ✅ **Kompilierung erfolgreich:** TypeScript kompiliert die Datei korrekt
 - ⚠️ **Mögliche Workarounds:**
@@ -2227,12 +2366,14 @@ SyntaxError: The requested module './api-version-manager.js' does not provide an
 ##### Zusammenfassung der Build-Konfiguration
 
 **Erforderliche Dateien:**
+
 1. `scripts/fix-html-base-tag.js` - Base-Tag Injection Script
 2. `next.config.js` - Mit `assetPrefix: './'` und `trailingSlash: true`
 3. `electron-builder.yml` - Mit `extraMetadata: { type: 'module' }`
 4. `electron/main.ts` - Mit Navigation Handler und korrekter Pfad-Auflösung
 
 **Build-Prozess:**
+
 ```bash
 npm run build              # Next.js Build
 npm run fix:html          # Base-Tag Injection
@@ -2241,6 +2382,7 @@ electron-builder --win    # Electron Packaging
 ```
 
 **Checkliste für zukünftige Builds:**
+
 - ✅ `extraMetadata.type` in `electron-builder.yml` gesetzt (nicht in `package.json`)
 - ✅ `assetPrefix: './'` in `next.config.js`
 - ✅ `trailingSlash: true` in `next.config.js`
@@ -2284,13 +2426,13 @@ const headers = {
 
 Die App benötigt folgende Berechtigungen beim Erstellen des Access-Tokens:
 
-| Scope | Zweck |
-|-------|-------|
-| `read_products` | Produkte und Varianten lesen |
-| `write_products` | Preise aktualisieren |
-| `read_inventory` | Bestände lesen |
-| `write_inventory` | Bestände aktualisieren |
-| `read_locations` | Locations lesen |
+| Scope             | Zweck                        |
+| ----------------- | ---------------------------- |
+| `read_products`   | Produkte und Varianten lesen |
+| `write_products`  | Preise aktualisieren         |
+| `read_inventory`  | Bestände lesen               |
+| `write_inventory` | Bestände aktualisieren       |
+| `read_locations`  | Locations lesen              |
 
 **Dokumentation:** https://shopify.dev/docs/api/usage/access-scopes
 
@@ -2364,6 +2506,7 @@ query ListProducts($first: Int!, $after: String) {
 ```
 
 **Dokumentation:**
+
 - https://shopify.dev/docs/api/admin-graphql/latest/queries/products
 - https://shopify.dev/docs/api/usage/pagination-graphql
 
@@ -2391,15 +2534,8 @@ query ListLocations($first: Int!, $after: String) {
 #### Preise aktualisieren (Bulk)
 
 ```graphql
-mutation UpdateVariantPrices(
-  $productId: ID!
-  $variants: [ProductVariantsBulkInput!]!
-) {
-  productVariantsBulkUpdate(
-    productId: $productId
-    variants: $variants
-    allowPartialUpdates: true
-  ) {
+mutation UpdateVariantPrices($productId: ID!, $variants: [ProductVariantsBulkInput!]!) {
+  productVariantsBulkUpdate(productId: $productId, variants: $variants, allowPartialUpdates: true) {
     productVariants {
       id
     }
@@ -2542,6 +2678,7 @@ export async function checkApiVersionCompatibility(
 ```
 
 **Wichtig:**
+
 - Shopify veröffentlicht alle 3 Monate neue API-Versionen
 - Alte Versionen werden nach 1 Jahr deprecated
 - App sollte auf neueste stabile Version setzen
@@ -2552,12 +2689,14 @@ export async function checkApiVersionCompatibility(
 ## 🎨 UI/UX Konzept
 
 ### Design-Prinzipien
+
 - **Modern & Clean:** Minimalistisches Design mit viel Whitespace
 - **Intuitiv:** Klare Navigation, selbsterklärende Icons
 - **Informativ:** Status-Indikatoren, Fortschrittsanzeigen
 - **Fehlertolerant:** Gute Fehlermeldungen, Validierung
 
 ### Farb-Schema
+
 - **Primary:** Blau (Shopify-Farben)
 - **Success:** Grün
 - **Warning:** Orange
@@ -2567,6 +2706,7 @@ export async function checkApiVersionCompatibility(
 ### Hauptseiten
 
 #### 1. Dashboard
+
 ```
 ┌─────────────────────────────────────────┐
 │  WAWISync                    [⚙️] [ℹ️]  │
@@ -2636,16 +2776,19 @@ export async function checkApiVersionCompatibility(
 ```
 
 **Wizard-Features:**
+
 - **Validierung pro Schritt:** "Weiter"-Button nur aktiv, wenn Schritt gültig
 - **Zurück-Navigation:** Jederzeit zu vorherigen Schritten
 - **Trockenlauf-Modus:** Checkbox "Dry Run" (nur Vorschau, keine Mutation)
 
 **Nicht-gematchte Zeilen:**
+
 - Eigener Tab/Filter "Nicht gematcht (X Zeilen)"
 - Export-Funktion: CSV mit nur nicht-gematchten Zeilen
 - Manuelle Zuordnung möglich (optional, v1.2+)
 
 #### 3. Settings-Seite
+
 ```
 ┌─────────────────────────────────────────┐
 │  Einstellungen                          │
@@ -2709,24 +2852,24 @@ export async function checkApiVersionCompatibility(
 
 ```typescript
 // Renderer → Main
-ipcRenderer.invoke('sync:start', {
+ipcRenderer.invoke("sync:start", {
   csvPath: string,
   mapping: ColumnMapping,
-  config: ShopConfig
-})
+  config: ShopConfig,
+});
 
 // Main → Renderer
-ipcMain.on('sync:progress', (event, progress) => {
+ipcMain.on("sync:progress", (event, progress) => {
   // Fortschritt senden
-})
+});
 
-ipcMain.on('sync:log', (event, log) => {
+ipcMain.on("sync:log", (event, log) => {
   // Log-Nachricht senden
-})
+});
 
-ipcMain.on('sync:complete', (event, result) => {
+ipcMain.on("sync:complete", (event, result) => {
   // Ergebnis senden
-})
+});
 ```
 
 ---
@@ -2740,6 +2883,7 @@ ipcMain.on('sync:complete', (event, result) => {
 **Definition:** Fehler, die durch falsche Eingaben oder Konfiguration verursacht werden.
 
 **Beispiele:**
+
 - Ungültige CSV (kein Header / Spalte fehlt / leere Datei)
 - Falsche Shop-URL (nicht `.myshopify.com`)
 - Ungültiges Token / fehlende Scopes
@@ -2747,12 +2891,14 @@ ipcMain.on('sync:complete', (event, result) => {
 - Location nicht gefunden
 
 **Behandlung:**
+
 - ❌ **Kein automatischer Retry**
 - ✅ **Sofortiger Abbruch** des Syncs
 - ✅ **Benutzerfreundliche Fehlermeldung** mit konkreter Anleitung
 - ✅ **Validierung vor Sync-Start** (so viele Fehler wie möglich vorher abfangen)
 
 **UI-Darstellung:**
+
 - Rote Alert-Box mit klarer Fehlermeldung
 - Konkrete Schritte zur Behebung
 - Link zu relevanten Einstellungen
@@ -2762,6 +2908,7 @@ ipcMain.on('sync:complete', (event, result) => {
 **Definition:** Fehler, die von der Shopify API kommen.
 
 **Beispiele:**
+
 - **4xx (außer 429):** Forbidden (403), Unauthorized (401), Bad Request (400)
 - **429:** Rate-Limit überschritten
 - **5xx:** Shopify-seitige Server-Fehler
@@ -2770,22 +2917,26 @@ ipcMain.on('sync:complete', (event, result) => {
 **Behandlung:**
 
 **4xx (außer 429):**
+
 - ❌ **Kein Retry** (Client-Fehler)
 - ✅ **Sync abbrechen**
 - ✅ **Fehlermeldung anzeigen** (z.B. "Token ungültig" oder "Berechtigung fehlt")
 
 **429 (Rate-Limit):**
+
 - ✅ **Automatischer Retry** mit Exponential Backoff
 - ✅ **Retry-After Header beachten**
 - ✅ **Max 5 Retries**
 - ✅ **Fortschritt anzeigen** ("Warte auf Rate-Limit...")
 
 **5xx (Server-Fehler):**
+
 - ✅ **Automatischer Retry** mit Exponential Backoff
 - ✅ **Max 5 Retries**
 - ✅ **Bei dauerhaftem Fehler:** Sync abbrechen, aber bereits erfolgreiche Updates behalten
 
 **GraphQL UserErrors:**
+
 - ✅ **Partial-Success:** Erfolgreiche Updates behalten
 - ✅ **Fehlgeschlagene Updates** in Ergebnis-Report auflisten
 - ✅ **Konkrete Fehlermeldung** pro fehlgeschlagenem Update
@@ -2795,12 +2946,14 @@ ipcMain.on('sync:complete', (event, result) => {
 **Definition:** Fehler in der App selbst oder im System.
 
 **Beispiele:**
+
 - Netzwerk-Timeouts
 - Diskfehler beim Schreiben/Lesen (SQLite, Config)
 - Interne Exceptions (Bugs)
 - Memory-Fehler
 
 **Behandlung:**
+
 - ✅ **Retry bei Netzwerk-Fehlern** (max 3 Versuche)
 - ❌ **Kein Retry bei Disk-Fehlern** (kritisch, sofort abbrechen)
 - ✅ **Error-Logging** für Debugging
@@ -2822,6 +2975,7 @@ ipcMain.on('sync:complete', (event, result) => {
    - Shopify-ID und CSV-Zeile referenzieren
 
 3. **Sync-Ergebnis:**
+
    ```typescript
    {
      totalPlanned: 1000,
@@ -2882,12 +3036,14 @@ ipcMain.on('sync:complete', (event, result) => {
 **Test-Bereiche:**
 
 #### Core-Domain-Tests
+
 - `matching.ts`: Alle Matching-Strategien (SKU, Name, Barcode, Prefix)
 - `price-normalizer.ts`: Alle Preis-Formate (6,5 / 6.5 / 1.234,56 / etc.)
 - `inventory-coalescing.ts`: Duplikat-Erkennung und Koaleszierung
 - `sync-pipeline.ts`: CSV → Updates Transformation
 
 #### Service-Tests
+
 - `shopify-service.ts`: API-Calls (mit Mocks)
 - `csv-service.ts`: Encoding-Erkennung, Parsing
 - `cache-service.ts`: SQLite-Operationen
@@ -2920,14 +3076,15 @@ tests/
    - Als JSON-File speichern
 
 2. **Paritäts-Tests schreiben:**
+
    ```typescript
-   test('matching logic matches Python script', () => {
-     const csvRow = loadFixture('sample.csv')[0];
-     const products = loadFixture('sample-products.json');
-     const expected = loadFixture('expected-outputs.json')[0];
-     
+   test("matching logic matches Python script", () => {
+     const csvRow = loadFixture("sample.csv")[0];
+     const products = loadFixture("sample-products.json");
+     const expected = loadFixture("expected-outputs.json")[0];
+
      const result = findVariantId(csvRow, products);
-     
+
      expect(result.variantId).toBe(expected.variantId);
      expect(result.method).toBe(expected.method);
    });
@@ -2968,6 +3125,7 @@ tests/
 **Test-Framework:** Playwright
 
 **Test-Szenarien:**
+
 - Vollständiger Sync-Workflow über UI
 - Settings-Konfiguration
 - Fehlerbehandlung in UI
@@ -3012,15 +3170,15 @@ DEF456;Produkt 2;8,99;5
 
 ```typescript
 interface ShopConfig {
-  id: string;                    // UUID
-  name: string;                  // "Filiale X" (benutzerdefiniert)
-  shopUrl: string;               // https://...myshopify.com
-  accessTokenId: string;         // Referenz auf verschlüsselten Token
-  defaultLocationId?: string;   // Standard-Location
-  columnMapping: ColumnMapping;  // Standard-Spalten-Mapping
-  createdAt: string;            // ISO-Date
-  updatedAt: string;            // ISO-Date
-  isDefault: boolean;           // Standard-Shop
+  id: string; // UUID
+  name: string; // "Filiale X" (benutzerdefiniert)
+  shopUrl: string; // https://...myshopify.com
+  accessTokenId: string; // Referenz auf verschlüsselten Token
+  defaultLocationId?: string; // Standard-Location
+  columnMapping: ColumnMapping; // Standard-Spalten-Mapping
+  createdAt: string; // ISO-Date
+  updatedAt: string; // ISO-Date
+  isDefault: boolean; // Standard-Shop
 }
 ```
 
@@ -3033,11 +3191,13 @@ interface ShopConfig {
 ### Migration-Strategie
 
 **v1.0 → v1.2:**
+
 - Bestehende Config wird zu `ShopConfig` mit `id: "default"`
 - `isDefault: true` setzen
 - UI erweitern um Shop-Auswahl (zunächst nur ein Shop sichtbar)
 
 **v1.2:**
+
 - "Shop hinzufügen"-Button in Settings
 - Shop-Liste mit Umschalt-Möglichkeit
 - Jeder Shop hat eigenen Cache (SQLite-Datenbank pro Shop)
@@ -3049,6 +3209,7 @@ interface ShopConfig {
 ### Shopify API-Spezifika
 
 #### API-Versionierung
+
 - **Aktuelle Version:** Zum Implementierungszeitpunkt **aktuelle** stabile API-Version verwenden
 - **Hinweis:** `2025-10` dient als Platzhalter im Dokument; bei Implementierung neueste Version prüfen
 - **Versionierung:** Shopify veröffentlicht alle 3 Monate neue Versionen
@@ -3057,7 +3218,9 @@ interface ShopConfig {
 - **Best Practice:** Stets neueste stabile Version verwenden, aber mit Deprecation-Warnungen rechnen
 
 #### Erforderliche API-Scopes
+
 Die App benötigt folgende Berechtigungen beim Access-Token:
+
 - `read_products` - Produkte und Varianten lesen
 - `write_products` - Preise aktualisieren
 - `read_inventory` - Bestände lesen
@@ -3065,12 +3228,14 @@ Die App benötigt folgende Berechtigungen beim Access-Token:
 - `read_locations` - Locations lesen
 
 #### Rate-Limits
+
 - **Shop API Call Limit:** Variiert je nach Plan (z.B. 40 Calls/Sekunde)
 - **Header:** `X-Shopify-Shop-Api-Call-Limit: "40/40"`
 - **Bei Überschreitung:** HTTP 429 mit `Retry-After` Header
 - **Best Practice:** Rate-Limit-Status in UI anzeigen
 
 #### Cost-Tracking
+
 - **GraphQL Cost:** Jede Query hat einen "Cost"-Wert
 - **Header:** `X-Request-Cost: "1.0"`
 - **Budget:** Shopify hat ein Query-Budget pro Shop
@@ -3086,14 +3251,15 @@ Die App benötigt folgende Berechtigungen beim Access-Token:
 // electron/main.ts
 const mainWindow = new BrowserWindow({
   webPreferences: {
-    contextIsolation: true,      // ✅ WICHTIG: Verhindert XSS → RCE
-    nodeIntegration: false,       // ✅ WICHTIG: Kein direkter Node-Zugriff
-    preload: path.join(__dirname, 'preload.js')
-  }
+    contextIsolation: true, // ✅ WICHTIG: Verhindert XSS → RCE
+    nodeIntegration: false, // ✅ WICHTIG: Kein direkter Node-Zugriff
+    preload: path.join(__dirname, "preload.js"),
+  },
 });
 ```
 
 **Prinzipien:**
+
 - Renderer-Prozess hat **keine direkten Node-Rechte**
 - Sämtliche FS/Netzwerk-Zugriffe laufen über Main-Prozess
 - Zugriff auf Node nur über `preload.ts` + **getypte IPC-Interfaces**
@@ -3101,12 +3267,14 @@ const mainWindow = new BrowserWindow({
 #### 2. Credentials-Management
 
 **Verschlüsselung:**
+
 - Access-Tokens mit `electron-store` verschlüsselt speichern
 - **Verschlüsselungs-Schlüssel:** Master-Passphrase (optional, für gemeinsam genutzte Rechner)
 - **Optional:** OS Keychain nutzen (Windows Credential Manager, macOS Keychain, Linux Secret Service)
 - Tokens niemals in Klartext speichern
 
 **Token-Masking im UI:**
+
 - Token wird als `shpat_***` angezeigt
 - "Token anzeigen"-Button mit Bestätigung
 - Token kann nur bei Neu-Eingabe gesetzt werden (nicht kopierbar)
@@ -3152,6 +3320,7 @@ const mainWindow = new BrowserWindow({
 - **Keine Stack-Traces in Produktion** (nur in Dev-Modus)
 
 ### Best Practices
+
 1. **Code-Organisation**
    - Separation of Concerns
    - DRY-Prinzip
@@ -3177,6 +3346,7 @@ const mainWindow = new BrowserWindow({
 ## 📊 Erfolgsmetriken
 
 ### Funktionale Anforderungen
+
 - ✅ CSV/DBF-Upload funktioniert
 - ✅ Spalten-Mapping funktioniert
 - ✅ Matching identisch zum Python-Skript
@@ -3189,6 +3359,7 @@ const mainWindow = new BrowserWindow({
 - ✅ Code-Signing wird unterstützt
 
 ### Nicht-funktionale Anforderungen
+
 - ⚡ Sync-Geschwindigkeit: > 1000 Updates/Minute
 - 💾 Speicherverbrauch: < 500 MB
 - 🚀 Startzeit: < 3 Sekunden
@@ -3222,10 +3393,10 @@ const mainWindow = new BrowserWindow({
 
 3. **GraphQL Queries/Mutations**
    - Die verwendeten Queries sind aktuell:
-     * `products` Query (Cursor-Pagination)
-     * `locations` Query (Cursor-Pagination)
-     * `productVariantsBulkUpdate` Mutation
-     * `inventorySetQuantities` Mutation
+     - `products` Query (Cursor-Pagination)
+     - `locations` Query (Cursor-Pagination)
+     - `productVariantsBulkUpdate` Mutation
+     - `inventorySetQuantities` Mutation
    - **Aktion:** Queries vor Implementierung in GraphiQL Explorer testen
 
 4. **Rate-Limits & Cost**
@@ -3262,6 +3433,7 @@ const mainWindow = new BrowserWindow({
 ### ✅ Implementierte Features
 
 #### Core-Funktionalität
+
 - ✅ CSV/DBF-Datei-Upload und -Verarbeitung
 - ✅ Shopify GraphQL Admin API Integration
 - ✅ Spalten-Mapping (SKU, Name, Preis, Bestand)
@@ -3273,17 +3445,20 @@ const mainWindow = new BrowserWindow({
 - ✅ Export-Funktionalität (CSV, Logs)
 
 #### Automatisierung
+
 - ✅ Auto-Sync-Service mit Scheduler
 - ✅ Update-Service über GitHub Releases
 - ✅ Automatisches Überspringen von Schritten (wenn Pfad/Mapping gespeichert)
 
 #### Sicherheit & Qualität
+
 - ✅ Verschlüsselte Token-Speicherung
 - ✅ Code-Signing Support
 - ✅ Context Isolation aktiviert
 - ✅ IPC-basierte Kommunikation
 
 #### Benutzerfreundlichkeit
+
 - ✅ Moderne UI mit Next.js 14+ und React 18+
 - ✅ Wizard-basierter Sync-Workflow
 - ✅ Standard-Pfad-Unterstützung
@@ -3302,12 +3477,14 @@ const mainWindow = new BrowserWindow({
 ### 🚀 Nächste Schritte (v1.1+)
 
 **v1.1 - Erweiterte Features & Stabilität:**
+
 - Erweiterte E2E-Tests mit Playwright
 - Performance-Optimierungen
 - Erweiterte Export-Formate (JSON, Excel)
 - **Remote Error Monitoring & Fernwartung mit Sentry** 🆕
 
 **v1.2 - Multi-Shop & Erweiterungen:**
+
 - Multi-Shop-Management
 - Multi-Location-Support
 - API-Version-Manager (automatische Updates)
@@ -3317,42 +3494,50 @@ const mainWindow = new BrowserWindow({
 ## 📝 Zusammenfassung der Verbesserungen
 
 ### MVP-Fokussierung
+
 - ✅ Klarer MVP-Scope definiert (v1.0)
 - ✅ Post-MVP Features explizit ausgelagert (v1.1+)
 - ✅ Reduziertes Risiko durch frühe produktive Nutzung
 
 ### Architektur-Verbesserungen
+
 - ✅ Core-Domain-Layer explizit definiert (pure Business Logic)
 - ✅ Trennung von Core/Infrastructure/App/UI
 - ✅ 80-90% der Logik testbar ohne Electron
 
 ### Persistenz & Caching
+
 - ✅ SQLite für Produkt-/Variant-Cache
 - ✅ Cache-Strategie mit Invalidierung
 - ✅ Sync-Historie (letzte 10 Syncs)
 
 ### Fehler- & Recovery-Strategie
+
 - ✅ Drei Fehlerklassen definiert (User/Remote/System)
 - ✅ Partial-Success-Strategie explizit
 - ✅ Recovery-Mechanismen dokumentiert
 
 ### Teststrategie
+
 - ✅ Paritäts-Tests für Python-Skript-Identität
 - ✅ Test-Fixtures mit erwarteten Outputs
 - ✅ Edge-Case-Tests geplant
 
 ### Security
+
 - ✅ Electron-Sicherheits-Settings explizit
 - ✅ Secrets Lifecycle dokumentiert
 - ✅ Token-Masking im UI
 
 ### UX-Verbesserungen
+
 - ✅ Wizard/Stepper-Ansatz
 - ✅ Trockenlauf-Modus
 - ✅ Nicht-gematchte Zeilen prominent
 - ✅ Export-Funktionen
 
 ### Multi-Shop (v1.2)
+
 - ✅ Shop-Config-Modell definiert
 - ✅ Migrations-Strategie geplant
 
@@ -3364,4 +3549,3 @@ const mainWindow = new BrowserWindow({
 **Aktualisiert:** 2025-01-XX (Production Build Probleme & Lösungen dokumentiert - Phase 12.5)
 **Version:** 2.2
 **Status:** Phase 7 implementiert, Phase 8-12 geplant, Production Build Probleme behoben
-

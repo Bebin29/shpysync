@@ -93,5 +93,5 @@ publish:
   provider: github
   owner: Bebin29
   repo: shpysync
-  private: false  # Repository ist öffentlich
+  private: false # Repository ist öffentlich
 

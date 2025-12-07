@@ -23,6 +23,7 @@ und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 ### ✨ Features
 
 #### Core-Funktionalität
+
 - CSV/DBF-Datei-Upload und -Verarbeitung
 - Shopify GraphQL Admin API Integration
 - Spalten-Mapping (SKU, Name, Preis, Bestand)
@@ -34,17 +35,20 @@ und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 - Export-Funktionalität (CSV, Logs)
 
 #### Automatisierung
+
 - Auto-Sync-Service mit Scheduler
 - Update-Service über GitHub Releases
 - Automatisches Überspringen von Schritten (wenn Pfad/Mapping gespeichert)
 
 #### Sicherheit & Qualität
+
 - Verschlüsselte Token-Speicherung
 - Code-Signing Support
 - Context Isolation aktiviert
 - IPC-basierte Kommunikation
 
 #### Benutzerfreundlichkeit
+
 - Moderne UI mit Next.js 14+ und React 18+
 - Wizard-basierter Sync-Workflow
 - Standard-Pfad-Unterstützung
@@ -63,12 +67,14 @@ und dieses Projekt folgt [Semantic Versioning](https://semver.org/lang/de/).
 ### 🚀 Nächste Schritte (v1.1+)
 
 **v1.1 - Erweiterte Features & Stabilität:**
+
 - Erweiterte E2E-Tests mit Playwright
 - Performance-Optimierungen
 - Erweiterte Export-Formate (JSON, Excel)
 - Remote Error Monitoring & Fernwartung mit Sentry
 
 **v1.2 - Multi-Shop & Erweiterungen:**
+
 - Multi-Shop-Management
 - Multi-Location-Support
 - API-Version-Manager (automatische Updates)

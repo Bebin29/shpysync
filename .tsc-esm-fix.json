@@ -1,8 +1,3 @@
 {
-  "exclude": [
-    "electron/dist/electron/main.js",
-    "electron/dist/electron/preload.js"
-  ]
+  "exclude": ["electron/dist/electron/main.js", "electron/dist/electron/preload.js"]
 }
-
-

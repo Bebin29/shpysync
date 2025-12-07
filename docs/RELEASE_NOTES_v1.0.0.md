@@ -7,6 +7,7 @@
 ### ✨ Features
 
 #### Core-Funktionalität
+
 - CSV/DBF-Datei-Upload und -Verarbeitung
 - Shopify GraphQL Admin API Integration
 - Spalten-Mapping (SKU, Name, Preis, Bestand)
@@ -18,17 +19,20 @@
 - Export-Funktionalität (CSV, Logs)
 
 #### Automatisierung
+
 - Auto-Sync-Service mit Scheduler
 - Update-Service über GitHub Releases
 - Automatisches Überspringen von Schritten (wenn Pfad/Mapping gespeichert)
 
 #### Sicherheit & Qualität
+
 - Verschlüsselte Token-Speicherung
 - Code-Signing Support
 - Context Isolation aktiviert
 - IPC-basierte Kommunikation
 
 #### Benutzerfreundlichkeit
+
 - Moderne UI mit Next.js 14+ und React 18+
 - Wizard-basierter Sync-Workflow
 - Standard-Pfad-Unterstützung
@@ -47,12 +51,14 @@
 ### 🚀 Nächste Schritte (v1.1+)
 
 **v1.1 - Erweiterte Features & Stabilität:**
+
 - Erweiterte E2E-Tests mit Playwright
 - Performance-Optimierungen
 - Erweiterte Export-Formate (JSON, Excel)
 - Remote Error Monitoring & Fernwartung mit Sentry
 
 **v1.2 - Multi-Shop & Erweiterungen:**
+
 - Multi-Shop-Management
 - Multi-Location-Support
 - API-Version-Manager (automatische Updates)
@@ -66,9 +72,9 @@
 ### 🔒 Sicherheit
 
 WAWISync wurde mit Sicherheit als oberste Priorität entwickelt:
+
 - Context Isolation - Verhindert XSS → RCE Angriffe
 - Node Integration deaktiviert - Kein direkter Node-Zugriff im Renderer
 - Verschlüsselte Token-Speicherung - Access-Tokens werden sicher gespeichert
 - IPC-basierte Kommunikation - Alle kritischen Operationen laufen über den Main Process
 - Code-Signing Support - Optional für zusätzliche Sicherheit
-

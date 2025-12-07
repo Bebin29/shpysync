@@ -1,13 +1,13 @@
 import type { CsvRow, Product, Variant, MatchResult, MappedRow } from "./types.js";
-import { buildVariantMaps, findVariantId, type VariantMaps } from "./matching.js";
+import { buildVariantMaps, findVariantId } from "./matching.js";
 import { normalizePrice } from "./price-normalizer.js";
 import { coalesceInventoryUpdates } from "./inventory-coalescing.js";
 
 /**
  * Verarbeitet CSV-Zeilen zu Preis- und Inventory-Updates.
- * 
+ *
  * Portiert von Python `process_csv()` Funktion (Zeilen 450-543).
- * 
+ *
  * @param csvRows - Liste von CSV-Zeilen (bereits gemappt und extrahiert)
  * @param products - Liste von Shopify-Produkten
  * @param options - Update-Optionen
@@ -80,7 +80,9 @@ export function processCsvToUpdates(
     const variant = variantMap.get(variantId);
 
     if (!variant) {
-      console.warn(`Zeile ${csvRow.rowNumber}: Variant ${variantId} nicht gefunden – übersprungen.`);
+      console.warn(
+        `Zeile ${csvRow.rowNumber}: Variant ${variantId} nicht gefunden – übersprungen.`
+      );
       unmatchedRows.push(csvRow);
       mappedRows.push({
         csvRow,
@@ -94,7 +96,9 @@ export function processCsvToUpdates(
     // Produkt-ID aus Variant-Map holen
     const productId = variantMaps.variantToProduct.get(variantId);
     if (!productId) {
-      console.warn(`Zeile ${csvRow.rowNumber}: Kein Produkt zu Variant ${variantId} – übersprungen.`);
+      console.warn(
+        `Zeile ${csvRow.rowNumber}: Kein Produkt zu Variant ${variantId} – übersprungen.`
+      );
       unmatchedRows.push(csvRow);
       mappedRows.push({
         csvRow,
@@ -110,7 +114,7 @@ export function processCsvToUpdates(
       try {
         const normalizedPrice = normalizePrice(csvRow.price);
         const currentPrice = variant.price;
-        
+
         // Nur updaten, wenn sich der Preis geändert hat
         if (normalizedPrice !== currentPrice) {
           priceUpdates.push({
@@ -144,7 +148,7 @@ export function processCsvToUpdates(
       const inventoryItemId = variant.inventoryItemId;
       if (inventoryItemId) {
         const currentQuantity = variant.currentQuantity;
-        
+
         // Nur updaten, wenn sich der Bestand geändert hat
         if (currentQuantity === undefined || currentQuantity !== csvRow.stock) {
           inventoryUpdates.push({
@@ -210,7 +214,7 @@ export function processCsvToUpdates(
 
 /**
  * Gruppiert Preis-Updates nach Produkt-ID für Bulk-Updates.
- * 
+ *
  * @param priceUpdates - Liste von Preis-Updates
  * @returns Map von Produkt-ID zu Liste von Variant-Updates
  */
@@ -231,4 +235,3 @@ export function groupPriceUpdatesByProduct(
 
   return grouped;
 }
-

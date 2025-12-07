@@ -25,6 +25,7 @@ Führen Sie das PowerShell-Skript aus (als Administrator empfohlen):
 ```
 
 Das Skript:
+
 - Erstellt ein Self-Signed-Zertifikat
 - Speichert es als `build\certificate.pfx`
 - Zeigt Ihnen die notwendigen Umgebungsvariablen an
@@ -34,18 +35,21 @@ Das Skript:
 ### Schritt 2: Umgebungsvariablen setzen
 
 **PowerShell:**
+
 ```powershell
 $env:CSC_LINK="build\certificate.pfx"
 $env:CSC_KEY_PASSWORD="Ihr_Passwort"
 ```
 
 **CMD:**
+
 ```cmd
 set CSC_LINK=build\certificate.pfx
 set CSC_KEY_PASSWORD=Ihr_Passwort
 ```
 
 **Permanent (PowerShell):**
+
 ```powershell
 [System.Environment]::SetEnvironmentVariable('CSC_LINK', 'build\certificate.pfx', 'User')
 [System.Environment]::SetEnvironmentVariable('CSC_KEY_PASSWORD', 'Ihr_Passwort', 'User')
@@ -62,6 +66,7 @@ npm run electron:build:prod
 **Automatische Passwort-Verwaltung:**
 
 Das Skript versucht automatisch, das Passwort aus folgenden Quellen zu laden:
+
 1. Umgebungsvariable `CSC_KEY_PASSWORD`
 2. `.env`-Datei im Projekt-Root (Format: `CSC_KEY_PASSWORD=Ihr_Passwort`)
 
@@ -70,6 +75,7 @@ Falls das Passwort nicht gefunden wird, wird der Build ohne Code-Signing durchge
 ## Self-Signed vs. Echtes Zertifikat
 
 ### Self-Signed-Zertifikat (dieses Skript)
+
 - ✅ Kostenlos
 - ✅ Einfach zu erstellen
 - ❌ Windows zeigt Warnung beim Installieren
@@ -77,6 +83,7 @@ Falls das Passwort nicht gefunden wird, wird der Build ohne Code-Signing durchge
 - **Empfohlen für:** Entwicklung, interne Tests
 
 ### Echtes Code-Signing-Zertifikat
+
 - ✅ Keine Warnungen beim Installieren
 - ✅ Automatisch vertrauenswürdig
 - ❌ Muss von einer CA erworben werden (kostet Geld)
@@ -97,14 +104,17 @@ Wenn Sie eine mit Self-Signed-Zertifikat signierte App verteilen, müssen Benutz
 ## Troubleshooting
 
 ### "Cannot create symbolic link"
+
 - **Problem:** electron-builder versucht macOS-Dateien zu extrahieren
 - **Lösung:** Verwenden Sie `npm run electron:build` (ohne Code-Signing) oder setzen Sie `CSC_IDENTITY_AUTO_DISCOVERY=false`
 
 ### "Signing failed"
+
 - **Problem:** Zertifikat-Passwort falsch oder Zertifikat nicht gefunden
 - **Lösung:** Überprüfen Sie `CSC_LINK` und `CSC_KEY_PASSWORD` Umgebungsvariablen
 
 ### "Certificate not found"
+
 - **Problem:** Pfad zum Zertifikat ist falsch
 - **Lösung:** Verwenden Sie absoluten Pfad oder relativen Pfad vom Projekt-Root
 
@@ -112,4 +122,3 @@ Wenn Sie eine mit Self-Signed-Zertifikat signierte App verteilen, müssen Benutz
 
 - [electron-builder Code-Signing Dokumentation](https://www.electron.build/code-signing)
 - [Windows Code-Signing Guide](https://docs.microsoft.com/en-us/windows-hardware/drivers/dashboard/code-signing-best-practices)
-

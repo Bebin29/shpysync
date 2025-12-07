@@ -1,11 +1,11 @@
 /**
  * Inventory-Koaleszierung für Duplikat-Erkennung.
- * 
+ *
  * Portiert von Python `coalesce_inventory_updates()` Funktion.
- * 
+ *
  * Konsolidiert Inventory-Updates auf eindeutige (inventoryItemId, quantity)-Paare.
  * Last-write-wins: der letzte Eintrag für ein Item überschreibt frühere.
- * 
+ *
  * @param updates - Liste von (inventoryItemId, quantity)-Paaren
  * @returns Koaleszierte Updates (ein Eintrag pro Item)
  */
@@ -25,9 +25,7 @@ export function coalesceInventoryUpdates(
   }
 
   // Logging zu Duplikaten (nur Info)
-  const duplicates = Array.from(countByItem.entries()).filter(
-    ([, count]) => count > 1
-  );
+  const duplicates = Array.from(countByItem.entries()).filter(([, count]) => count > 1);
   if (duplicates.length > 0) {
     console.warn(
       `Inventory: ${duplicates.length} Items hatten Duplikate im CSV/Mapping (werden koalesziert).`
@@ -40,4 +38,3 @@ export function coalesceInventoryUpdates(
     quantity,
   }));
 }
-

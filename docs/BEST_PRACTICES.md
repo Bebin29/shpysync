@@ -8,6 +8,7 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 **Ziel:** Vollständige Abdeckung aller relevanten Best Practices für professionelle Softwareentwicklung
 
 **Letzte Aktualisierung:** v1.0.3
+
 - Cache-Service implementiert (nur für Dashboard-Stats)
 - Sync-Abschluss-UI verbessert (Dashboard-Button hinzugefügt)
 - Cache-Strategie dokumentiert (Cache wird im Sync-Prozess ignoriert)
@@ -112,6 +113,7 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 **Status:** Fehlt komplett
 
 **Anforderungen:**
+
 - Automatische Generierung aus Git-Commits (Conventional Commits)
 - Strukturiert nach Versionen
 - Kategorisierung (Added, Changed, Deprecated, Removed, Fixed, Security)
@@ -125,6 +127,7 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 **Status:** Fehlt komplett
 
 **Inhalte:**
+
 - Entwicklungsumgebung Setup
 - Code-Style-Guidelines
 - Commit-Message-Konventionen (Conventional Commits)
@@ -139,6 +142,7 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 **Status:** Nur in package.json erwähnt, keine LICENSE-Datei
 
 **Anforderungen:**
+
 - Vollständige MIT-Lizenz-Datei
 - Copyright-Informationen
 - Klare Lizenzbedingungen
@@ -148,6 +152,7 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 **Status:** Fehlt komplett
 
 **Inhalte:**
+
 - Security-Policy
 - Vulnerability-Reporting-Prozess
 - Responsible-Disclosure-Guidelines
@@ -160,6 +165,7 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 **Status:** Fehlt komplett
 
 **Anforderungen:**
+
 - IPC-API-Dokumentation (Renderer ↔ Main Process)
 - Service-API-Dokumentation
 - Domain-Layer-Dokumentation
@@ -167,6 +173,7 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 - Type-Definitionen-Dokumentation
 
 **Empfohlene Tools:**
+
 - TypeDoc für TypeScript-Dokumentation
 - JSDoc-Kommentare in Code
 - Separate API-Dokumentations-Seite
@@ -176,6 +183,7 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 **Status:** Fehlt komplett
 
 **Zweck:**
+
 - Dokumentation wichtiger Architekturentscheidungen
 - Nachvollziehbarkeit von Design-Entscheidungen
 - Wissensmanagement für zukünftige Entwickler
@@ -187,6 +195,7 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 **Status:** Fehlt komplett
 
 **Anforderungen:**
+
 - Benutzerhandbuch
 - Installation-Anleitung
 - Erste-Schritte-Anleitung
@@ -196,6 +205,7 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 - Video-Tutorials (optional)
 
 **Empfohlene Formate:**
+
 - Markdown-Dokumentation im Repository
 - Separate Dokumentations-Website (z.B. mit Docusaurus)
 - In-App-Hilfe
@@ -205,6 +215,7 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 **Status:** Teilweise vorhanden (PROJEKTPLAN.md), aber unvollständig
 
 **Erforderliche Ergänzungen:**
+
 - Setup-Anleitung für neue Entwickler
 - Architektur-Übersicht
 - Codebase-Tour
@@ -218,6 +229,7 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 **Status:** Fehlt komplett
 
 **Anforderungen:**
+
 - Template für alle Umgebungsvariablen
 - Beschreibungen für jede Variable
 - Beispielwerte (ohne echte Secrets)
@@ -234,6 +246,7 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 **Status:** Nicht konfiguriert
 
 **Erforderliche Hooks:**
+
 - Linting (ESLint)
 - Code-Formatierung (Prettier)
 - TypeScript-Typ-Prüfung
@@ -249,6 +262,7 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 **Status:** Fehlt komplett
 
 **Zweck:**
+
 - Konsistente Editor-Einstellungen über alle IDEs
 - Automatische Code-Formatierung
 - Einheitliche Zeilenenden, Einrückung, etc.
@@ -258,6 +272,7 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 **Status:** Prettier installiert, aber keine explizite Konfiguration sichtbar
 
 **Anforderungen:**
+
 - `.prettierrc` oder `prettier.config.js`
 - `.prettierignore`
 - Integration in CI/CD
@@ -268,6 +283,7 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 **Status:** ESLint vorhanden, aber möglicherweise unvollständig
 
 **Erforderliche Erweiterungen:**
+
 - Electron-spezifische Regeln
 - TypeScript-Regeln
 - React-Regeln
@@ -280,6 +296,7 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 **Status:** Zu prüfen
 
 **Anforderungen:**
+
 - `strict: true` in tsconfig.json
 - Alle `any`-Typen eliminieren
 - Explizite Return-Types
@@ -290,6 +307,7 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 **Status:** Vitest Coverage vorhanden, aber keine Thresholds definiert
 
 **Anforderungen:**
+
 - Mindest-Coverage pro Datei/Modul
 - Gesamt-Coverage-Threshold
 - Branch-Coverage-Threshold
@@ -301,6 +319,7 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 **Status:** Nicht konfiguriert
 
 **Anforderungen:**
+
 - Maximale Bundle-Größe definieren
 - Automatische Checks in CI/CD
 - Warnungen bei Überschreitung
@@ -319,6 +338,7 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 **Status:** Nicht automatisiert
 
 **Anforderungen:**
+
 - Automatisches Scanning bei jedem Build
 - Dependabot-Integration für automatische PRs
 - Regelmäßige `npm audit` Checks
@@ -330,6 +350,7 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 **Status:** Teilweise vorhanden, aber verbesserungsfähig
 
 **Fehlende Komponenten:**
+
 - `.env.example` Template
 - Dokumentation für Secrets-Management
 - Secrets-Rotation-Strategie
@@ -341,6 +362,7 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 **Status:** Nicht implementiert
 
 **Anforderungen:**
+
 - SAST (Static Application Security Testing)
 - CodeQL-Integration
 - Automatische Security-Scans in CI/CD
@@ -351,6 +373,7 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 **Status:** Für Electron-App zu prüfen
 
 **Anforderungen:**
+
 - CSP-Header für Renderer-Prozess
 - Restriktive CSP-Regeln
 - Dokumentation der CSP-Strategie
@@ -360,6 +383,7 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 **Status:** Für Electron-App zu prüfen
 
 **Anforderungen:**
+
 - X-Frame-Options
 - X-Content-Type-Options
 - Referrer-Policy
@@ -370,6 +394,7 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 **Status:** Teilweise vorhanden (Zod), aber zu prüfen
 
 **Anforderungen:**
+
 - Vollständige Validierung aller User-Inputs
 - Sanitization von CSV-Daten
 - SQL-Injection-Prävention (SQLite)
@@ -380,6 +405,7 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 **Status:** Für Shopify API vorhanden, aber zu dokumentieren
 
 **Anforderungen:**
+
 - Rate-Limiting-Strategie dokumentieren
 - Client-seitiges Rate-Limiting (falls nötig)
 - Rate-Limit-Monitoring
@@ -389,6 +415,7 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 **Status:** Teilweise vorhanden, aber zu verbessern
 
 **Anforderungen:**
+
 - Keine Stack-Traces in Produktion
 - Generische Fehlermeldungen für User
 - Detaillierte Logs nur für Entwickler
@@ -399,6 +426,7 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 **Status:** Teilweise implementiert (contextIsolation, nodeIntegration: false)
 
 **Zu prüfen:**
+
 - WebSecurity-Einstellungen
 - Sandboxing (falls möglich)
 - Certificate-Validation
@@ -415,6 +443,7 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 **Status:** Nicht konfiguriert
 
 **Anforderungen:**
+
 - Automatische Dependency-Updates
 - Security-Updates mit hoher Priorität
 - Konfigurierbare Update-Strategie
@@ -426,6 +455,7 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 **Status:** Alternative zu Dependabot, nicht konfiguriert
 
 **Vorteile:**
+
 - Mehr Konfigurationsoptionen
 - Gruppierung von Updates
 - Custom-Regeln
@@ -435,6 +465,7 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 **Status:** Zu prüfen
 
 **Anforderungen:**
+
 - Pinning von kritischen Dependencies
 - Version-Ranges dokumentieren
 - Update-Strategie für Major-Updates
@@ -444,6 +475,7 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 **Status:** Nicht automatisiert
 
 **Anforderungen:**
+
 - Automatische License-Scanning
 - License-Compatibility-Checks
 - License-Attribution-Dokumentation
@@ -456,6 +488,7 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 **Status:** Manuell möglich, nicht automatisiert
 
 **Anforderungen:**
+
 - Regelmäßige `npm audit` Checks
 - Automatische Checks in CI/CD
 - Automatische Fixes für bekannte Vulnerabilities
@@ -471,6 +504,7 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 **Status:** Manuell, nicht automatisiert
 
 **Anforderungen:**
+
 - Automatische Versionierung basierend auf Conventional Commits
 - Semantic Versioning-Validierung
 - Automatische Tag-Erstellung
@@ -483,6 +517,7 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 **Status:** Fehlt komplett
 
 **Anforderungen:**
+
 - Automatische Generierung aus Git-Commits
 - Kategorisierung nach Commit-Types
 - Integration in GitHub Releases
@@ -493,6 +528,7 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 **Status:** Fehlt komplett
 
 **Anforderungen:**
+
 - Pre-Release-Checklist
 - Testing-Checklist
 - Documentation-Checklist
@@ -504,6 +540,7 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 **Status:** Nicht definiert
 
 **Anforderungen:**
+
 - Stable Releases
 - Beta Releases
 - Alpha Releases (optional)
@@ -514,6 +551,7 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 **Status:** Nicht dokumentiert
 
 **Anforderungen:**
+
 - Rollback-Prozess dokumentieren
 - Automatische Rollback-Mechanismen (optional)
 - Version-Historie
@@ -529,6 +567,7 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 **Status:** Geplant (v1.1+), aber nicht implementiert
 
 **Anforderungen:**
+
 - Playwright-Integration
 - Kritische User-Flows testen
 - Cross-Platform-Testing
@@ -539,6 +578,7 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 **Status:** Nicht vorhanden
 
 **Anforderungen:**
+
 - Screenshot-Vergleiche
 - UI-Komponenten-Tests
 - Automatische Visual-Diff-Detection
@@ -550,6 +590,7 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 **Status:** Nicht vorhanden
 
 **Anforderungen:**
+
 - Load-Testing für Sync-Operationen
 - Memory-Leak-Detection
 - Performance-Benchmarks
@@ -560,6 +601,7 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 **Status:** Nicht vorhanden
 
 **Anforderungen:**
+
 - Automatische A11y-Tests
 - WCAG-Compliance-Checks
 - Keyboard-Navigation-Tests
@@ -572,6 +614,7 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 **Status:** Nicht vorhanden
 
 **Zweck:**
+
 - Test-Qualität bewerten
 - Unvollständige Tests identifizieren
 
@@ -582,6 +625,7 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 **Status:** Vitest Coverage vorhanden, aber zu verbessern
 
 **Anforderungen:**
+
 - Automatische Coverage-Reports in CI/CD
 - Coverage-Trends-Tracking
 - Coverage-Badges im README
@@ -592,6 +636,7 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 **Status:** Teilweise vorhanden (fixtures), aber zu erweitern
 
 **Anforderungen:**
+
 - Umfangreiche Test-Fixtures
 - Mock-Daten-Generierung
 - Test-Daten-Dokumentation
@@ -608,6 +653,7 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 **Status:** Nicht implementiert
 
 **Anforderungen:**
+
 - Performance-Metriken sammeln
 - Slow-Operation-Detection
 - Memory-Usage-Monitoring
@@ -615,6 +661,7 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 - Network-Request-Monitoring
 
 **Empfohlene Tools:**
+
 - Sentry (bereits geplant für Error Monitoring)
 - Custom Performance-Logging
 
@@ -623,6 +670,7 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 **Status:** Geplant (v1.1+), aber nicht implementiert
 
 **Anforderungen:**
+
 - Sentry-Integration (wie in PROJEKTPLAN.md geplant)
 - Error-Tracking
 - Stack-Trace-Analyse
@@ -634,12 +682,14 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 **Status:** Nicht vorhanden
 
 **Anforderungen:**
+
 - Feature-Usage-Tracking (optional, mit Opt-in)
 - Performance-Metriken
 - User-Journey-Tracking (optional)
 - Crash-Reports
 
 **Datenschutz:**
+
 - Opt-in-Mechanismus
 - Anonymisierung
 - DSGVO-Compliance
@@ -649,6 +699,7 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 **Status:** Nicht vorhanden
 
 **Anforderungen:**
+
 - Automatisches Tracking von Bundle-Größen
 - Trend-Analyse
 - Alerts bei signifikanten Änderungen
@@ -659,6 +710,7 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 **Status:** Nicht vorhanden
 
 **Anforderungen:**
+
 - Build-Zeit-Tracking
 - Build-Trend-Analyse
 - Optimierungspotenziale identifizieren
@@ -668,6 +720,7 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 **Status:** Nicht systematisch erfasst
 
 **Anforderungen:**
+
 - Sync-Dauer-Metriken
 - API-Response-Time-Tracking
 - Database-Query-Performance
@@ -684,6 +737,7 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 **Status:** Nicht systematisch implementiert
 
 **Anforderungen:**
+
 - WCAG 2.1 Level AA Compliance
 - Keyboard-Navigation
 - Screen-Reader-Support
@@ -697,6 +751,7 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 **Status:** Nicht implementiert
 
 **Anforderungen:**
+
 - Multi-Language-Support
 - Locale-Management
 - Date/Time-Formatierung
@@ -705,6 +760,7 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 - RTL-Support (optional)
 
 **Empfohlene Tools:**
+
 - react-i18next
 - next-intl (für Next.js)
 
@@ -713,6 +769,7 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 **Status:** Nicht implementiert
 
 **Anforderungen:**
+
 - Übersetzungs-Management
 - Übersetzungs-Workflow
 - Übersetzungs-Qualitätskontrolle
@@ -729,6 +786,7 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 **Status:** Teilweise dokumentiert, aber unvollständig
 
 **Anforderungen:**
+
 - Automatisiertes Setup-Script
 - Prerequisites-Check
 - Environment-Validation
@@ -739,6 +797,7 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 **Status:** Teilweise vorhanden, aber zu dokumentieren
 
 **Anforderungen:**
+
 - Debugging-Guide
 - Debug-Konfigurationen für verschiedene IDEs
 - Logging-Strategie
@@ -749,6 +808,7 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 **Status:** Nicht vorhanden
 
 **Anforderungen:**
+
 - Component-Generators
 - Service-Generators
 - Test-Generators
@@ -759,6 +819,7 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 **Status:** Teilweise vorhanden, aber zu erweitern
 
 **Erforderliche Scripts:**
+
 - Setup-Script
 - Clean-Script
 - Reset-Script (für Test-Daten)
@@ -769,6 +830,7 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 **Status:** .vscode/ in .gitignore, aber keine empfohlenen Einstellungen
 
 **Anforderungen:**
+
 - Empfohlene VSCode-Einstellungen
 - Empfohlene Extensions
 - Debug-Konfigurationen
@@ -779,6 +841,7 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 **Status:** Teilweise vorhanden, aber zu erweitern
 
 **Anforderungen:**
+
 - Inline-Dokumentation (JSDoc)
 - Type-Dokumentation
 - API-Dokumentation aus Code generieren
@@ -795,6 +858,7 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 **Status:** Nicht systematisch implementiert
 
 **Anforderungen:**
+
 - Welcome-Tour
 - Feature-Highlights
 - Tooltips für wichtige Features
@@ -805,6 +869,7 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 **Status:** Teilweise vorhanden, aber zu verbessern
 
 **Anforderungen:**
+
 - Benutzerfreundliche Fehlermeldungen
 - Konkrete Lösungsvorschläge
 - Fehler-Kategorisierung
@@ -815,6 +880,7 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 **Status:** Teilweise vorhanden, aber zu erweitern
 
 **Anforderungen:**
+
 - Konsistente Loading-Indikatoren
 - Progress-Indikatoren
 - Skeletons statt Spinner (wo möglich)
@@ -825,6 +891,7 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 **Status:** Zu prüfen
 
 **Anforderungen:**
+
 - Aussagekräftige Empty-States
 - Call-to-Actions in Empty-States
 - Illustrationen (optional)
@@ -834,6 +901,7 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 **Status:** Teilweise implementiert (v1.0.3) - Verbessert, aber zu erweitern
 
 **Aktuelle Implementierung (v1.0.3):**
+
 - **Sync-Abschluss-UI:** Erfolgreiche/fehlgeschlagene Syncs werden klar angezeigt
 - **Ergebnis-Zusammenfassung:** Detaillierte Statistiken (Geplant, Erfolgreich, Fehlgeschlagen, Erfolgsrate)
 - **Visuelles Feedback:** Check-Icon bei erfolgreichem Abschluss, Warn-Icon bei Fehlern
@@ -841,6 +909,7 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 - **Progress-Anzeige:** Zeigt "Abgeschlossen"-Status mit Check-Icon
 
 **Anforderungen (zukünftig):**
+
 - Toast-Notifications für schnelles Feedback
 - Success-Animationen (optional)
 - Erweiterte Benachrichtigungen für verschiedene Erfolgs-Szenarien
@@ -850,6 +919,7 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 **Status:** Nicht dokumentiert/implementiert
 
 **Anforderungen:**
+
 - Häufige Aktionen per Tastatur
 - Shortcut-Dokumentation
 - Shortcut-Hints in UI
@@ -859,6 +929,7 @@ Dieses Dokument identifiziert fehlende Best Practices und Industry Standards fü
 **Status:** Teilweise vorhanden (Settings), aber zu erweitern
 
 **Anforderungen:**
+
 - Theme-Auswahl (Light/Dark)
 - Sprache-Auswahl (wenn i18n implementiert)
 - Notification-Einstellungen
@@ -879,6 +950,7 @@ Dieser Abschnitt identifiziert professionelle Business-Features, die für Enterp
 **Status:** Teilweise vorhanden (Sync-Historie), aber unvollständig
 
 **Anforderungen:**
+
 - Vollständiges Audit-Log aller Aktionen
 - Benutzer-Aktivitäts-Tracking (wer hat was wann gemacht)
 - Konfigurationsänderungen protokollieren
@@ -889,6 +961,7 @@ Dieser Abschnitt identifiziert professionelle Business-Features, die für Enterp
 - Unveränderliche Logs (Immutable Logs)
 
 **Datenfelder:**
+
 - Timestamp
 - Benutzer (falls Multi-User)
 - Aktionstyp (Sync, Config-Change, Export, etc.)
@@ -902,6 +975,7 @@ Dieser Abschnitt identifiziert professionelle Business-Features, die für Enterp
 **Status:** Teilweise vorhanden (Datenbank-Backup), aber unvollständig
 
 **Anforderungen:**
+
 - Automatische Backups (konfigurierbares Intervall)
 - Manuelle Backup-Funktion
 - Vollständige System-Backups (Config, Cache, Historie)
@@ -914,6 +988,7 @@ Dieser Abschnitt identifiziert professionelle Business-Features, die für Enterp
 - Backup-Export (für Migration)
 
 **Backup-Komponenten:**
+
 - Shop-Konfigurationen
 - Token-Store
 - Produkt-/Variant-Cache
@@ -926,6 +1001,7 @@ Dieser Abschnitt identifiziert professionelle Business-Features, die für Enterp
 **Status:** Teilweise vorhanden (CSV-Export), aber unvollständig
 
 **Anforderungen:**
+
 - Erweiterte Export-Formate (JSON, Excel, XML)
 - Vollständiger Datenexport (alle Konfigurationen)
 - Selektiver Export (nach Datum, Shop, etc.)
@@ -938,6 +1014,7 @@ Dieser Abschnitt identifiziert professionelle Business-Features, die für Enterp
 - Bulk-Import/Export
 
 **Export-Optionen:**
+
 - Sync-Ergebnisse
 - Produkt-/Variant-Daten
 - Konfigurationen
@@ -949,6 +1026,7 @@ Dieser Abschnitt identifiziert professionelle Business-Features, die für Enterp
 **Status:** Nicht vorhanden
 
 **Anforderungen:**
+
 - Sync-Statistiken-Dashboard
 - Erfolgs-/Fehler-Rate-Tracking
 - Performance-Metriken
@@ -961,6 +1039,7 @@ Dieser Abschnitt identifiziert professionelle Business-Features, die für Enterp
 - KPI-Dashboard
 
 **Report-Typen:**
+
 - Sync-Aktivitäts-Report
 - Fehler-Analyse-Report
 - Performance-Report
@@ -973,6 +1052,7 @@ Dieser Abschnitt identifiziert professionelle Business-Features, die für Enterp
 **Status:** Teilweise vorhanden, aber zu erweitern
 
 **Anforderungen:**
+
 - Erweiterte Suche in Sync-Historie
 - Produkt-/Variant-Suche im Cache
 - Filter-Kombinationen (AND/OR)
@@ -983,6 +1063,7 @@ Dieser Abschnitt identifiziert professionelle Business-Features, die für Enterp
 - RegEx-Suche (optional)
 
 **Filter-Kriterien:**
+
 - Datum/Zeit
 - Status (Erfolg/Fehler)
 - Shop
@@ -996,6 +1077,7 @@ Dieser Abschnitt identifiziert professionelle Business-Features, die für Enterp
 **Status:** Teilweise vorhanden, aber zu erweitern
 
 **Anforderungen:**
+
 - Konflikt-Erkennung (gleichzeitige Updates)
 - Konflikt-Auflösungs-Strategien
 - Manuelle Konflikt-Auflösung
@@ -1006,12 +1088,14 @@ Dieser Abschnitt identifiziert professionelle Business-Features, die für Enterp
 - Datenqualitäts-Checks
 
 **Konflikt-Szenarien:**
+
 - Preis-Änderungen von mehreren Quellen
 - Bestands-Updates während Sync
 - Konfigurations-Änderungen während Sync
 - Cache-Inkonsistenzen
 
 **Validierungs-Regeln:**
+
 - Preis-Bereiche
 - Bestands-Minimum/Maximum
 - SKU-Format-Validierung
@@ -1023,6 +1107,7 @@ Dieser Abschnitt identifiziert professionelle Business-Features, die für Enterp
 **Status:** Nicht vorhanden
 
 **Anforderungen:**
+
 - Regel-basierte Automatisierung
 - Conditional Logic (IF-THEN-ELSE)
 - Event-basierte Trigger
@@ -1033,6 +1118,7 @@ Dieser Abschnitt identifiziert professionelle Business-Features, die für Enterp
 - Workflow-Monitoring
 
 **Anwendungsfälle:**
+
 - Automatische Preis-Anpassungen basierend auf Regeln
 - Bestands-Alerts bei niedrigen Werten
 - Automatische Kategorisierung
@@ -1044,6 +1130,7 @@ Dieser Abschnitt identifiziert professionelle Business-Features, die für Enterp
 **Status:** Nicht vorhanden
 
 **Anforderungen:**
+
 - In-App-Benachrichtigungen
 - E-Mail-Benachrichtigungen (optional)
 - Desktop-Notifications
@@ -1053,6 +1140,7 @@ Dieser Abschnitt identifiziert professionelle Business-Features, die für Enterp
 - Alert-Historie
 
 **Alert-Typen:**
+
 - Sync-Erfolg/Fehler
 - Kritische Fehler
 - Performance-Warnungen
@@ -1066,6 +1154,7 @@ Dieser Abschnitt identifiziert professionelle Business-Features, die für Enterp
 **Status:** Nicht vorhanden (Single-User-App)
 
 **Anforderungen:**
+
 - Benutzer-Verwaltung
 - Rollen-Definition (Admin, Operator, Viewer)
 - Berechtigungen pro Rolle
@@ -1075,12 +1164,14 @@ Dieser Abschnitt identifiziert professionelle Business-Features, die für Enterp
 - Benutzer-Profile
 
 **Rollen:**
+
 - **Administrator:** Vollzugriff, Konfiguration, Benutzer-Verwaltung
 - **Operator:** Syncs ausführen, Reports anzeigen
 - **Viewer:** Nur-Lese-Zugriff, Reports anzeigen
 - **Auditor:** Audit-Logs anzeigen, Reports generieren
 
 **Berechtigungen:**
+
 - Syncs starten/stoppen
 - Konfiguration ändern
 - Exports durchführen
@@ -1093,6 +1184,7 @@ Dieser Abschnitt identifiziert professionelle Business-Features, die für Enterp
 **Status:** Nicht vorhanden
 
 **Anforderungen:**
+
 - REST API für externe Integrationen
 - Webhook-Support
 - GraphQL API (optional)
@@ -1103,6 +1195,7 @@ Dieser Abschnitt identifiziert professionelle Business-Features, die für Enterp
 - SDK für gängige Sprachen
 
 **API-Endpunkte:**
+
 - Sync-Status abfragen
 - Syncs starten/stoppen
 - Konfigurationen verwalten
@@ -1110,6 +1203,7 @@ Dieser Abschnitt identifiziert professionelle Business-Features, die für Enterp
 - Webhooks registrieren
 
 **Webhook-Events:**
+
 - Sync gestartet
 - Sync abgeschlossen
 - Sync fehlgeschlagen
@@ -1121,6 +1215,7 @@ Dieser Abschnitt identifiziert professionelle Business-Features, die für Enterp
 **Status:** Teilweise vorhanden, aber zu erweitern
 
 **Anforderungen:**
+
 - Verschiedene Sync-Strategien wählbar
 - Bidirektionale Synchronisation (optional)
 - Unidirektionale Synchronisation (POS → Shopify)
@@ -1131,6 +1226,7 @@ Dieser Abschnitt identifiziert professionelle Business-Features, die für Enterp
 - Sync-Prioritäten
 
 **Sync-Strategien:**
+
 - **Last-Write-Wins:** Letzte Änderung gewinnt
 - **Source-of-Truth:** POS ist Quelle der Wahrheit
 - **Manual-Resolution:** Konflikte manuell lösen
@@ -1142,6 +1238,7 @@ Dieser Abschnitt identifiziert professionelle Business-Features, die für Enterp
 **Status:** Teilweise vorhanden, aber zu erweitern
 
 **Anforderungen:**
+
 - Bulk-Update-Operationen
 - Batch-Syncs (mehrere Shops gleichzeitig)
 - Batch-Export/Import
@@ -1151,6 +1248,7 @@ Dieser Abschnitt identifiziert professionelle Business-Features, die für Enterp
 - Batch-Rollback
 
 **Anwendungsfälle:**
+
 - Mehrere Shops gleichzeitig synchronisieren
 - Bulk-Preis-Updates
 - Bulk-Bestands-Updates
@@ -1162,6 +1260,7 @@ Dieser Abschnitt identifiziert professionelle Business-Features, die für Enterp
 **Status:** Nicht vorhanden
 
 **Anforderungen:**
+
 - Mapping-Templates
 - Sync-Konfigurations-Templates
 - Report-Templates
@@ -1171,6 +1270,7 @@ Dieser Abschnitt identifiziert professionelle Business-Features, die für Enterp
 - Template-Versionierung
 
 **Template-Typen:**
+
 - Spalten-Mapping-Templates (für verschiedene CSV-Formate)
 - Sync-Strategie-Templates
 - Validierungs-Regel-Templates
@@ -1182,6 +1282,7 @@ Dieser Abschnitt identifiziert professionelle Business-Features, die für Enterp
 **Status:** Nicht vorhanden
 
 **Anforderungen:**
+
 - Automatische Archivierung alter Daten
 - Konfigurierbare Aufbewahrungsfristen
 - Archiv-Export-Funktion
@@ -1190,6 +1291,7 @@ Dieser Abschnitt identifiziert professionelle Business-Features, die für Enterp
 - Archiv-Suche
 
 **Archivierungs-Regeln:**
+
 - Sync-Historie: X Monate aufbewahren, dann archivieren
 - Audit-Logs: Y Jahre aufbewahren (Compliance)
 - Cache-Daten: Z Monate aufbewahren
@@ -1200,6 +1302,7 @@ Dieser Abschnitt identifiziert professionelle Business-Features, die für Enterp
 **Status:** Teilweise vorhanden, aber zu erweitern
 
 **Anforderungen:**
+
 - Erweiterte Matching-Algorithmen
 - Fuzzy-Matching
 - Machine-Learning-basiertes Matching (optional)
@@ -1209,6 +1312,7 @@ Dieser Abschnitt identifiziert professionelle Business-Features, die für Enterp
 - Matching-Statistiken
 
 **Matching-Verbesserungen:**
+
 - Levenshtein-Distance für Namen
 - Phonetische Suche
 - Synonym-Erkennung
@@ -1220,6 +1324,7 @@ Dieser Abschnitt identifiziert professionelle Business-Features, die für Enterp
 **Status:** Nicht vorhanden
 
 **Anforderungen:**
+
 - Benutzerdefinierte Felder für Produkte
 - Metadaten-Verwaltung
 - Custom-Field-Mapping
@@ -1227,6 +1332,7 @@ Dieser Abschnitt identifiziert professionelle Business-Features, die für Enterp
 - Metadaten-Validierung
 
 **Anwendungsfälle:**
+
 - Zusätzliche Produkt-Informationen
 - Interne Notizen
 - Kategorisierung
@@ -1237,6 +1343,7 @@ Dieser Abschnitt identifiziert professionelle Business-Features, die für Enterp
 **Status:** Teilweise vorhanden (Auto-Sync), aber zu erweitern
 
 **Anforderungen:**
+
 - Erweiterte Scheduling-Optionen
 - Cron-Expression-Support
 - Mehrere geplante Tasks
@@ -1246,6 +1353,7 @@ Dieser Abschnitt identifiziert professionelle Business-Features, die für Enterp
 - Task-Monitoring
 
 **Scheduling-Optionen:**
+
 - Täglich zu bestimmter Zeit
 - Wöchentlich an bestimmten Tagen
 - Monatlich
@@ -1257,6 +1365,7 @@ Dieser Abschnitt identifiziert professionelle Business-Features, die für Enterp
 **Status:** Nicht vorhanden
 
 **Anforderungen:**
+
 - Datenqualitäts-Score
 - Validierungs-Ergebnisse visualisieren
 - Qualitäts-Trends
@@ -1265,6 +1374,7 @@ Dieser Abschnitt identifiziert professionelle Business-Features, die für Enterp
 - Qualitäts-Berichte
 
 **Qualitäts-Metriken:**
+
 - Vollständigkeit (Completeness)
 - Genauigkeit (Accuracy)
 - Konsistenz (Consistency)
@@ -1276,6 +1386,7 @@ Dieser Abschnitt identifiziert professionelle Business-Features, die für Enterp
 **Status:** Nicht vorhanden
 
 **Anforderungen:**
+
 - DSGVO-Compliance-Tools
 - Datenlöschung nach Aufbewahrungsfrist
 - Datenexport für Betroffene (DSGVO Art. 15)
@@ -1284,6 +1395,7 @@ Dieser Abschnitt identifiziert professionelle Business-Features, die für Enterp
 - Compliance-Reports
 
 **Compliance-Anforderungen:**
+
 - DSGVO (EU)
 - CCPA (Kalifornien, optional)
 - Branchenspezifische Compliance (optional)
@@ -1293,6 +1405,7 @@ Dieser Abschnitt identifiziert professionelle Business-Features, die für Enterp
 **Status:** Implementiert (v1.0.3) - Cache für Dashboard-Stats, zu erweitern
 
 **Aktuelle Implementierung (v1.0.3):**
+
 - **Cache-Service implementiert:** SQLite-basierter Cache für Produkt- und Varianten-Daten
 - **Cache-Strategie:** Cache wird NUR für Dashboard-Statistiken verwendet, nicht im Sync-Prozess
 - **Sync-Prozess:** Lädt immer die neuesten Daten direkt von Shopify (keine Cache-Nutzung)
@@ -1300,11 +1413,13 @@ Dieser Abschnitt identifiziert professionelle Business-Features, die für Enterp
 - **Dashboard-Stats:** Produktanzahl, Variantenanzahl, letzte Aktualisierung aus Cache
 
 **Wichtige Design-Entscheidung:**
+
 - Der Cache wird bewusst NICHT im Sync-Prozess verwendet, um immer die neuesten Daten zu garantieren
 - Cache dient ausschließlich der Dashboard-Anzeige, um API-Calls zu reduzieren
 - Nach jedem erfolgreichen Sync wird der Cache aktualisiert, um Dashboard-Stats aktuell zu halten
 
 **Anforderungen (zukünftig):**
+
 - Erweiterte Caching-Strategien
 - Cache-Warming
 - Cache-Invalidierung-Strategien
@@ -1314,6 +1429,7 @@ Dieser Abschnitt identifiziert professionelle Business-Features, die für Enterp
 - Pagination für große Datenmengen
 
 **Caching-Verbesserungen (zukünftig):**
+
 - Multi-Level-Caching
 - Cache-Preloading
 - Intelligente Cache-Invalidierung
@@ -1325,6 +1441,7 @@ Dieser Abschnitt identifiziert professionelle Business-Features, die für Enterp
 **Status:** Nicht vorhanden
 
 **Anforderungen:**
+
 - Offline-Modus
 - Sync-Queue für Offline-Operationen
 - Automatische Synchronisation bei Verbindung
@@ -1332,6 +1449,7 @@ Dieser Abschnitt identifiziert professionelle Business-Features, die für Enterp
 - Offline-Status-Anzeige
 
 **Anwendungsfälle:**
+
 - App funktioniert ohne Internet
 - Syncs werden in Queue gespeichert
 - Automatische Ausführung bei Verbindung
@@ -1341,6 +1459,7 @@ Dieser Abschnitt identifiziert professionelle Business-Features, die für Enterp
 **Status:** Teilweise geplant (v1.2), aber zu erweitern
 
 **Anforderungen:**
+
 - Mehrere Locations pro Shop
 - Location-spezifische Syncs
 - Location-basierte Bestands-Verwaltung
@@ -1348,6 +1467,7 @@ Dieser Abschnitt identifiziert professionelle Business-Features, die für Enterp
 - Location-basierte Reports
 
 **Features:**
+
 - Location-Auswahl pro Sync
 - Location-spezifische Mapping
 - Location-basierte Validierung
@@ -1360,6 +1480,7 @@ Dieser Abschnitt identifiziert professionelle Business-Features, die für Enterp
 **Status:** Nicht vorhanden
 
 **Anforderungen:**
+
 - Konfigurations-Versionierung
 - Konfigurations-Historie
 - Rollback zu vorherigen Versionen
@@ -1368,6 +1489,7 @@ Dieser Abschnitt identifiziert professionelle Business-Features, die für Enterp
 - Konfigurations-Branching (optional)
 
 **Anwendungsfälle:**
+
 - Experimentelle Konfigurationen testen
 - Zu stabiler Konfiguration zurückkehren
 - Konfigurations-Änderungen nachvollziehen
@@ -1377,6 +1499,7 @@ Dieser Abschnitt identifiziert professionelle Business-Features, die für Enterp
 **Status:** Nicht vorhanden
 
 **Anforderungen:**
+
 - ERP-System-Integration
 - WMS-Integration (Warehouse Management)
 - Accounting-System-Integration
@@ -1384,6 +1507,7 @@ Dieser Abschnitt identifiziert professionelle Business-Features, die für Enterp
 - BI-Tool-Integration
 
 **Integration-Typen:**
+
 - REST API
 - Webhooks
 - File-Based (CSV, XML, JSON)
@@ -1394,6 +1518,7 @@ Dieser Abschnitt identifiziert professionelle Business-Features, die für Enterp
 **Status:** Teilweise vorhanden, aber zu erweitern
 
 **Anforderungen:**
+
 - Automatische Retry-Strategien
 - Circuit-Breaker-Pattern
 - Graceful Degradation
@@ -1402,6 +1527,7 @@ Dieser Abschnitt identifiziert professionelle Business-Features, die für Enterp
 - Error-Pattern-Erkennung
 
 **Recovery-Strategien:**
+
 - Automatischer Retry mit Backoff
 - Alternative Datenquellen
 - Fallback-Mechanismen
@@ -1487,6 +1613,7 @@ Dieser Abschnitt identifiziert professionelle Business-Features, die für Enterp
 **Status:** Fehlt komplett
 
 **Anforderungen:**
+
 - Datenschutzerklärung
 - Datenverarbeitung dokumentieren
 - DSGVO-Compliance
@@ -1497,6 +1624,7 @@ Dieser Abschnitt identifiziert professionelle Business-Features, die für Enterp
 **Status:** Fehlt komplett
 
 **Anforderungen:**
+
 - Nutzungsbedingungen
 - Haftungsausschluss
 - Lizenzbedingungen
@@ -1506,6 +1634,7 @@ Dieser Abschnitt identifiziert professionelle Business-Features, die für Enterp
 **Status:** Fehlt komplett
 
 **Anforderungen:**
+
 - DPA für Shopify-Integration
 - Datenverarbeitung dokumentieren
 - Compliance mit Datenschutzgesetzen
@@ -1515,6 +1644,7 @@ Dieser Abschnitt identifiziert professionelle Business-Features, die für Enterp
 **Status:** Nicht dokumentiert
 
 **Anforderungen:**
+
 - Datenminimierung
 - Recht auf Löschung
 - Recht auf Datenübertragbarkeit
@@ -1526,6 +1656,7 @@ Dieser Abschnitt identifiziert professionelle Business-Features, die für Enterp
 **Status:** Fehlt komplett
 
 **Anforderungen:**
+
 - Accessibility-Commitment
 - WCAG-Compliance-Statement
 - Kontakt für Accessibility-Issues
@@ -1535,6 +1666,7 @@ Dieser Abschnitt identifiziert professionelle Business-Features, die für Enterp
 **Status:** Teilweise in SECURITY.md (zu erstellen)
 
 **Anforderungen:**
+
 - Responsible-Disclosure-Guidelines
 - Vulnerability-Reporting-Prozess
 - Security-Update-Prozess
@@ -1550,6 +1682,7 @@ Dieser Abschnitt identifiziert professionelle Business-Features, die für Enterp
 **Status:** Nicht vorhanden
 
 **Anforderungen:**
+
 - Bug-Report-Template
 - Feature-Request-Template
 - Security-Report-Template
@@ -1560,6 +1693,7 @@ Dieser Abschnitt identifiziert professionelle Business-Features, die für Enterp
 **Status:** Nicht vorhanden
 
 **Anforderungen:**
+
 - PR-Beschreibung-Template
 - Checkliste für Reviewer
 - Testing-Checklist
@@ -1570,6 +1704,7 @@ Dieser Abschnitt identifiziert professionelle Business-Features, die für Enterp
 **Status:** Teilweise in PROJEKTPLAN.md, aber zu erweitern
 
 **Anforderungen:**
+
 - Öffentliche Roadmap
 - Feature-Priorisierung
 - Release-Planung
@@ -1580,6 +1715,7 @@ Dieser Abschnitt identifiziert professionelle Business-Features, die für Enterp
 **Status:** Nicht dokumentiert
 
 **Anforderungen:**
+
 - Review-Kriterien
 - Review-Prozess
 - Review-Checklist
@@ -1590,6 +1726,7 @@ Dieser Abschnitt identifiziert professionelle Business-Features, die für Enterp
 **Status:** Teilweise vorhanden, aber zu formalisieren
 
 **Anforderungen:**
+
 - Release-Zyklen definieren
 - Feature-Freeze-Perioden
 - Release-Candidate-Prozess
@@ -1600,6 +1737,7 @@ Dieser Abschnitt identifiziert professionelle Business-Features, die für Enterp
 **Status:** CHANGELOG.md fehlt
 
 **Anforderungen:**
+
 - Automatische Changelog-Generierung
 - Changelog-Format standardisieren
 - Changelog-Review-Prozess
@@ -1838,6 +1976,7 @@ Diese Komponenten sind wünschenswert, aber nicht kritisch:
 Dieses Dokument identifiziert umfassend die fehlenden Best Practices und Industry Standards für das WAWISync-Projekt. Die Implementierung dieser Komponenten wird das Projekt auf ein professionelles, Enterprise-Level-Niveau heben.
 
 **Nächste Schritte:**
+
 1. Prioritäten festlegen
 2. Implementierungsplan erstellen
 3. Ressourcen zuweisen
@@ -1853,8 +1992,8 @@ Dieses Dokument identifiziert umfassend die fehlenden Best Practices und Industr
 **Status:** Analyse abgeschlossen, kontinuierliche Implementierung
 
 **Changelog v1.0.3:**
+
 - Cache-Service implementiert: SQLite-basierter Cache für Dashboard-Statistiken
 - Cache-Strategie dokumentiert: Cache wird nur für Dashboard-Stats verwendet, nicht im Sync-Prozess
 - Sync-Abschluss-UI verbessert: Dashboard-Button nach erfolgreichem/fehlgeschlagenem Sync hinzugefügt
 - Erfolgs-Feedback verbessert: Visuelle Indikatoren und Ergebnis-Zusammenfassung erweitert
-

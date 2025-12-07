@@ -144,7 +144,7 @@ export function useConfig() {
     if (typeof window !== "undefined" && window.electron) {
       loadAutoSyncConfig();
       loadAutoSyncStatus();
-      
+
       // Aktualisiere Status regelmäßig (alle 5 Sekunden)
       const interval = setInterval(() => {
         loadAutoSyncStatus();
@@ -164,7 +164,8 @@ export function useConfig() {
         setAutoSyncConfigState(config);
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Fehler beim Speichern der Auto-Sync-Config";
+      const message =
+        err instanceof Error ? err.message : "Fehler beim Speichern der Auto-Sync-Config";
       setError(message);
       throw err;
     }
@@ -259,7 +260,8 @@ export function useConfig() {
         setUpdateConfigState(config);
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Fehler beim Speichern der Update-Config";
+      const message =
+        err instanceof Error ? err.message : "Fehler beim Speichern der Update-Config";
       setError(message);
       throw err;
     }
@@ -292,4 +294,3 @@ export function useConfig() {
     saveUpdateConfig,
   };
 }
-
