@@ -2,7 +2,12 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
-import { parseCsv, extractRowValues, convertToCsvRows, type ColumnMapping, type ExtractedRow } from "../../../../core/infra/csv/parser.js";
+import {
+  parseCsv,
+  extractRowValues,
+  convertToCsvRows,
+  type ColumnMapping,
+} from "../../../../core/infra/csv/parser.js";
 import type { RawCsvRow } from "../../../../core/domain/types.js";
 import { loadFixture } from "../../../../helpers/test-utils.js";
 
@@ -84,7 +89,8 @@ describe("parseCsv", () => {
     });
 
     it("sollte mehrere Zeilen parsen", () => {
-      const csvContent = "SKU;Name;Preis;Bestand\nSKU-001;Produkt 1;12.50;10\nSKU-002;Produkt 2;8.99;5";
+      const csvContent =
+        "SKU;Name;Preis;Bestand\nSKU-001;Produkt 1;12.50;10\nSKU-002;Produkt 2;8.99;5";
       const csvPath = path.join(tempDir, "test.csv");
       fs.writeFileSync(csvPath, csvContent, "utf-8");
 
@@ -95,7 +101,8 @@ describe("parseCsv", () => {
     });
 
     it("sollte leere Zeilen überspringen", () => {
-      const csvContent = "SKU;Name;Preis;Bestand\nSKU-001;Produkt 1;12.50;10\n\nSKU-002;Produkt 2;8.99;5";
+      const csvContent =
+        "SKU;Name;Preis;Bestand\nSKU-001;Produkt 1;12.50;10\n\nSKU-002;Produkt 2;8.99;5";
       const csvPath = path.join(tempDir, "test.csv");
       fs.writeFileSync(csvPath, csvContent, "utf-8");
 
@@ -157,8 +164,9 @@ describe("parseCsv", () => {
       expect(result.rows[0].data.Name).toBe("Musterstraße, Weg 1");
     });
 
-    it("sollte Escaped Quotes (\"\") korrekt behandeln", () => {
-      const csvContent = 'SKU;Name;Preis;Bestand\nSKU-001;"Das war ""10 große Scheine"", Baby";12.50;10';
+    it('sollte Escaped Quotes ("") korrekt behandeln', () => {
+      const csvContent =
+        'SKU;Name;Preis;Bestand\nSKU-001;"Das war ""10 große Scheine"", Baby";12.50;10';
       const csvPath = path.join(tempDir, "test.csv");
       fs.writeFileSync(csvPath, csvContent, "utf-8");
 
@@ -181,7 +189,8 @@ describe("parseCsv", () => {
     });
 
     it("sollte Felder mit Quotes und einfachen Anführungszeichen kombinieren", () => {
-      const csvContent = 'SKU;Name;Preis;Bestand\nSKU-001;"O\'Brien\'s ""Special"" Produkt";12.50;10';
+      const csvContent =
+        'SKU;Name;Preis;Bestand\nSKU-001;"O\'Brien\'s ""Special"" Produkt";12.50;10';
       const csvPath = path.join(tempDir, "test.csv");
       fs.writeFileSync(csvPath, csvContent, "utf-8");
 
@@ -228,7 +237,8 @@ describe("parseCsv", () => {
 
   describe("Row-Numbering", () => {
     it("sollte korrekte Row-Nummern vergeben", () => {
-      const csvContent = "SKU;Name;Preis;Bestand\nSKU-001;Produkt 1;12.50;10\nSKU-002;Produkt 2;8.99;5";
+      const csvContent =
+        "SKU;Name;Preis;Bestand\nSKU-001;Produkt 1;12.50;10\nSKU-002;Produkt 2;8.99;5";
       const csvPath = path.join(tempDir, "test.csv");
       fs.writeFileSync(csvPath, csvContent, "utf-8");
 
@@ -376,7 +386,7 @@ describe("extractRowValues", () => {
   it("sollte null zurückgeben wenn nicht genug Header-Spalten vorhanden", () => {
     // Verwende Header mit nur 2 Spalten (statt 4)
     const shortHeaders = ["SKU", "Name"];
-    
+
     const row: RawCsvRow = {
       rowNumber: 2,
       data: {
@@ -500,4 +510,3 @@ describe("convertToCsvRows", () => {
     expect(result).toHaveLength(0);
   });
 });
-

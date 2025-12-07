@@ -1,6 +1,6 @@
 /**
  * GraphQL Queries und Mutations für Shopify Admin API.
- * 
+ *
  * API-Version: 2025-10 (sollte bei Implementierung auf neueste Version aktualisiert werden)
  */
 
@@ -114,4 +114,3 @@ export const GQL_SHOP_ACCESS_SCOPES = `
     }
   }
 `;
-

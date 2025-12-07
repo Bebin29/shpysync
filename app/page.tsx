@@ -2,7 +2,16 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, Package, TrendingUp, AlertCircle, Clock, Play, Square, Loader2 } from "lucide-react";
+import {
+  RefreshCw,
+  Package,
+  TrendingUp,
+  AlertCircle,
+  Clock,
+  Play,
+  Square,
+  Loader2,
+} from "lucide-react";
 import Link from "next/link";
 import { IpcTest } from "@/app/components/ipc-test";
 import { useConfig } from "@/app/hooks/use-config";
@@ -68,9 +77,7 @@ export default function Dashboard() {
             ) : (
               <>
                 <div className="text-2xl font-bold">
-                  {stats?.lastSync
-                    ? new Date(stats.lastSync).toLocaleDateString("de-DE")
-                    : "Nie"}
+                  {stats?.lastSync ? new Date(stats.lastSync).toLocaleDateString("de-DE") : "Nie"}
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {stats?.lastSync
@@ -94,9 +101,7 @@ export default function Dashboard() {
               <div className="text-sm text-red-600">{error}</div>
             ) : (
               <>
-                <div className="text-2xl font-bold text-green-600">
-                  {stats?.syncSuccess ?? 0}
-                </div>
+                <div className="text-2xl font-bold text-green-600">{stats?.syncSuccess ?? 0}</div>
                 <p className="text-xs text-muted-foreground">Letzte 10 Syncs</p>
               </>
             )}
@@ -115,9 +120,7 @@ export default function Dashboard() {
               <div className="text-sm text-red-600">{error}</div>
             ) : (
               <>
-                <div className="text-2xl font-bold text-red-600">
-                  {stats?.syncFailed ?? 0}
-                </div>
+                <div className="text-2xl font-bold text-red-600">{stats?.syncFailed ?? 0}</div>
                 <p className="text-xs text-muted-foreground">Letzte 10 Syncs</p>
               </>
             )}
@@ -133,9 +136,7 @@ export default function Dashboard() {
         <Card>
           <CardHeader>
             <CardTitle>Automatische Synchronisation</CardTitle>
-            <CardDescription>
-              Status der automatischen Synchronisation
-            </CardDescription>
+            <CardDescription>Status der automatischen Synchronisation</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -219,9 +220,7 @@ export default function Dashboard() {
       <Card>
         <CardHeader>
           <CardTitle>Letzte Synchronisationen</CardTitle>
-          <CardDescription>
-            Übersicht der letzten 10 Synchronisationen
-          </CardDescription>
+          <CardDescription>Übersicht der letzten 10 Synchronisationen</CardDescription>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -258,15 +257,15 @@ export default function Dashboard() {
                             Erfolgreich
                           </Badge>
                         )}
-                        {isFailed && (
-                          <Badge variant="destructive">Fehlgeschlagen</Badge>
-                        )}
+                        {isFailed && <Badge variant="destructive">Fehlgeschlagen</Badge>}
                       </div>
                       <div className="mt-1 text-sm text-muted-foreground">
-                        {date.toLocaleString("de-DE")} • {entry.config.shopUrl} • {entry.config.locationName}
+                        {date.toLocaleString("de-DE")} • {entry.config.shopUrl} •{" "}
+                        {entry.config.locationName}
                       </div>
                       <div className="mt-1 text-xs text-muted-foreground">
-                        {entry.result.totalSuccess} erfolgreich, {entry.result.totalFailed} fehlgeschlagen
+                        {entry.result.totalSuccess} erfolgreich, {entry.result.totalFailed}{" "}
+                        fehlgeschlagen
                         {entry.result.duration && ` • ${Math.round(entry.result.duration / 1000)}s`}
                       </div>
                     </div>

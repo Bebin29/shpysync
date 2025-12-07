@@ -10,162 +10,152 @@ import { CheckCircle2, XCircle, AlertCircle, X, Download, Home } from "lucide-re
 import type { SyncProgress, SyncResult, SyncLog } from "../../electron/types/ipc";
 
 interface SyncExecutionProps {
-	progress: SyncProgress;
-	logs: SyncLog[];
-	result?: SyncResult;
-	isRunning: boolean;
-	onCancel: () => void;
-	onExportResults?: () => void;
-	onExportLogs?: () => void;
+  progress: SyncProgress;
+  logs: SyncLog[];
+  result?: SyncResult;
+  isRunning: boolean;
+  onCancel: () => void;
+  onExportResults?: () => void;
+  onExportLogs?: () => void;
 }
 
 /**
  * Sync-Execution-Komponente für Schritt 4 (Ausführung).
- * 
+ *
  * Zeigt Fortschritt, Logs und Ergebnis der Synchronisation an.
  */
 export function SyncExecution({
-	progress,
-	logs,
-	result,
-	isRunning,
-	onCancel,
-	onExportResults,
-	onExportLogs,
+  progress,
+  logs,
+  result,
+  isRunning,
+  onCancel,
+  onExportResults,
+  onExportLogs,
 }: SyncExecutionProps) {
-	const getResultSummary = () => {
-		if (!result) return null;
+  const getResultSummary = () => {
+    if (!result) return null;
 
-		const successRate = result.totalPlanned > 0
-			? Math.round((result.totalSuccess / result.totalPlanned) * 100)
-			: 0;
+    const successRate =
+      result.totalPlanned > 0 ? Math.round((result.totalSuccess / result.totalPlanned) * 100) : 0;
 
-		return {
-			totalPlanned: result.totalPlanned,
-			totalExecuted: result.totalExecuted,
-			totalSuccess: result.totalSuccess,
-			totalFailed: result.totalFailed,
-			totalSkipped: result.totalSkipped,
-			successRate,
-		};
-	};
+    return {
+      totalPlanned: result.totalPlanned,
+      totalExecuted: result.totalExecuted,
+      totalSuccess: result.totalSuccess,
+      totalFailed: result.totalFailed,
+      totalSkipped: result.totalSkipped,
+      successRate,
+    };
+  };
 
-	const summary = getResultSummary();
-	const isCompleted = result && !isRunning;
+  const summary = getResultSummary();
+  const isCompleted = result && !isRunning;
 
-	return (
-		<div className="space-y-6">
-			{/* Fortschrittsanzeige */}
-			<ProgressView progress={progress} isRunning={isRunning} />
+  return (
+    <div className="space-y-6">
+      {/* Fortschrittsanzeige */}
+      <ProgressView progress={progress} isRunning={isRunning} />
 
-			{/* Ergebnis-Zusammenfassung (wenn abgeschlossen) */}
-			{result && summary && (
-				<Card>
-					<CardHeader>
-						<div className="flex items-center justify-between">
-							<div>
-								<CardTitle className="flex items-center gap-2">
-									{summary.totalFailed === 0 ? (
-										<CheckCircle2 className="h-5 w-5 text-green-500" />
-									) : (
-										<AlertCircle className="h-5 w-5 text-yellow-500" />
-									)}
-									Ergebnis
-								</CardTitle>
-								<CardDescription>
-									Synchronisation abgeschlossen
-								</CardDescription>
-							</div>
-							{onExportResults && (
-								<Button variant="outline" size="sm" onClick={onExportResults}>
-									<Download className="mr-2 h-4 w-4" />
-									Ergebnisse exportieren
-								</Button>
-							)}
-						</div>
-					</CardHeader>
-					<CardContent className="space-y-4">
-						<div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-							<div className="space-y-1">
-								<div className="text-sm text-muted-foreground">Geplant</div>
-								<div className="text-2xl font-bold">{summary.totalPlanned}</div>
-							</div>
-							<div className="space-y-1">
-								<div className="text-sm text-muted-foreground">Erfolgreich</div>
-								<div className="text-2xl font-bold text-green-600">
-									{summary.totalSuccess}
-								</div>
-							</div>
-							<div className="space-y-1">
-								<div className="text-sm text-muted-foreground">Fehlgeschlagen</div>
-								<div className="text-2xl font-bold text-red-600">
-									{summary.totalFailed}
-								</div>
-							</div>
-							<div className="space-y-1">
-								<div className="text-sm text-muted-foreground">Erfolgsrate</div>
-								<div className="text-2xl font-bold">{summary.successRate}%</div>
-							</div>
-						</div>
+      {/* Ergebnis-Zusammenfassung (wenn abgeschlossen) */}
+      {result && summary && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  {summary.totalFailed === 0 ? (
+                    <CheckCircle2 className="h-5 w-5 text-green-500" />
+                  ) : (
+                    <AlertCircle className="h-5 w-5 text-yellow-500" />
+                  )}
+                  Ergebnis
+                </CardTitle>
+                <CardDescription>Synchronisation abgeschlossen</CardDescription>
+              </div>
+              {onExportResults && (
+                <Button variant="outline" size="sm" onClick={onExportResults}>
+                  <Download className="mr-2 h-4 w-4" />
+                  Ergebnisse exportieren
+                </Button>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="space-y-1">
+                <div className="text-sm text-muted-foreground">Geplant</div>
+                <div className="text-2xl font-bold">{summary.totalPlanned}</div>
+              </div>
+              <div className="space-y-1">
+                <div className="text-sm text-muted-foreground">Erfolgreich</div>
+                <div className="text-2xl font-bold text-green-600">{summary.totalSuccess}</div>
+              </div>
+              <div className="space-y-1">
+                <div className="text-sm text-muted-foreground">Fehlgeschlagen</div>
+                <div className="text-2xl font-bold text-red-600">{summary.totalFailed}</div>
+              </div>
+              <div className="space-y-1">
+                <div className="text-sm text-muted-foreground">Erfolgsrate</div>
+                <div className="text-2xl font-bold">{summary.successRate}%</div>
+              </div>
+            </div>
 
-						{summary.totalFailed > 0 && (
-							<Alert variant="destructive">
-								<XCircle className="h-4 w-4" />
-								<AlertDescription>
-									{summary.totalFailed} von {summary.totalPlanned} Updates sind fehlgeschlagen.
-									Bitte überprüfe die Logs für Details.
-								</AlertDescription>
-							</Alert>
-						)}
+            {summary.totalFailed > 0 && (
+              <Alert variant="destructive">
+                <XCircle className="h-4 w-4" />
+                <AlertDescription>
+                  {summary.totalFailed} von {summary.totalPlanned} Updates sind fehlgeschlagen.
+                  Bitte überprüfe die Logs für Details.
+                </AlertDescription>
+              </Alert>
+            )}
 
-						{summary.totalFailed === 0 && summary.totalSuccess > 0 && (
-							<Alert>
-								<CheckCircle2 className="h-4 w-4" />
-								<AlertDescription>
-									Alle Updates wurden erfolgreich durchgeführt!
-								</AlertDescription>
-							</Alert>
-						)}
-					</CardContent>
-				</Card>
-			)}
+            {summary.totalFailed === 0 && summary.totalSuccess > 0 && (
+              <Alert>
+                <CheckCircle2 className="h-4 w-4" />
+                <AlertDescription>Alle Updates wurden erfolgreich durchgeführt!</AlertDescription>
+              </Alert>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
-			{/* Logs */}
-			<div className="space-y-2">
-				<div className="flex items-center justify-between">
-					<h3 className="text-lg font-semibold">Logs</h3>
-					{onExportLogs && logs.length > 0 && (
-						<Button variant="outline" size="sm" onClick={onExportLogs}>
-							<Download className="mr-2 h-4 w-4" />
-							Logs exportieren
-						</Button>
-					)}
-				</div>
-				<LogViewer logs={logs} maxHeight="500px" />
-			</div>
+      {/* Logs */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold">Logs</h3>
+          {onExportLogs && logs.length > 0 && (
+            <Button variant="outline" size="sm" onClick={onExportLogs}>
+              <Download className="mr-2 h-4 w-4" />
+              Logs exportieren
+            </Button>
+          )}
+        </div>
+        <LogViewer logs={logs} maxHeight="500px" />
+      </div>
 
-			{/* Cancel-Button (während Ausführung) */}
-			{isRunning && (
-				<div className="flex justify-center">
-					<Button variant="destructive" onClick={onCancel}>
-						<X className="mr-2 h-4 w-4" />
-						Synchronisation abbrechen
-					</Button>
-				</div>
-			)}
+      {/* Cancel-Button (während Ausführung) */}
+      {isRunning && (
+        <div className="flex justify-center">
+          <Button variant="destructive" onClick={onCancel}>
+            <X className="mr-2 h-4 w-4" />
+            Synchronisation abbrechen
+          </Button>
+        </div>
+      )}
 
-			{/* Dashboard-Button (wenn abgeschlossen) */}
-			{isCompleted && (
-				<div className="flex justify-center gap-4">
-					<Link href="/">
-						<Button>
-							<Home className="mr-2 h-4 w-4" />
-							Zum Dashboard
-						</Button>
-					</Link>
-				</div>
-			)}
-		</div>
-	);
+      {/* Dashboard-Button (wenn abgeschlossen) */}
+      {isCompleted && (
+        <div className="flex justify-center gap-4">
+          <Link href="/">
+            <Button>
+              <Home className="mr-2 h-4 w-4" />
+              Zum Dashboard
+            </Button>
+          </Link>
+        </div>
+      )}
+    </div>
+  );
 }
-

@@ -23,8 +23,7 @@ import { testConnection, getLocations } from "./shopify-service.js";
 import { previewCsvWithMapping, createColumnNameToLetterMap } from "./csv-service.js";
 import { getSyncEngine } from "./sync-engine.js";
 import { errorToErrorInfo } from "./error-handler.js";
-import { WawiError } from "../../core/domain/errors.js";
-import { getAutoSyncService, type AutoSyncConfig, type AutoSyncStatus } from "./auto-sync-service.js";
+import { getAutoSyncService, type AutoSyncStatus } from "./auto-sync-service.js";
 import { getCacheService } from "./cache-service.js";
 import { getSyncHistoryService } from "./sync-history-service.js";
 import { getAllProductsWithVariants } from "./shopify-product-service.js";
@@ -60,12 +59,9 @@ export function registerIpcHandlers(): void {
     }
   );
 
-  ipcMain.handle(
-    "config:get-column-mapping",
-    async (): Promise<ColumnMapping | null> => {
-      return getDefaultColumnMapping();
-    }
-  );
+  ipcMain.handle("config:get-column-mapping", async (): Promise<ColumnMapping | null> => {
+    return getDefaultColumnMapping();
+  });
 
   ipcMain.handle(
     "config:set-column-mapping",
@@ -74,47 +70,41 @@ export function registerIpcHandlers(): void {
     }
   );
 
-  ipcMain.handle(
-    "config:test-connection",
-    async (_event, shopConfig: ShopConfig) => {
-      try {
-        // Validiere zuerst die Konfiguration
-        const validation = validateShopConfig(shopConfig);
-        if (!validation.valid) {
-          return {
-            success: false,
-            message: `Konfiguration ungültig: ${validation.errors.join(", ")}`,
-            errorCode: "CONFIG_INVALID",
-            errorSeverity: "error" as const,
-          };
-        }
-
-        // Teste die Verbindung
-        return testConnection({
-          shopUrl: shopConfig.shopUrl,
-          accessToken: shopConfig.accessToken,
-        });
-      } catch (error) {
-        const errorInfo = errorToErrorInfo(error);
+  ipcMain.handle("config:test-connection", async (_event, shopConfig: ShopConfig) => {
+    try {
+      // Validiere zuerst die Konfiguration
+      const validation = validateShopConfig(shopConfig);
+      if (!validation.valid) {
         return {
           success: false,
-          message: errorInfo.userMessage,
-          errorCode: errorInfo.code,
-          errorSeverity: errorInfo.severity,
+          message: `Konfiguration ungültig: ${validation.errors.join(", ")}`,
+          errorCode: "CONFIG_INVALID",
+          errorSeverity: "error" as const,
         };
       }
-    }
-  );
 
-  ipcMain.handle(
-    "config:get-locations",
-    async (_event, shopConfig: ShopConfig) => {
-      return getLocations({
+      // Teste die Verbindung
+      return testConnection({
         shopUrl: shopConfig.shopUrl,
         accessToken: shopConfig.accessToken,
       });
+    } catch (error) {
+      const errorInfo = errorToErrorInfo(error);
+      return {
+        success: false,
+        message: errorInfo.userMessage,
+        errorCode: errorInfo.code,
+        errorSeverity: errorInfo.severity,
+      };
     }
-  );
+  });
+
+  ipcMain.handle("config:get-locations", async (_event, shopConfig: ShopConfig) => {
+    return getLocations({
+      shopUrl: shopConfig.shopUrl,
+      accessToken: shopConfig.accessToken,
+    });
+  });
 
   // CSV/DBF-Handler
   ipcMain.handle("csv:select-file", async () => {
@@ -187,7 +177,7 @@ export function registerIpcHandlers(): void {
     ) => {
       try {
         const result = await previewCsvWithMapping(filePath, mapping, maxRows);
-        
+
         // Konvertiere für IPC: Füge Spaltenname-zu-Buchstabe-Mapping hinzu
         const columnNameToLetterMap = createColumnNameToLetterMap(result.headers);
         const columnNameToLetter: Record<string, string> = {};
@@ -221,51 +211,54 @@ export function registerIpcHandlers(): void {
   );
 
   // Sync-Handler
-  ipcMain.handle("sync:preview", async (_event, config: SyncPreviewRequest): Promise<SyncPreviewResponse> => {
-    try {
-      // DEBUG: Log das Token vor der Validierung
-      console.log("DEBUG - Token vor Validierung:", {
-        tokenPrefix: config.shopConfig.accessToken?.substring(0, 15),
-        tokenLength: config.shopConfig.accessToken?.length,
-        tokenStartsWithShpat: config.shopConfig.accessToken?.startsWith("shpat_"),
-        tokenStartsWithShpca: config.shopConfig.accessToken?.startsWith("shpca_"),
-        shopUrl: config.shopConfig.shopUrl,
-      });
+  ipcMain.handle(
+    "sync:preview",
+    async (_event, config: SyncPreviewRequest): Promise<SyncPreviewResponse> => {
+      try {
+        // DEBUG: Log das Token vor der Validierung
+        console.log("DEBUG - Token vor Validierung:", {
+          tokenPrefix: config.shopConfig.accessToken?.substring(0, 15),
+          tokenLength: config.shopConfig.accessToken?.length,
+          tokenStartsWithShpat: config.shopConfig.accessToken?.startsWith("shpat_"),
+          tokenStartsWithShpca: config.shopConfig.accessToken?.startsWith("shpca_"),
+          shopUrl: config.shopConfig.shopUrl,
+        });
 
-      // Validiere Konfiguration (nicht-strikt für Token-Format, da API-Verbindung der beste Test ist)
-      const validation = validateShopConfig(config.shopConfig);
-      if (!validation.valid) {
-        console.error("DEBUG - Validierungsfehler:", validation.errors);
+        // Validiere Konfiguration (nicht-strikt für Token-Format, da API-Verbindung der beste Test ist)
+        const validation = validateShopConfig(config.shopConfig);
+        if (!validation.valid) {
+          console.error("DEBUG - Validierungsfehler:", validation.errors);
+          return {
+            success: false,
+            error: `Konfiguration ungültig: ${validation.errors.join(", ")}`,
+          };
+        }
+
+        // Hole Sync-Engine
+        const syncEngine = getSyncEngine();
+
+        // Generiere Vorschau (ohne Ausführung)
+        const preview = await syncEngine.generatePreview(config);
+
+        return {
+          success: true,
+          data: {
+            planned: preview.planned,
+            unmatchedRows: preview.unmatchedRows,
+          },
+        };
+      } catch (error) {
+        const errorInfo = errorToErrorInfo(error);
+        console.error("Fehler beim Generieren der Vorschau:", errorInfo);
         return {
           success: false,
-          error: `Konfiguration ungültig: ${validation.errors.join(", ")}`,
+          error: errorInfo.userMessage,
+          errorCode: errorInfo.code,
+          errorSeverity: errorInfo.severity,
         };
       }
-
-      // Hole Sync-Engine
-      const syncEngine = getSyncEngine();
-
-      // Generiere Vorschau (ohne Ausführung)
-      const preview = await syncEngine.generatePreview(config);
-
-      return {
-        success: true,
-        data: {
-          planned: preview.planned,
-          unmatchedRows: preview.unmatchedRows,
-        },
-      };
-    } catch (error) {
-      const errorInfo = errorToErrorInfo(error);
-      console.error("Fehler beim Generieren der Vorschau:", errorInfo);
-      return {
-        success: false,
-        error: errorInfo.userMessage,
-        errorCode: errorInfo.code,
-        errorSeverity: errorInfo.severity,
-      };
     }
-  });
+  );
 
   ipcMain.handle("sync:start", async (event, config: SyncStartConfig) => {
     try {
@@ -369,7 +362,7 @@ export function registerIpcHandlers(): void {
   ipcMain.handle("autoSync:start", async (): Promise<{ success: boolean; error?: string }> => {
     try {
       const autoSyncConfig = getAutoSyncConfig();
-      
+
       if (!autoSyncConfig.enabled) {
         return {
           success: false,
@@ -433,7 +426,10 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(
     "autoSync:setConfig",
-    async (_event, config: AppConfig["autoSync"]): Promise<{ success: boolean; error?: string }> => {
+    async (
+      _event,
+      config: AppConfig["autoSync"]
+    ): Promise<{ success: boolean; error?: string }> => {
       try {
         setAutoSyncConfig(config);
         return {
@@ -535,7 +531,7 @@ export function registerIpcHandlers(): void {
       try {
         cacheService.initialize();
         cacheStats = cacheService.getCacheStats();
-      } catch (error) {
+      } catch {
         // Cache-Initialisierung kann fehlschlagen, wenn app nicht ready ist
         // Verwende Standardwerte
       }
@@ -556,15 +552,18 @@ export function registerIpcHandlers(): void {
     }
   });
 
-  ipcMain.handle("dashboard:get-history", async (_event, limit?: number): Promise<SyncHistoryEntry[]> => {
-    try {
-      const historyService = getSyncHistoryService();
-      return historyService.getSyncHistory(limit);
-    } catch (error) {
-      const errorInfo = errorToErrorInfo(error);
-      throw new Error(errorInfo.userMessage);
+  ipcMain.handle(
+    "dashboard:get-history",
+    async (_event, limit?: number): Promise<SyncHistoryEntry[]> => {
+      try {
+        const historyService = getSyncHistoryService();
+        return historyService.getSyncHistory(limit);
+      } catch (error) {
+        const errorInfo = errorToErrorInfo(error);
+        throw new Error(errorInfo.userMessage);
+      }
     }
-  });
+  );
 
   // Update-Handler
   ipcMain.handle("update:check", async (): Promise<{ success: boolean; error?: string }> => {
@@ -614,4 +613,3 @@ export function registerIpcHandlers(): void {
     return updateService.getStatus();
   });
 }
-

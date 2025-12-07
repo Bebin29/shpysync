@@ -7,58 +7,57 @@ import { getConfig } from "./config-service.js";
 
 /**
  * Shopify Product Service für Electron Main Process.
- * 
+ *
  * Domain-Service für Produkt-bezogene Operationen.
  * Kapselt die Low-Level Client-Funktionen mit Electron-spezifischen Anpassungen.
  */
 
 /**
  * Ruft alle Produkte mit Varianten von Shopify ab.
- * 
+ *
  * Nutzt Cursor-Pagination (max 250 Varianten pro Produkt).
- * 
+ *
  * @param config - Shopify-Konfiguration (ohne API-Version, wird aus Config geladen)
  * @param locationId - Optional: Location-ID für Inventory-Levels
  * @returns Liste von Produkten mit allen Varianten
  */
 export async function getAllProductsWithVariants(
-	config: ShopifyConfig,
-	locationId?: string
+  config: ShopifyConfig,
+  locationId?: string
 ): Promise<Product[]> {
-	// Lade API-Version aus Config
-	const appConfig = getConfig();
-	const apiVersion = getApiVersionFromConfig(appConfig);
+  // Lade API-Version aus Config
+  const appConfig = getConfig();
+  const apiVersion = getApiVersionFromConfig(appConfig);
 
-	const configWithVersion: ShopifyConfig = {
-		...config,
-		apiVersion,
-	};
+  const configWithVersion: ShopifyConfig = {
+    ...config,
+    apiVersion,
+  };
 
-	return getAllProducts(configWithVersion, locationId);
+  return getAllProducts(configWithVersion, locationId);
 }
 
 /**
  * Aktualisiert Preise für Varianten (Bulk-Update pro Produkt).
- * 
+ *
  * @param config - Shopify-Konfiguration (ohne API-Version, wird aus Config geladen)
  * @param productId - Product GID
  * @param updates - Liste von (variantId, price)-Paaren
  * @returns Erfolg-Status und UserErrors
  */
 export async function updateVariantPrices(
-	config: ShopifyConfig,
-	productId: string,
-	updates: Array<{ variantId: string; price: string }>
+  config: ShopifyConfig,
+  productId: string,
+  updates: Array<{ variantId: string; price: string }>
 ): Promise<{ success: boolean; userErrors: UserError[] }> {
-	// Lade API-Version aus Config
-	const appConfig = getConfig();
-	const apiVersion = getApiVersionFromConfig(appConfig);
+  // Lade API-Version aus Config
+  const appConfig = getConfig();
+  const apiVersion = getApiVersionFromConfig(appConfig);
 
-	const configWithVersion: ShopifyConfig = {
-		...config,
-		apiVersion,
-	};
+  const configWithVersion: ShopifyConfig = {
+    ...config,
+    apiVersion,
+  };
 
-	return updatePricesBulk(configWithVersion, productId, updates);
+  return updatePricesBulk(configWithVersion, productId, updates);
 }
-

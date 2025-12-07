@@ -5,22 +5,22 @@ import { validateDbfFile, validateDbfHeaders } from "../../domain/validators.js"
 
 /**
  * DBF-Parser mit robuster Encoding-Erkennung.
- * 
+ *
  * Unterstützt DBF-Dateien (dBASE III/IV Format).
- * 
+ *
  * DBF-Struktur:
  * - Header (32 Bytes): Datei-Metadaten
  * - Feldbeschreibungen (32 Bytes pro Feld): Feldname, Typ, Länge, etc.
  * - Records: Datenzeilen (1 Byte Deleted-Flag + Daten)
- * 
+ *
  * Unterstützte Encodings:
  * - CP1252 (Windows-1252) - Standard für deutsche DBF-Dateien
  * - Latin1 (ISO-8859-1)
  * - UTF-8 (selten bei DBF)
- * 
+ *
  * Encoding wird aus DBF-Header (Codepage-Feld) gelesen, falls vorhanden.
  * Fallback auf CP1252 (Windows-Standard).
- * 
+ *
  * Unterstützte Datentypen:
  * - C (Character/String)
  * - I (Integer) - 4 Bytes Little-Endian (dBASE IV+), binär gespeichert
@@ -88,7 +88,12 @@ function readUInt32LE(buffer: Buffer, offset: number): number {
 /**
  * Liest einen null-terminierten String aus einem Buffer.
  */
-function readNullTerminatedString(buffer: Buffer, offset: number, maxLength: number, encoding: string): string {
+function readNullTerminatedString(
+  buffer: Buffer,
+  offset: number,
+  maxLength: number,
+  encoding: string
+): string {
   const end = Math.min(offset + maxLength, buffer.length);
   let length = 0;
   for (let i = offset; i < end; i++) {
@@ -104,37 +109,37 @@ function readNullTerminatedString(buffer: Buffer, offset: number, maxLength: num
 
 /**
  * Konvertiert Codepage-Namen zu iconv-lite kompatible Encoding-Namen.
- * 
+ *
  * @param codepageName - Codepage-Name (z.B. "cp1252")
  * @returns iconv-lite Encoding-Name (z.B. "win1252")
  */
 function normalizeEncodingName(codepageName: string): string {
   // Mapping von Codepage-Namen zu iconv-lite Namen
   const encodingMap: Record<string, string> = {
-    "cp1252": "win1252",
-    "cp1250": "win1250",
-    "cp1251": "win1251",
-    "cp1253": "win1253",
-    "cp1254": "win1254",
-    "cp1255": "win1255",
-    "cp1256": "win1256",
-    "cp1257": "win1257",
-    "cp437": "cp437",
-    "cp850": "cp850",
-    "cp852": "cp852",
-    "cp866": "cp866",
-    "cp865": "cp865",
-    "cp861": "cp861",
-    "latin1": "latin1",
+    cp1252: "win1252",
+    cp1250: "win1250",
+    cp1251: "win1251",
+    cp1253: "win1253",
+    cp1254: "win1254",
+    cp1255: "win1255",
+    cp1256: "win1256",
+    cp1257: "win1257",
+    cp437: "cp437",
+    cp850: "cp850",
+    cp852: "cp852",
+    cp866: "cp866",
+    cp865: "cp865",
+    cp861: "cp861",
+    latin1: "latin1",
     "iso-8859-1": "latin1",
   };
-  
+
   return encodingMap[codepageName.toLowerCase()] || codepageName;
 }
 
 /**
  * Erkennt das Encoding einer DBF-Datei durch Testen der tatsächlichen Daten.
- * 
+ *
  * @param header - DBF-Header
  * @param buffer - Datei-Buffer
  * @param fields - Feldbeschreibungen (für Daten-Test)
@@ -172,21 +177,25 @@ function detectDbfEncoding(header: DbfHeader, buffer: Buffer, fields?: DbfField[
       0x8e: "win1254", // Windows Turkish
       0x96: "win1257", // Windows Baltic
     };
-    
+
     const mapped = codepageMap[header.codepage];
     if (mapped) {
       const normalized = normalizeEncodingName(mapped);
-      console.log(`[DBF] Encoding aus Codepage-Feld erkannt: ${header.codepage} (0x${header.codepage.toString(16)}) → ${normalized}`);
+      console.log(
+        `[DBF] Encoding aus Codepage-Feld erkannt: ${header.codepage} (0x${header.codepage.toString(16)}) → ${normalized}`
+      );
       return normalized;
     } else {
-      console.log(`[DBF] Unbekannte Codepage im Header: ${header.codepage} (0x${header.codepage.toString(16)})`);
+      console.log(
+        `[DBF] Unbekannte Codepage im Header: ${header.codepage} (0x${header.codepage.toString(16)})`
+      );
     }
   }
-  
+
   // Fallback: Versuche verschiedene Encodings durch Testen der Daten
   // Priorität: cp850 (häufig in deutschen DBF-Dateien), dann win1252, dann latin1
   const testEncodings = ["cp850", "win1252", "latin1", "cp437", "cp852"];
-  
+
   // Wenn Felder vorhanden sind, teste mit echten Datenwerten
   if (fields && fields.length > 0 && header.recordCount > 0) {
     const recordOffset = header.headerLength;
@@ -196,7 +205,7 @@ function detectDbfEncoding(header: DbfHeader, buffer: Buffer, fields?: DbfField[
         try {
           let isValid = true;
           let fieldOffset = recordOffset + 1; // Nach Deleted-Flag
-          
+
           // Teste die ersten 3 Felder (oder alle, wenn weniger vorhanden)
           const fieldsToTest = Math.min(3, fields.length);
           for (let i = 0; i < fieldsToTest; i++) {
@@ -205,7 +214,7 @@ function detectDbfEncoding(header: DbfHeader, buffer: Buffer, fields?: DbfField[
               isValid = false;
               break;
             }
-            
+
             const fieldData = buffer.slice(fieldOffset, fieldOffset + field.length);
             if (field.type === "C") {
               // Teste Character-Feld
@@ -223,22 +232,22 @@ function detectDbfEncoding(header: DbfHeader, buffer: Buffer, fields?: DbfField[
                 console.log(`[DBF] Umlaute gefunden mit Encoding: ${enc}`);
               }
             }
-            
+
             fieldOffset += field.length;
           }
-          
+
           if (isValid) {
             console.log(`[DBF] Encoding durch Daten-Test erkannt: ${enc}`);
             return enc;
           }
-        } catch (error) {
+        } catch {
           // Encoding nicht unterstützt oder Fehler beim Decodieren
           continue;
         }
       }
     }
   }
-  
+
   // Fallback: Teste nur Feldnamen
   for (const enc of testEncodings) {
     try {
@@ -256,7 +265,7 @@ function detectDbfEncoding(header: DbfHeader, buffer: Buffer, fields?: DbfField[
       continue;
     }
   }
-  
+
   // Standard-Fallback: cp850 (häufig in deutschen DBF-Dateien)
   console.log(`[DBF] Encoding-Fallback verwendet: cp850`);
   return "cp850";
@@ -269,7 +278,7 @@ function parseDbfHeader(buffer: Buffer): DbfHeader {
   if (buffer.length < 32) {
     throw new Error("DBF-Datei zu klein für Header");
   }
-  
+
   const version = buffer[0];
   const year = 1900 + buffer[1];
   const month = buffer[2];
@@ -278,7 +287,7 @@ function parseDbfHeader(buffer: Buffer): DbfHeader {
   const headerLength = readUInt16LE(buffer, 8);
   const recordLength = readUInt16LE(buffer, 10);
   const codepage = buffer.length > 29 ? buffer[29] : undefined;
-  
+
   return {
     version,
     lastUpdate: { year, month, day },
@@ -295,26 +304,26 @@ function parseDbfHeader(buffer: Buffer): DbfHeader {
 function parseDbfFields(buffer: Buffer, headerLength: number, encoding: string): DbfField[] {
   const fields: DbfField[] = [];
   let offset = 32; // Nach Header-Bytes
-  
+
   // Feldbeschreibungen bis zum Terminator (0x0D)
   while (offset < headerLength - 1) {
-    if (buffer[offset] === 0x0D) {
+    if (buffer[offset] === 0x0d) {
       break; // Header-Terminator
     }
-    
+
     if (offset + 32 > buffer.length) {
       break; // Nicht genug Daten
     }
-    
+
     const name = readNullTerminatedString(buffer, offset, 11, encoding);
     const type = String.fromCharCode(buffer[offset + 11]);
     const length = buffer[offset + 16];
     const decimal = buffer[offset + 17];
-    
+
     fields.push({ name, type, length, decimal });
     offset += 32;
   }
-  
+
   return fields;
 }
 
@@ -328,11 +337,11 @@ function convertDbfFieldValue(
   encoding: string
 ): string {
   const fieldData = buffer.slice(offset, offset + field.length);
-  
+
   switch (field.type) {
     case "C": // Character
       return iconv.decode(fieldData, encoding).trim();
-    
+
     case "I": // Integer - 4 Bytes Little-Endian (dBASE IV+)
       if (field.length === 4 && fieldData.length >= 4) {
         const intValue = buffer.readInt32LE(offset);
@@ -340,7 +349,7 @@ function convertDbfFieldValue(
       }
       // Fallback: als String behandeln
       return iconv.decode(fieldData, encoding).trim();
-    
+
     case "N": // Numeric (als ASCII-String gespeichert)
       const numericStr = iconv.decode(fieldData, encoding).trim();
       // Prüfe, ob es eine gültige Zahl ist
@@ -348,7 +357,7 @@ function convertDbfFieldValue(
         return "0";
       }
       return numericStr;
-    
+
     case "D": // Date (YYYYMMDD als 8 Bytes ASCII)
       const dateStr = iconv.decode(fieldData, encoding).trim();
       // Prüfe auf leeres Datum
@@ -370,7 +379,7 @@ function convertDbfFieldValue(
         return `${day.padStart(2, "0")}.${month.padStart(2, "0")}.${year}`;
       }
       return dateStr;
-    
+
     case "L": // Logical (T/t/Y/y = true, F/f/N/n = false, Leer/Null = leer)
       const logicalByte = fieldData[0] || 0;
       // Leerzeichen oder Null = leerer Wert
@@ -384,10 +393,10 @@ function convertDbfFieldValue(
         return "FALSE";
       }
       return ""; // Unbekannt = leer
-    
+
     case "M": // Memo (wird als leerer String behandelt)
       return "";
-    
+
     default:
       // Unbekannter Typ: als String behandeln
       return iconv.decode(fieldData, encoding).trim();
@@ -396,31 +405,31 @@ function convertDbfFieldValue(
 
 /**
  * Parst eine DBF-Datei vollständig.
- * 
+ *
  * @param filePath - Pfad zur DBF-Datei
  * @returns Parse-Ergebnis
  */
 export function parseDbf(filePath: string): DbfParseResult {
   // Validiere Datei
   validateDbfFile(filePath);
-  
+
   // Datei als Buffer lesen
   const buffer = fs.readFileSync(filePath);
-  
+
   if (buffer.length < 32) {
     throw new Error("DBF-Datei zu klein");
   }
-  
+
   // Header parsen
   const header = parseDbfHeader(buffer);
-  
+
   // Feldbeschreibungen vorläufig parsen (mit Standard-Encoding für Feldnamen)
   // Feldnamen sind meist ASCII-kompatibel, daher verwenden wir win1252 für erste Parsing
   const fields = parseDbfFields(buffer, header.headerLength, "win1252");
-  
+
   // Encoding erkennen (mit Feldinformationen für bessere Erkennung)
   const encoding = detectDbfEncoding(header, buffer, fields);
-  
+
   // Wenn Encoding anders ist, Feldnamen erneut parsen
   if (encoding !== "win1252") {
     const fieldsReencoded = parseDbfFields(buffer, header.headerLength, encoding);
@@ -429,7 +438,7 @@ export function parseDbf(filePath: string): DbfParseResult {
       fields[i].name = fieldsReencoded[i].name;
     }
   }
-  
+
   if (fields.length === 0) {
     return {
       rows: [],
@@ -438,50 +447,50 @@ export function parseDbf(filePath: string): DbfParseResult {
       totalRows: 0,
     };
   }
-  
+
   // Headers extrahieren
   const headers = fields.map((f) => f.name);
-  
+
   // Validiere Header
   validateDbfHeaders(headers);
-  
+
   // Records parsen
   const rows: RawCsvRow[] = [];
   let recordOffset = header.headerLength;
   let rowNumber = 1; // DBF hat keine Header-Zeile, erste Zeile ist Daten
-  
+
   for (let i = 0; i < header.recordCount && recordOffset < buffer.length; i++) {
     // Prüfe Deleted-Flag (erstes Byte)
     const deletedFlag = buffer[recordOffset];
-    if (deletedFlag === 0x2A) {
+    if (deletedFlag === 0x2a) {
       // Record ist gelöscht, überspringe
       recordOffset += header.recordLength;
       continue;
     }
-    
+
     // Parse Record
     const recordData: Record<string, string> = {};
     let fieldOffset = recordOffset + 1; // Nach Deleted-Flag
-    
+
     for (const field of fields) {
       if (fieldOffset + field.length > buffer.length) {
         break; // Nicht genug Daten
       }
-      
+
       const value = convertDbfFieldValue(buffer, fieldOffset, field, encoding);
       recordData[field.name] = value;
       fieldOffset += field.length;
     }
-    
+
     rows.push({
       rowNumber,
       data: recordData,
     });
-    
+
     rowNumber++;
     recordOffset += header.recordLength;
   }
-  
+
   return {
     rows,
     headers,
@@ -492,31 +501,31 @@ export function parseDbf(filePath: string): DbfParseResult {
 
 /**
  * Parst eine DBF-Datei im Streaming-Modus (für große Dateien).
- * 
+ *
  * @param filePath - Pfad zur DBF-Datei
  * @returns Headers, Encoding und AsyncIterator für Rows
  */
 export async function parseDbfStream(filePath: string): Promise<DbfStreamResult> {
   // Validiere Datei
   validateDbfFile(filePath);
-  
+
   // Datei als Buffer lesen (für Header und Feldbeschreibungen)
   // Für sehr große Dateien könnte man hier optimieren, aber DBF-Header ist immer klein
   const buffer = fs.readFileSync(filePath);
-  
+
   if (buffer.length < 32) {
     throw new Error("DBF-Datei zu klein");
   }
-  
+
   // Header parsen
   const header = parseDbfHeader(buffer);
-  
+
   // Feldbeschreibungen vorläufig parsen (mit Standard-Encoding für Feldnamen)
   const fields = parseDbfFields(buffer, header.headerLength, "win1252");
-  
+
   // Encoding erkennen (mit Feldinformationen für bessere Erkennung)
   const encoding = detectDbfEncoding(header, buffer, fields);
-  
+
   // Wenn Encoding anders ist, Feldnamen erneut parsen
   if (encoding !== "win1252") {
     const fieldsReencoded = parseDbfFields(buffer, header.headerLength, encoding);
@@ -525,7 +534,7 @@ export async function parseDbfStream(filePath: string): Promise<DbfStreamResult>
       fields[i].name = fieldsReencoded[i].name;
     }
   }
-  
+
   if (fields.length === 0) {
     return {
       headers: [],
@@ -533,51 +542,51 @@ export async function parseDbfStream(filePath: string): Promise<DbfStreamResult>
       rows: (async function* () {})(), // Leerer Generator
     };
   }
-  
+
   // Headers extrahieren
   const headers = fields.map((f) => f.name);
-  
+
   // Validiere Header
   validateDbfHeaders(headers);
-  
+
   // Generator-Funktion für Rows
   let recordOffset = header.headerLength;
   let rowNumber = 1;
-  
+
   async function* rowGenerator(): AsyncGenerator<RawCsvRow, void, unknown> {
     for (let i = 0; i < header.recordCount && recordOffset < buffer.length; i++) {
       // Prüfe Deleted-Flag
       const deletedFlag = buffer[recordOffset];
-      if (deletedFlag === 0x2A) {
+      if (deletedFlag === 0x2a) {
         // Record ist gelöscht, überspringe
         recordOffset += header.recordLength;
         continue;
       }
-      
+
       // Parse Record
       const recordData: Record<string, string> = {};
       let fieldOffset = recordOffset + 1; // Nach Deleted-Flag
-      
+
       for (const field of fields) {
         if (fieldOffset + field.length > buffer.length) {
           break; // Nicht genug Daten
         }
-        
+
         const value = convertDbfFieldValue(buffer, fieldOffset, field, encoding);
         recordData[field.name] = value;
         fieldOffset += field.length;
       }
-      
+
       yield {
         rowNumber,
         data: recordData,
       };
-      
+
       rowNumber++;
       recordOffset += header.recordLength;
     }
   }
-  
+
   return {
     headers,
     encoding,
@@ -587,7 +596,7 @@ export async function parseDbfStream(filePath: string): Promise<DbfStreamResult>
 
 /**
  * Parst eine DBF-Datei im Preview-Modus (nur erste N Zeilen).
- * 
+ *
  * @param filePath - Pfad zur DBF-Datei
  * @param maxRows - Maximale Anzahl von Datenzeilen (Standard: 200)
  * @returns Parse-Ergebnis mit ersten N Zeilen
@@ -598,26 +607,26 @@ export async function parseDbfPreview(
 ): Promise<DbfParseResult> {
   // Validiere Datei
   validateDbfFile(filePath);
-  
+
   const rows: RawCsvRow[] = [];
   let headers: string[] = [];
   let encoding = "cp1252";
   let rowCount = 0;
-  
+
   // Streaming-Parser verwenden, aber nur maxRows Zeilen lesen
   const streamResult = await parseDbfStream(filePath);
   headers = streamResult.headers;
   encoding = streamResult.encoding;
-  
+
   for await (const row of streamResult.rows) {
     rows.push(row);
     rowCount++;
-    
+
     if (rowCount >= maxRows) {
       break;
     }
   }
-  
+
   return {
     rows,
     headers,
@@ -625,5 +634,3 @@ export async function parseDbfPreview(
     totalRows: rowCount, // Nur die Anzahl der geladenen Zeilen
   };
 }
-
-

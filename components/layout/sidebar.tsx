@@ -56,11 +56,8 @@ export function Sidebar() {
         })}
       </nav>
       <div className="border-t border-gray-800 p-4">
-        <div className="text-xs text-gray-400">
-          Version 1.0.0
-        </div>
+        <div className="text-xs text-gray-400">Version 1.0.0</div>
       </div>
     </div>
   );
 }
-

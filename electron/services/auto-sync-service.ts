@@ -1,7 +1,7 @@
 import { existsSync } from "fs";
-import type { ShopConfig, ColumnMapping, SyncStartConfig } from "../types/ipc.js";
+import type { SyncStartConfig } from "../types/ipc.js";
 import { getSyncEngine } from "./sync-engine.js";
-import { getShopConfig, getDefaultColumnMapping, getConfig } from "./config-service.js";
+import { getShopConfig, getDefaultColumnMapping } from "./config-service.js";
 import { getLogger } from "./logger.js";
 import { detectFileType } from "../../core/domain/validators.js";
 
@@ -9,274 +9,289 @@ import { detectFileType } from "../../core/domain/validators.js";
  * Auto-Sync-Konfiguration.
  */
 export interface AutoSyncConfig {
-	enabled: boolean;
-	interval: number; // in Minuten
-	csvPath?: string; // Optional, wenn dbfPath gesetzt
-	dbfPath?: string; // Optional, wenn csvPath gesetzt
+  enabled: boolean;
+  interval: number; // in Minuten
+  csvPath?: string; // Optional, wenn dbfPath gesetzt
+  dbfPath?: string; // Optional, wenn csvPath gesetzt
 }
 
 /**
  * Auto-Sync-Status.
  */
 export interface AutoSyncStatus {
-	isRunning: boolean;
-	nextRunTime: Date | null;
-	lastRunTime: Date | null;
-	lastRunResult: "success" | "failed" | null;
+  isRunning: boolean;
+  nextRunTime: Date | null;
+  lastRunTime: Date | null;
+  lastRunResult: "success" | "failed" | null;
 }
 
 /**
  * Auto-Sync-Service für zeitgesteuerte Synchronisationen.
- * 
+ *
  * Verwaltet einen Scheduler, der in konfigurierbaren Intervallen
  * CSV-Dateien synchronisiert. Läuft nur, solange die App geöffnet ist.
  */
 export class AutoSyncService {
-	private intervalId: NodeJS.Timeout | null = null;
-	private config: AutoSyncConfig | null = null;
-	private nextRunTime: Date | null = null;
-	private lastRunTime: Date | null = null;
-	private lastRunResult: "success" | "failed" | null = null;
-	private isRunningSync = false; // Verhindert parallele Syncs
-	private logger = getLogger();
+  private intervalId: NodeJS.Timeout | null = null;
+  private config: AutoSyncConfig | null = null;
+  private nextRunTime: Date | null = null;
+  private lastRunTime: Date | null = null;
+  private lastRunResult: "success" | "failed" | null = null;
+  private isRunningSync = false; // Verhindert parallele Syncs
+  private logger = getLogger();
 
-	/**
-	 * Startet den Auto-Sync-Scheduler.
-	 * 
-	 * @param config - Auto-Sync-Konfiguration
-	 * @throws Error wenn CSV-Pfad nicht existiert oder Config ungültig
-	 */
-	start(config: AutoSyncConfig): void {
-		// Validierung: Entweder csvPath oder dbfPath muss gesetzt sein
-		const filePath = config.dbfPath || config.csvPath;
-		if (!filePath || !existsSync(filePath)) {
-			throw new Error(`Datei nicht gefunden: ${filePath}`);
-		}
-		
-		// Validiere Dateityp
-		const fileType = detectFileType(filePath);
-		if (fileType !== "csv" && fileType !== "dbf") {
-			throw new Error(`Unsupported file type: ${filePath}. Only CSV and DBF files are supported.`);
-		}
+  /**
+   * Startet den Auto-Sync-Scheduler.
+   *
+   * @param config - Auto-Sync-Konfiguration
+   * @throws Error wenn CSV-Pfad nicht existiert oder Config ungültig
+   */
+  start(config: AutoSyncConfig): void {
+    // Validierung: Entweder csvPath oder dbfPath muss gesetzt sein
+    const filePath = config.dbfPath || config.csvPath;
+    if (!filePath || !existsSync(filePath)) {
+      throw new Error(`Datei nicht gefunden: ${filePath}`);
+    }
 
-		if (config.interval <= 0) {
-			throw new Error("Intervall muss größer als 0 sein");
-		}
+    // Validiere Dateityp
+    const fileType = detectFileType(filePath);
+    if (fileType !== "csv" && fileType !== "dbf") {
+      throw new Error(`Unsupported file type: ${filePath}. Only CSV and DBF files are supported.`);
+    }
 
-		// Stoppe vorherigen Scheduler falls vorhanden
-		this.stop();
+    if (config.interval <= 0) {
+      throw new Error("Intervall muss größer als 0 sein");
+    }
 
-		this.config = config;
-		const fileTypeLabel = fileType === "dbf" ? "DBF" : "CSV";
-		this.logger.info("system", `Auto-Sync gestartet: Intervall ${config.interval} Minuten, ${fileTypeLabel}: ${filePath}`);
+    // Stoppe vorherigen Scheduler falls vorhanden
+    this.stop();
 
-		// Berechne nächste Ausführungszeit
-		this.nextRunTime = new Date(Date.now() + config.interval * 60 * 1000);
+    this.config = config;
+    const fileTypeLabel = fileType === "dbf" ? "DBF" : "CSV";
+    this.logger.info(
+      "system",
+      `Auto-Sync gestartet: Intervall ${config.interval} Minuten, ${fileTypeLabel}: ${filePath}`
+    );
 
-		// Starte Scheduler (Intervall in Millisekunden)
-		const intervalMs = config.interval * 60 * 1000;
-		this.intervalId = setInterval(() => {
-			this.executeSync();
-		}, intervalMs);
+    // Berechne nächste Ausführungszeit
+    this.nextRunTime = new Date(Date.now() + config.interval * 60 * 1000);
 
-		// Führe ersten Sync sofort aus (optional, kann entfernt werden)
-		// this.executeSync();
-	}
+    // Starte Scheduler (Intervall in Millisekunden)
+    const intervalMs = config.interval * 60 * 1000;
+    this.intervalId = setInterval(() => {
+      this.executeSync();
+    }, intervalMs);
 
-	/**
-	 * Stoppt den Auto-Sync-Scheduler.
-	 */
-	stop(): void {
-		if (this.intervalId) {
-			clearInterval(this.intervalId);
-			this.intervalId = null;
-			this.logger.info("system", "Auto-Sync gestoppt");
-		}
-		this.config = null;
-		this.nextRunTime = null;
-	}
+    // Führe ersten Sync sofort aus (optional, kann entfernt werden)
+    // this.executeSync();
+  }
 
-	/**
-	 * Prüft ob Auto-Sync läuft.
-	 */
-	isRunning(): boolean {
-		return this.intervalId !== null;
-	}
+  /**
+   * Stoppt den Auto-Sync-Scheduler.
+   */
+  stop(): void {
+    if (this.intervalId) {
+      clearInterval(this.intervalId);
+      this.intervalId = null;
+      this.logger.info("system", "Auto-Sync gestoppt");
+    }
+    this.config = null;
+    this.nextRunTime = null;
+  }
 
-	/**
-	 * Gibt den aktuellen Status zurück.
-	 */
-	getStatus(): AutoSyncStatus {
-		return {
-			isRunning: this.isRunning(),
-			nextRunTime: this.nextRunTime,
-			lastRunTime: this.lastRunTime,
-			lastRunResult: this.lastRunResult,
-		};
-	}
+  /**
+   * Prüft ob Auto-Sync läuft.
+   */
+  isRunning(): boolean {
+    return this.intervalId !== null;
+  }
 
-	/**
-	 * Führt einen Auto-Sync aus.
-	 * Wird intern vom Scheduler aufgerufen.
-	 */
-	private async executeSync(): Promise<void> {
-		// Verhindere parallele Syncs
-		if (this.isRunningSync) {
-			this.logger.warn("system", "Auto-Sync übersprungen: Sync läuft bereits");
-			return;
-		}
+  /**
+   * Gibt den aktuellen Status zurück.
+   */
+  getStatus(): AutoSyncStatus {
+    return {
+      isRunning: this.isRunning(),
+      nextRunTime: this.nextRunTime,
+      lastRunTime: this.lastRunTime,
+      lastRunResult: this.lastRunResult,
+    };
+  }
 
-		if (!this.config) {
-			this.logger.error("system", "Auto-Sync-Fehler: Keine Konfiguration vorhanden");
-			return;
-		}
+  /**
+   * Führt einen Auto-Sync aus.
+   * Wird intern vom Scheduler aufgerufen.
+   */
+  private async executeSync(): Promise<void> {
+    // Verhindere parallele Syncs
+    if (this.isRunningSync) {
+      this.logger.warn("system", "Auto-Sync übersprungen: Sync läuft bereits");
+      return;
+    }
 
-		this.isRunningSync = true;
-		this.lastRunTime = new Date();
+    if (!this.config) {
+      this.logger.error("system", "Auto-Sync-Fehler: Keine Konfiguration vorhanden");
+      return;
+    }
 
-		try {
-			// Lade Config
-			const shopConfig = getShopConfig();
-			const columnMapping = getDefaultColumnMapping();
+    this.isRunningSync = true;
+    this.lastRunTime = new Date();
 
-			// Validierung
-			if (!shopConfig) {
-				throw new Error("Shop-Konfiguration fehlt. Bitte konfiguriere zuerst einen Shop.");
-			}
+    try {
+      // Lade Config
+      const shopConfig = getShopConfig();
+      const columnMapping = getDefaultColumnMapping();
 
-			if (!columnMapping) {
-				throw new Error("Spalten-Mapping fehlt. Bitte konfiguriere zuerst das Mapping.");
-			}
+      // Validierung
+      if (!shopConfig) {
+        throw new Error("Shop-Konfiguration fehlt. Bitte konfiguriere zuerst einen Shop.");
+      }
 
-			const filePath = this.config.dbfPath || this.config.csvPath;
-			if (!filePath || !existsSync(filePath)) {
-				throw new Error(`Datei nicht gefunden: ${filePath}`);
-			}
-			
-			// Validiere Dateityp
-			const fileType = detectFileType(filePath);
-			if (fileType !== "csv" && fileType !== "dbf") {
-				throw new Error(`Unsupported file type: ${filePath}. Only CSV and DBF files are supported.`);
-			}
+      if (!columnMapping) {
+        throw new Error("Spalten-Mapping fehlt. Bitte konfiguriere zuerst das Mapping.");
+      }
 
-			// Erstelle Sync-Config
-			const syncConfig: SyncStartConfig = {
-				csvPath: filePath, // csvPath wird für beide Dateitypen verwendet (historisch)
-				columnMapping,
-				shopConfig,
-				options: {
-					updatePrices: true,
-					updateInventory: true,
-					dryRun: false,
-				},
-			};
+      const filePath = this.config.dbfPath || this.config.csvPath;
+      if (!filePath || !existsSync(filePath)) {
+        throw new Error(`Datei nicht gefunden: ${filePath}`);
+      }
 
-			// Führe Sync aus
-			const fileTypeLabel = fileType === "dbf" ? "DBF" : "CSV";
-			this.logger.info("system", `Auto-Sync gestartet (${fileTypeLabel}): ${this.config.csvPath}`);
-			const syncEngine = getSyncEngine();
-			
-			// Sync läuft asynchron, wir warten nicht darauf
-			// (um den Scheduler nicht zu blockieren)
-			syncEngine.startSync(syncConfig)
-				.then((result) => {
-					this.lastRunResult = result.totalFailed === 0 ? "success" : "failed";
-					const successCount = result.totalSuccess;
-					const failedCount = result.totalFailed;
-					
-					if (result.totalFailed === 0) {
-						this.logger.info("system", `Auto-Sync erfolgreich: ${successCount} Updates`);
-					} else {
-						this.logger.warn("system", `Auto-Sync mit Fehlern: ${successCount} erfolgreich, ${failedCount} fehlgeschlagen`);
-					}
-					
-					// Berechne nächste Ausführungszeit
-					if (this.config) {
-						this.nextRunTime = new Date(Date.now() + this.config.interval * 60 * 1000);
-					}
-				})
-				.catch((error) => {
-					this.lastRunResult = "failed";
-					this.logger.error("system", `Auto-Sync fehlgeschlagen: ${error instanceof Error ? error.message : String(error)}`, {
-						error: error instanceof Error ? error.stack : String(error),
-					});
-					
-					// Berechne nächste Ausführungszeit trotz Fehler
-					if (this.config) {
-						this.nextRunTime = new Date(Date.now() + this.config.interval * 60 * 1000);
-					}
-				})
-				.finally(() => {
-					this.isRunningSync = false;
-				});
+      // Validiere Dateityp
+      const fileType = detectFileType(filePath);
+      if (fileType !== "csv" && fileType !== "dbf") {
+        throw new Error(
+          `Unsupported file type: ${filePath}. Only CSV and DBF files are supported.`
+        );
+      }
 
-		} catch (error) {
-			this.lastRunResult = "failed";
-			this.isRunningSync = false;
-			
-			const errorMessage = error instanceof Error ? error.message : String(error);
-			this.logger.error("system", `Auto-Sync-Fehler: ${errorMessage}`, {
-				error: error instanceof Error ? error.stack : String(error),
-			});
+      // Erstelle Sync-Config
+      const syncConfig: SyncStartConfig = {
+        csvPath: filePath, // csvPath wird für beide Dateitypen verwendet (historisch)
+        columnMapping,
+        shopConfig,
+        options: {
+          updatePrices: true,
+          updateInventory: true,
+          dryRun: false,
+        },
+      };
 
-			// Bei kritischen Fehlern (z.B. Shop-Config fehlt) stoppen wir Auto-Sync
-			if (errorMessage.includes("Shop-Konfiguration fehlt") || errorMessage.includes("Spalten-Mapping fehlt")) {
-				this.logger.warn("system", "Auto-Sync gestoppt aufgrund kritischer Fehler");
-				this.stop();
-			} else {
-				// Bei anderen Fehlern (z.B. CSV nicht gefunden) läuft Auto-Sync weiter
-				if (this.config) {
-					this.nextRunTime = new Date(Date.now() + this.config.interval * 60 * 1000);
-				}
-			}
-		}
-	}
+      // Führe Sync aus
+      const fileTypeLabel = fileType === "dbf" ? "DBF" : "CSV";
+      this.logger.info("system", `Auto-Sync gestartet (${fileTypeLabel}): ${this.config.csvPath}`);
+      const syncEngine = getSyncEngine();
 
-	/**
-	 * Führt einen manuellen Test-Sync aus (ohne Scheduler).
-	 * 
-	 * @param filePath - Pfad zur CSV- oder DBF-Datei
-	 * @returns Promise mit Sync-Ergebnis
-	 */
-	async executeTestSync(filePath: string): Promise<void> {
-		if (this.isRunningSync) {
-			throw new Error("Sync läuft bereits");
-		}
+      // Sync läuft asynchron, wir warten nicht darauf
+      // (um den Scheduler nicht zu blockieren)
+      syncEngine
+        .startSync(syncConfig)
+        .then((result) => {
+          this.lastRunResult = result.totalFailed === 0 ? "success" : "failed";
+          const successCount = result.totalSuccess;
+          const failedCount = result.totalFailed;
 
-		if (!existsSync(filePath)) {
-			throw new Error(`Datei nicht gefunden: ${filePath}`);
-		}
+          if (result.totalFailed === 0) {
+            this.logger.info("system", `Auto-Sync erfolgreich: ${successCount} Updates`);
+          } else {
+            this.logger.warn(
+              "system",
+              `Auto-Sync mit Fehlern: ${successCount} erfolgreich, ${failedCount} fehlgeschlagen`
+            );
+          }
 
-		const shopConfig = getShopConfig();
-		const columnMapping = getDefaultColumnMapping();
+          // Berechne nächste Ausführungszeit
+          if (this.config) {
+            this.nextRunTime = new Date(Date.now() + this.config.interval * 60 * 1000);
+          }
+        })
+        .catch((error) => {
+          this.lastRunResult = "failed";
+          this.logger.error(
+            "system",
+            `Auto-Sync fehlgeschlagen: ${error instanceof Error ? error.message : String(error)}`,
+            {
+              error: error instanceof Error ? error.stack : String(error),
+            }
+          );
 
-		if (!shopConfig) {
-			throw new Error("Shop-Konfiguration fehlt");
-		}
+          // Berechne nächste Ausführungszeit trotz Fehler
+          if (this.config) {
+            this.nextRunTime = new Date(Date.now() + this.config.interval * 60 * 1000);
+          }
+        })
+        .finally(() => {
+          this.isRunningSync = false;
+        });
+    } catch (error) {
+      this.lastRunResult = "failed";
+      this.isRunningSync = false;
 
-		if (!columnMapping) {
-			throw new Error("Spalten-Mapping fehlt");
-		}
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error("system", `Auto-Sync-Fehler: ${errorMessage}`, {
+        error: error instanceof Error ? error.stack : String(error),
+      });
 
-		const syncConfig: SyncStartConfig = {
-			csvPath: filePath, // csvPath wird für beide Dateitypen verwendet (historisch)
-			columnMapping,
-			shopConfig,
-			options: {
-				updatePrices: true,
-				updateInventory: true,
-				dryRun: false,
-			},
-		};
+      // Bei kritischen Fehlern (z.B. Shop-Config fehlt) stoppen wir Auto-Sync
+      if (
+        errorMessage.includes("Shop-Konfiguration fehlt") ||
+        errorMessage.includes("Spalten-Mapping fehlt")
+      ) {
+        this.logger.warn("system", "Auto-Sync gestoppt aufgrund kritischer Fehler");
+        this.stop();
+      } else {
+        // Bei anderen Fehlern (z.B. CSV nicht gefunden) läuft Auto-Sync weiter
+        if (this.config) {
+          this.nextRunTime = new Date(Date.now() + this.config.interval * 60 * 1000);
+        }
+      }
+    }
+  }
 
-		this.isRunningSync = true;
-		try {
-			const syncEngine = getSyncEngine();
-			await syncEngine.startSync(syncConfig);
-		} finally {
-			this.isRunningSync = false;
-		}
-	}
+  /**
+   * Führt einen manuellen Test-Sync aus (ohne Scheduler).
+   *
+   * @param filePath - Pfad zur CSV- oder DBF-Datei
+   * @returns Promise mit Sync-Ergebnis
+   */
+  async executeTestSync(filePath: string): Promise<void> {
+    if (this.isRunningSync) {
+      throw new Error("Sync läuft bereits");
+    }
+
+    if (!existsSync(filePath)) {
+      throw new Error(`Datei nicht gefunden: ${filePath}`);
+    }
+
+    const shopConfig = getShopConfig();
+    const columnMapping = getDefaultColumnMapping();
+
+    if (!shopConfig) {
+      throw new Error("Shop-Konfiguration fehlt");
+    }
+
+    if (!columnMapping) {
+      throw new Error("Spalten-Mapping fehlt");
+    }
+
+    const syncConfig: SyncStartConfig = {
+      csvPath: filePath, // csvPath wird für beide Dateitypen verwendet (historisch)
+      columnMapping,
+      shopConfig,
+      options: {
+        updatePrices: true,
+        updateInventory: true,
+        dryRun: false,
+      },
+    };
+
+    this.isRunningSync = true;
+    try {
+      const syncEngine = getSyncEngine();
+      await syncEngine.startSync(syncConfig);
+    } finally {
+      this.isRunningSync = false;
+    }
+  }
 }
 
 /**
@@ -288,12 +303,8 @@ let autoSyncServiceInstance: AutoSyncService | null = null;
  * Gibt die Auto-Sync-Service-Instanz zurück (Singleton).
  */
 export function getAutoSyncService(): AutoSyncService {
-	if (!autoSyncServiceInstance) {
-		autoSyncServiceInstance = new AutoSyncService();
-	}
-	return autoSyncServiceInstance;
+  if (!autoSyncServiceInstance) {
+    autoSyncServiceInstance = new AutoSyncService();
+  }
+  return autoSyncServiceInstance;
 }
-
-
-
-

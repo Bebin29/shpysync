@@ -1,11 +1,11 @@
 /**
  * String-Normalisierung für Matching.
- * 
+ *
  * Portiert von Python `_norm()` Funktion:
  * - Unicode-Normalisierung (NFKC)
  * - Trim und Lowercase
  * - Whitespace-Normalisierung
- * 
+ *
  * @param s - String zum Normalisieren
  * @returns Normalisierter String
  */
@@ -28,7 +28,7 @@ export function normalizeString(s: string | null | undefined): string {
 
 /**
  * Konvertiert Spaltenbuchstaben (A, B, C, ..., Z, AA, AB, ...) zu Index.
- * 
+ *
  * @param letter - Spaltenbuchstabe (z.B. "A", "B", "AB")
  * @returns 0-basierter Index
  */
@@ -46,7 +46,7 @@ export function columnLetterToIndex(letter: string): number {
 
 /**
  * Konvertiert Index zu Spaltenbuchstaben (0 -> A, 1 -> B, ..., 25 -> Z, 26 -> AA, ...).
- * 
+ *
  * @param index - 0-basierter Index
  * @returns Spaltenbuchstabe (z.B. "A", "B", "AB")
  */
@@ -66,4 +66,3 @@ export function indexToColumnLetter(index: number): string {
 
   return result;
 }
-

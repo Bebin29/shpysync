@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { buildVariantMaps, findVariantId } from "../../../../core/domain/matching.js";
-import type { Product, Variant } from "../../../../core/domain/types.js";
+import type { Product } from "../../../../core/domain/types.js";
 import { createMockProduct, createMockVariant } from "../../../helpers/test-utils.js";
 
 describe("buildVariantMaps", () => {
@@ -85,13 +85,11 @@ describe("buildVariantMaps", () => {
 
       const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
       const maps = buildVariantMaps(products);
-      
+
       // Letzter Wert sollte gewinnen
       expect(maps.skuToVariant.get("SKU-001")).toBe("gid://shopify/ProductVariant/2");
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining("Doppelte SKU: SKU-001")
-      );
-      
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("Doppelte SKU: SKU-001"));
+
       consoleSpy.mockRestore();
     });
   });
@@ -372,20 +370,19 @@ describe("findVariantId", () => {
       ];
 
       const mapsPriority = buildVariantMaps(productsPriority);
-      
+
       // Nur SKU sollte funktionieren
       const result = findVariantId("SKU-001", "Test Produkt", mapsPriority);
       expect(result.method).toBe("sku");
       expect(result.variantId).toBe("gid://shopify/ProductVariant/1");
-      
+
       // Name sollte nicht funktionieren
       const resultName = findVariantId("", "Test Produkt", mapsPriority);
       expect(resultName.variantId).toBeNull();
-      
+
       // Barcode sollte nicht funktionieren
       const resultBarcode = findVariantId("", "123456789", mapsPriority);
       expect(resultBarcode.variantId).toBeNull();
     });
   });
 });
-

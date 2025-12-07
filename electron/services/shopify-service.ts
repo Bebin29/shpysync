@@ -2,7 +2,6 @@ import type { ShopifyConfig } from "../../core/infra/shopify/client.js";
 import {
   getAllProducts,
   getAllLocations,
-  getLocationId,
   getLastRateLimitInfo,
   getAccessScopes,
 } from "../../core/infra/shopify/client.js";
@@ -14,19 +13,17 @@ import { getConfig } from "./config-service.js";
 
 /**
  * Shopify Service für Electron Main Process.
- * 
+ *
  * Wrapper um den Core Shopify Client mit Electron-spezifischen Anpassungen.
  */
 
 /**
  * Testet die Verbindung zu Shopify.
- * 
+ *
  * @param config - Shopify-Konfiguration
  * @returns Verbindungstest-Ergebnis
  */
-export async function testConnection(
-  config: ShopifyConfig
-): Promise<{
+export async function testConnection(config: ShopifyConfig): Promise<{
   success: boolean;
   message: string;
   rateLimitInfo?: {
@@ -40,7 +37,7 @@ export async function testConnection(
     // Lade API-Version aus Config
     const appConfig = getConfig();
     const apiVersion = getApiVersionFromConfig(appConfig);
-    
+
     // Ergänze API-Version in Config
     const configWithVersion: ShopifyConfig = {
       ...config,
@@ -82,8 +79,7 @@ export async function testConnection(
         : undefined,
     };
   } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : "Unbekannter Fehler";
+    const errorMessage = error instanceof Error ? error.message : "Unbekannter Fehler";
 
     // Spezifische Fehlermeldungen
     if (errorMessage.includes("401") || errorMessage.includes("Unauthorized")) {
@@ -124,7 +120,7 @@ export async function testConnection(
 
 /**
  * Ruft alle Locations von Shopify ab.
- * 
+ *
  * @param config - Shopify-Konfiguration
  * @returns Liste von Locations
  */
@@ -134,18 +130,18 @@ export async function getLocations(
   // Lade API-Version aus Config
   const appConfig = getConfig();
   const apiVersion = getApiVersionFromConfig(appConfig);
-  
+
   const configWithVersion: ShopifyConfig = {
     ...config,
     apiVersion,
   };
-  
+
   return getAllLocations(configWithVersion);
 }
 
 /**
  * Ruft alle Produkte von Shopify ab.
- * 
+ *
  * @param config - Shopify-Konfiguration
  * @returns Liste von Produkten
  */
@@ -153,12 +149,11 @@ export async function fetchProducts(config: ShopifyConfig): Promise<Product[]> {
   // Lade API-Version aus Config
   const appConfig = getConfig();
   const apiVersion = getApiVersionFromConfig(appConfig);
-  
+
   const configWithVersion: ShopifyConfig = {
     ...config,
     apiVersion,
   };
-  
+
   return getAllProducts(configWithVersion);
 }
-

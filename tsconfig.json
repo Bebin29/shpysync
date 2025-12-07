@@ -31,5 +31,5 @@
     ".next/types/**/*.ts",
     "tests/accessibility/**/*.d.ts"
   ],
-  "exclude": ["node_modules", "electron-builder"]
+  "exclude": ["node_modules", "electron-builder", "tests"]
 }
