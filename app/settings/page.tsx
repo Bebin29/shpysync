@@ -5,9 +5,25 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { TestTube, Save, CheckCircle2, AlertCircle, Loader2, RefreshCw, Clock, Play, Square } from "lucide-react";
+import {
+  TestTube,
+  Save,
+  CheckCircle2,
+  AlertCircle,
+  Loader2,
+  RefreshCw,
+  Clock,
+  Play,
+  Square,
+} from "lucide-react";
 import { useConfig } from "@/app/hooks/use-config";
 import { useElectron } from "@/app/hooks/use-electron";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -35,7 +51,7 @@ export default function SettingsPage() {
     updateConfig,
     saveUpdateConfig,
   } = useConfig();
-  
+
   const { csv } = useElectron();
 
   const [shopUrl, setShopUrl] = useState("");
@@ -57,7 +73,7 @@ export default function SettingsPage() {
     };
   } | null>(null);
   const [saving, setSaving] = useState(false);
-  
+
   // Auto-Sync State
   const [autoSyncEnabled, setAutoSyncEnabled] = useState(false);
   const [autoSyncInterval, setAutoSyncInterval] = useState<number>(30);
@@ -249,8 +265,8 @@ export default function SettingsPage() {
                       connectionResult.rateLimitInfo.percentage > 80
                         ? "bg-red-500"
                         : connectionResult.rateLimitInfo.percentage > 60
-                        ? "bg-yellow-500"
-                        : "bg-green-500"
+                          ? "bg-yellow-500"
+                          : "bg-green-500"
                     }`}
                     style={{ width: `${connectionResult.rateLimitInfo.percentage}%` }}
                   />
@@ -265,9 +281,7 @@ export default function SettingsPage() {
       <Card>
         <CardHeader>
           <CardTitle>Shop-Konfiguration</CardTitle>
-          <CardDescription>
-            Verbinde dich mit deinem Shopify-Shop
-          </CardDescription>
+          <CardDescription>Verbinde dich mit deinem Shopify-Shop</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
@@ -420,9 +434,7 @@ export default function SettingsPage() {
                 maxLength={3}
                 className="font-mono"
               />
-              <p className="text-xs text-muted-foreground">
-                Spaltenbuchstabe für Produktname
-              </p>
+              <p className="text-xs text-muted-foreground">Spaltenbuchstabe für Produktname</p>
             </div>
 
             <div className="space-y-2">
@@ -441,9 +453,7 @@ export default function SettingsPage() {
                 maxLength={3}
                 className="font-mono"
               />
-              <p className="text-xs text-muted-foreground">
-                Spaltenbuchstabe für Preis
-              </p>
+              <p className="text-xs text-muted-foreground">Spaltenbuchstabe für Preis</p>
             </div>
 
             <div className="space-y-2">
@@ -462,9 +472,7 @@ export default function SettingsPage() {
                 maxLength={3}
                 className="font-mono"
               />
-              <p className="text-xs text-muted-foreground">
-                Spaltenbuchstabe für Bestand
-              </p>
+              <p className="text-xs text-muted-foreground">Spaltenbuchstabe für Bestand</p>
             </div>
           </div>
 
@@ -572,7 +580,8 @@ export default function SettingsPage() {
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Die CSV-Datei, die automatisch synchronisiert werden soll (nur wenn keine DBF-Datei gesetzt)
+                  Die CSV-Datei, die automatisch synchronisiert werden soll (nur wenn keine
+                  DBF-Datei gesetzt)
                 </p>
               </div>
 
@@ -707,7 +716,9 @@ export default function SettingsPage() {
                       setTestingAutoSync(false);
                     }
                   }}
-                  disabled={testingAutoSync || (!autoSyncCsvPath && !autoSyncDbfPath) || !shopConfig}
+                  disabled={
+                    testingAutoSync || (!autoSyncCsvPath && !autoSyncDbfPath) || !shopConfig
+                  }
                 >
                   {testingAutoSync ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -769,7 +780,8 @@ export default function SettingsPage() {
         <CardHeader>
           <CardTitle>Standard-Pfade für manuelle Synchronisation</CardTitle>
           <CardDescription>
-            Diese Pfade werden automatisch verwendet, wenn eine manuelle Synchronisation gestartet wird
+            Diese Pfade werden automatisch verwendet, wenn eine manuelle Synchronisation gestartet
+            wird
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -960,9 +972,7 @@ export default function SettingsPage() {
       <Card>
         <CardHeader>
           <CardTitle>API-Informationen</CardTitle>
-          <CardDescription>
-            Informationen zur verwendeten Shopify API-Version
-          </CardDescription>
+          <CardDescription>Informationen zur verwendeten Shopify API-Version</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
@@ -971,7 +981,8 @@ export default function SettingsPage() {
               <span className="font-mono text-sm">2025-10</span>
             </div>
             <p className="text-xs text-muted-foreground">
-              Die API-Version wird alle 3 Monate aktualisiert. Diese App nutzt die neueste stabile Version.
+              Die API-Version wird alle 3 Monate aktualisiert. Diese App nutzt die neueste stabile
+              Version.
             </p>
           </div>
         </CardContent>

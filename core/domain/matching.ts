@@ -1,4 +1,4 @@
-import type { Product, Variant, MatchResult } from "./types.js";
+import type { Product, MatchResult } from "./types.js";
 import type { VariantMaps } from "./types.js";
 import { normalizeString } from "../utils/normalization.js";
 
@@ -7,9 +7,9 @@ export type { VariantMaps };
 
 /**
  * Erstellt Variant-Maps für effizientes Matching.
- * 
+ *
  * Portiert von Python `build_variant_maps()` Funktion.
- * 
+ *
  * @param products - Liste von Shopify-Produkten
  * @returns Variant-Maps für Matching
  */
@@ -69,20 +69,16 @@ export function buildVariantMaps(products: Product[]): VariantMaps {
 
 /**
  * Findet Variant-ID für eine CSV-Zeile.
- * 
+ *
  * Verwendet nur noch SKU-Matching (exakt) für höchste Genauigkeit.
  * Alle anderen Matching-Methoden wurden entfernt, um Fehlmatches zu vermeiden.
- * 
+ *
  * @param rowSku - SKU aus CSV-Zeile
  * @param rowName - Name aus CSV-Zeile (wird nicht mehr verwendet, bleibt für API-Kompatibilität)
  * @param maps - Variant-Maps
  * @returns Match-Ergebnis
  */
-export function findVariantId(
-  rowSku: string,
-  rowName: string,
-  maps: VariantMaps
-): MatchResult {
+export function findVariantId(rowSku: string, rowName: string, maps: VariantMaps): MatchResult {
   // Nur SKU-Matching (exakt)
   if (rowSku) {
     const variantId = maps.skuToVariant.get(rowSku);
@@ -102,4 +98,3 @@ export function findVariantId(
     confidence: "low",
   };
 }
-

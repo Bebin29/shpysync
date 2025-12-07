@@ -27,11 +27,7 @@ describe("Matching Parity", () => {
       const maps = buildVariantMaps(products);
 
       for (const testCase of expectedOutputs.matching) {
-        const result = findVariantId(
-          testCase.csvRow.sku,
-          testCase.csvRow.name,
-          maps
-        );
+        const result = findVariantId(testCase.csvRow.sku, testCase.csvRow.name, maps);
 
         expect(result.variantId).toBe(testCase.expectedMatch.variantId);
         expect(result.method).toBe(testCase.expectedMatch.method);
@@ -92,14 +88,14 @@ describe("Matching Parity", () => {
   describe("Nur SKU-Matching", () => {
     it("sollte nur per SKU matchen können", () => {
       const maps = buildVariantMaps(products);
-      
+
       // Produkt mit SKU, Name und Barcode
       const result = findVariantId("SKU-002", "Test Produkt 2", maps);
-      
+
       // Nur SKU sollte funktionieren
       expect(result.method).toBe("sku");
       expect(result.variantId).toBe("gid://shopify/ProductVariant/2");
-      
+
       // Name sollte nicht funktionieren
       const resultName = findVariantId("", "Test Produkt 2", maps);
       expect(resultName.variantId).toBeNull();
@@ -117,4 +113,3 @@ describe("Matching Parity", () => {
     });
   });
 });
-

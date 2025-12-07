@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from "vitest";
-import { processCsvToUpdates, type ProcessCsvToUpdatesResult } from "../../../core/domain/sync-pipeline.js";
+import { processCsvToUpdates } from "../../../core/domain/sync-pipeline.js";
 import type { CsvRow, Product, MappedRow } from "../../../core/domain/types.js";
 import { loadFixture } from "../helpers/test-utils.js";
 
@@ -64,10 +64,11 @@ describe("Sync Result Parity", () => {
       });
 
       expect(result.priceUpdates.length).toBeGreaterThan(0);
-      
+
       // Prüfe, dass Preise normalisiert wurden
       const priceUpdate = result.priceUpdates.find(
-        (u: { productId: string; variantId: string; price: string }) => u.variantId === "gid://shopify/ProductVariant/1"
+        (u: { productId: string; variantId: string; price: string }) =>
+          u.variantId === "gid://shopify/ProductVariant/1"
       );
       expect(priceUpdate).toBeDefined();
       expect(priceUpdate?.price).toBe("12.50"); // Normalisiert von "12,50"
@@ -94,10 +95,11 @@ describe("Sync Result Parity", () => {
       });
 
       expect(result.inventoryUpdates.length).toBeGreaterThan(0);
-      
+
       // Prüfe, dass Inventory-Updates korrekte Quantitäten haben
       const inventoryUpdate = result.inventoryUpdates.find(
-        (u: { inventoryItemId: string; quantity: number }) => u.inventoryItemId === "gid://shopify/InventoryItem/1"
+        (u: { inventoryItemId: string; quantity: number }) =>
+          u.inventoryItemId === "gid://shopify/InventoryItem/1"
       );
       expect(inventoryUpdate).toBeDefined();
       expect(inventoryUpdate?.quantity).toBe(10);
@@ -143,11 +145,9 @@ describe("Sync Result Parity", () => {
       });
 
       expect(result.mappedRows.length).toBeGreaterThan(0);
-      
+
       // Prüfe, dass gematchte Zeilen korrekte Variant-IDs haben
-      const mappedRow = result.mappedRows.find(
-        (m: MappedRow) => m.csvRow.sku === "SKU-001"
-      );
+      const mappedRow = result.mappedRows.find((m: MappedRow) => m.csvRow.sku === "SKU-001");
       expect(mappedRow).toBeDefined();
       expect(mappedRow?.variantId).toBe("gid://shopify/ProductVariant/1");
       expect(mappedRow?.matchMethod).toBe("sku");
@@ -232,4 +232,3 @@ describe("Sync Result Parity", () => {
     });
   });
 });
-

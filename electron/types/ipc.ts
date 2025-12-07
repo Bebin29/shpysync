@@ -67,10 +67,10 @@ export interface ColumnMapping {
  * Wird verwendet, wenn Token aus dem Store geladen wurde.
  */
 export interface ShopConfig {
-	shopUrl: string;
-	accessToken: string; // Token wird aus Token-Store geladen
-	locationId: string;
-	locationName: string;
+  shopUrl: string;
+  accessToken: string; // Token wird aus Token-Store geladen
+  locationId: string;
+  locationName: string;
 }
 
 /**
@@ -78,10 +78,10 @@ export interface ShopConfig {
  * Wird in der Config gespeichert, Token selbst ist im Token-Store.
  */
 export interface ShopConfigStored {
-	shopUrl: string;
-	accessTokenRef: string; // Referenz auf Token im Token-Store
-	locationId: string;
-	locationName: string;
+  shopUrl: string;
+  accessTokenRef: string; // Referenz auf Token im Token-Store
+  locationId: string;
+  locationName: string;
 }
 
 export interface SyncProgress {
@@ -105,7 +105,17 @@ export interface PlannedOperation {
 }
 
 export type LogLevel = "debug" | "info" | "warn" | "error";
-export type LogCategory = "csv" | "shopify" | "matching" | "inventory" | "price" | "system" | "cache" | "history" | "sync" | "update";
+export type LogCategory =
+  | "csv"
+  | "shopify"
+  | "matching"
+  | "inventory"
+  | "price"
+  | "system"
+  | "cache"
+  | "history"
+  | "sync"
+  | "update";
 
 export interface SyncLog {
   id: string;
@@ -148,24 +158,24 @@ export interface OperationResult {
 
 // Config-Types
 export interface AppConfig {
-	shop: ShopConfigStored | null; // Gespeicherte Config mit accessTokenRef
-	defaultColumnMapping: ColumnMapping | null;
-	apiVersion?: string; // Shopify API-Version (z.B. "2025-10")
-	autoSync: {
-		enabled: boolean;
-		interval?: number; // in Minuten (15, 30, 60, 120)
-		csvPath?: string; // Pfad zur CSV-Datei (optional, wenn dbfPath gesetzt)
-		dbfPath?: string; // Pfad zur DBF-Datei (optional, wenn csvPath gesetzt)
-		schedule?: string; // Cron-ähnliche Syntax (für zukünftige Verwendung)
-	};
-	// Standard-Pfade für manuelle Sync (werden automatisch verwendet, wenn gesetzt)
-	defaultCsvPath?: string; // Standard-CSV-Pfad für manuelle Sync
-	defaultDbfPath?: string; // Standard-DBF-Pfad für manuelle Sync (wird bevorzugt, wenn gesetzt)
-	// Update-Konfiguration
-	update: {
-		autoCheckEnabled: boolean;
-		autoCheckInterval: number; // in Stunden (z.B. 24)
-	};
+  shop: ShopConfigStored | null; // Gespeicherte Config mit accessTokenRef
+  defaultColumnMapping: ColumnMapping | null;
+  apiVersion?: string; // Shopify API-Version (z.B. "2025-10")
+  autoSync: {
+    enabled: boolean;
+    interval?: number; // in Minuten (15, 30, 60, 120)
+    csvPath?: string; // Pfad zur CSV-Datei (optional, wenn dbfPath gesetzt)
+    dbfPath?: string; // Pfad zur DBF-Datei (optional, wenn csvPath gesetzt)
+    schedule?: string; // Cron-ähnliche Syntax (für zukünftige Verwendung)
+  };
+  // Standard-Pfade für manuelle Sync (werden automatisch verwendet, wenn gesetzt)
+  defaultCsvPath?: string; // Standard-CSV-Pfad für manuelle Sync
+  defaultDbfPath?: string; // Standard-DBF-Pfad für manuelle Sync (wird bevorzugt, wenn gesetzt)
+  // Update-Konfiguration
+  update: {
+    autoCheckEnabled: boolean;
+    autoCheckInterval: number; // in Stunden (z.B. 24)
+  };
 }
 
 // CSV-Types
@@ -216,57 +226,56 @@ export interface ErrorInfo {
 
 // Cache-Types
 export interface CacheStats {
-	productCount: number;
-	variantCount: number;
-	lastUpdate: string | null;
-	schemaVersion: number;
-	dbPath: string;
+  productCount: number;
+  variantCount: number;
+  lastUpdate: string | null;
+  schemaVersion: number;
+  dbPath: string;
 }
 
 // Dashboard-Types
 export interface DashboardStats {
-	totalProducts: number; // Aus Cache
-	totalVariants: number; // Aus Cache
-	lastSync: string | null; // Aus Historie
-	syncSuccess: number; // Letzte 10 Syncs
-	syncFailed: number; // Letzte 10 Syncs
-	cacheLastUpdate: string | null; // Aus Cache
+  totalProducts: number; // Aus Cache
+  totalVariants: number; // Aus Cache
+  lastSync: string | null; // Aus Historie
+  syncSuccess: number; // Letzte 10 Syncs
+  syncFailed: number; // Letzte 10 Syncs
+  cacheLastUpdate: string | null; // Aus Cache
 }
 
 export interface HistoryStats {
-	total: number;
-	success: number;
-	failed: number;
-	lastSync: string | null;
+  total: number;
+  success: number;
+  failed: number;
+  lastSync: string | null;
 }
 
 // Sync-Historie-Types
 export interface SyncHistoryEntry {
-	id: string;
-	timestamp: string;
-	csvFileName: string;
-	result: SyncResult;
-	config: {
-		shopUrl: string;
-		locationName: string;
-		columnMapping: ColumnMapping;
-	};
+  id: string;
+  timestamp: string;
+  csvFileName: string;
+  result: SyncResult;
+  config: {
+    shopUrl: string;
+    locationName: string;
+    columnMapping: ColumnMapping;
+  };
 }
 
 // Update-Types
 export interface UpdateInfo {
-	version: string;
-	releaseDate: string;
-	releaseNotes?: string;
+  version: string;
+  releaseDate: string;
+  releaseNotes?: string;
 }
 
 export interface UpdateStatus {
-	checking: boolean;
-	available: boolean;
-	downloaded: boolean;
-	downloading: boolean;
-	progress: number;
-	error: string | null;
-	info: UpdateInfo | null;
+  checking: boolean;
+  available: boolean;
+  downloaded: boolean;
+  downloading: boolean;
+  progress: number;
+  error: string | null;
+  info: UpdateInfo | null;
 }
-

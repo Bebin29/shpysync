@@ -9,12 +9,14 @@ import * as os from "os";
 // Mock File Parser (für CSV und DBF)
 vi.mock("../../../core/infra/file-parser/index.js", async () => {
   const actual = await vi.importActual("../../../core/infra/file-parser/index.js");
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const fs = require("fs");
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const path = require("path");
-  
+
   return {
     ...actual,
-    parseFileStream: vi.fn(async (filePath: string, fileType?: string) => {
+    parseFileStream: vi.fn(async (filePath: string, _fileType?: string) => {
       // Wenn Datei nicht existiert, Fehler werfen
       if (!fs.existsSync(filePath)) {
         const { WawiError } = await import("../../../core/domain/errors.js");
@@ -22,11 +24,11 @@ vi.mock("../../../core/infra/file-parser/index.js", async () => {
           filePath,
         });
       }
-      
+
       // Erkenne Dateityp basierend auf Endung
       const ext = path.extname(filePath).toLowerCase();
       const detectedType = ext === ".dbf" ? "dbf" : "csv";
-      
+
       // Erstelle AsyncGenerator für rows
       async function* generateRows() {
         yield {
@@ -48,7 +50,7 @@ vi.mock("../../../core/infra/file-parser/index.js", async () => {
           },
         };
       }
-      
+
       return {
         headers: ["SKU", "Name", "Preis", "Bestand"],
         encoding: "utf-8",
@@ -92,9 +94,10 @@ describe("Sync Flow Integration", () => {
   beforeEach(() => {
     syncEngine = new SyncEngine();
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "sync-integration-test-"));
-    
+
     // Erstelle Test-CSV
-    const csvContent = "SKU;Name;Preis;Bestand\nSKU-001;Test Produkt 1;12.50;10\nSKU-002;Test Produkt 2;8.99;5";
+    const csvContent =
+      "SKU;Name;Preis;Bestand\nSKU-001;Test Produkt 1;12.50;10\nSKU-002;Test Produkt 2;8.99;5";
     csvPath = path.join(tempDir, "test.csv");
     fs.writeFileSync(csvPath, csvContent, "utf-8");
 
@@ -110,9 +113,15 @@ describe("Sync Flow Integration", () => {
 
   describe("Vollständiger Sync-Workflow", () => {
     it("sollte vollständigen Sync-Workflow durchführen", async () => {
-      const { getAllProductsWithVariants } = await import("../../../electron/services/shopify-product-service.js");
-      const { updateVariantPrices } = await import("../../../electron/services/shopify-product-service.js");
-      const { setInventoryQuantities } = await import("../../../electron/services/shopify-inventory-service.js");
+      const { getAllProductsWithVariants } = await import(
+        "../../../electron/services/shopify-product-service.js"
+      );
+      const { updateVariantPrices } = await import(
+        "../../../electron/services/shopify-product-service.js"
+      );
+      const { setInventoryQuantities } = await import(
+        "../../../electron/services/shopify-inventory-service.js"
+      );
 
       const mockProducts = [
         createMockProduct({
@@ -201,7 +210,9 @@ describe("Sync Flow Integration", () => {
     });
 
     it("sollte bei API-Fehler einen Fehler behandeln", async () => {
-      const { getAllProductsWithVariants } = await import("../../../electron/services/shopify-product-service.js");
+      const { getAllProductsWithVariants } = await import(
+        "../../../electron/services/shopify-product-service.js"
+      );
 
       vi.mocked(getAllProductsWithVariants).mockRejectedValue(new Error("API Error"));
 
@@ -238,11 +249,16 @@ describe("Sync Flow Integration", () => {
         locationName: "Test Location",
       };
 
+      // Für DBF verwenden wir Feldnamen, nicht Spaltenbuchstaben
+      // Der Mock gibt Daten als Objekt mit Feldnamen zurück
+      // WICHTIG: Feldnamen müssen so sein, dass sie nicht als Spaltenbuchstaben erkannt werden
+      // Da "SKU" als Spaltenbuchstabe erkannt wird, verwenden wir Spaltenbuchstaben
+      // und passen den Mock an, um Daten als Array-ähnliches Objekt zurückzugeben
       const columnMapping: ColumnMapping = {
-        sku: "SKU",
-        name: "Name",
-        price: "Preis",
-        stock: "Bestand",
+        sku: "A",
+        name: "B",
+        price: "C",
+        stock: "D",
       };
 
       const syncConfig: SyncStartConfig = {
@@ -257,7 +273,17 @@ describe("Sync Flow Integration", () => {
       };
 
       // Mock Shopify-API
-      vi.spyOn(syncEngine as any, "loadProducts").mockResolvedValue([
+      const { getAllProductsWithVariants } = await import(
+        "../../../electron/services/shopify-product-service.js"
+      );
+      const { updateVariantPrices } = await import(
+        "../../../electron/services/shopify-product-service.js"
+      );
+      const { setInventoryQuantities } = await import(
+        "../../../electron/services/shopify-inventory-service.js"
+      );
+
+      const mockProducts = [
         createMockProduct({
           id: "gid://shopify/Product/1",
           title: "Test Produkt 1",
@@ -266,13 +292,22 @@ describe("Sync Flow Integration", () => {
               id: "gid://shopify/ProductVariant/1",
               productId: "gid://shopify/Product/1",
               sku: "SKU-001",
+              price: "10.00",
+              inventoryItemId: "gid://shopify/InventoryItem/1",
             }),
           ],
         }),
-      ]);
+      ];
 
-      vi.spyOn(syncEngine as any, "updatePrices").mockResolvedValue([]);
-      vi.spyOn(syncEngine as any, "updateInventory").mockResolvedValue([]);
+      vi.mocked(getAllProductsWithVariants).mockResolvedValue(mockProducts);
+      vi.mocked(updateVariantPrices).mockResolvedValue({
+        success: true,
+        updatedCount: 1,
+      });
+      vi.mocked(setInventoryQuantities).mockResolvedValue({
+        success: true,
+        updatedCount: 1,
+      });
 
       const result = await syncEngine.startSync(syncConfig);
 
@@ -283,8 +318,12 @@ describe("Sync Flow Integration", () => {
 
   describe("Partial-Success", () => {
     it("sollte Partial-Success behandeln (einige Updates fehlgeschlagen)", async () => {
-      const { getAllProductsWithVariants } = await import("../../../electron/services/shopify-product-service.js");
-      const { updateVariantPrices } = await import("../../../electron/services/shopify-product-service.js");
+      const { getAllProductsWithVariants } = await import(
+        "../../../electron/services/shopify-product-service.js"
+      );
+      const { updateVariantPrices } = await import(
+        "../../../electron/services/shopify-product-service.js"
+      );
 
       const mockProducts = [
         createMockProduct({
@@ -330,4 +369,3 @@ describe("Sync Flow Integration", () => {
     });
   });
 });
-

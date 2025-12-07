@@ -11,7 +11,7 @@ import { WawiError } from "../../domain/errors.js";
 
 /**
  * Shopify GraphQL Admin API Client.
- * 
+ *
  * Portiert von Python `gql()` und verwandten Funktionen.
  */
 
@@ -45,7 +45,7 @@ export interface RateLimitInfo {
 
 /**
  * Parst Rate-Limit-Header-String zu RateLimitInfo.
- * 
+ *
  * @param rateLimitHeader - Header-String im Format "40/40" (used/limit)
  * @returns RateLimitInfo oder null bei ungültigem Format
  */
@@ -76,7 +76,7 @@ export function parseRateLimitHeader(rateLimitHeader: string | undefined): RateL
 
 /**
  * Ruft die letzte Rate-Limit-Info ab (von der letzten GraphQL-Anfrage).
- * 
+ *
  * @returns RateLimitInfo oder null
  */
 export function getLastRateLimitInfo(): RateLimitInfo | null {
@@ -86,7 +86,7 @@ export function getLastRateLimitInfo(): RateLimitInfo | null {
 
 /**
  * Ruft die letzte Request-Cost ab (von der letzten GraphQL-Anfrage).
- * 
+ *
  * @returns Cost als Number oder null
  */
 export function getLastRequestCost(): number | null {
@@ -113,7 +113,7 @@ export interface CostTrackingInfo {
 
 /**
  * Ruft Cost-Tracking-Info ab.
- * 
+ *
  * @returns Cost-Tracking-Info
  */
 export function getCostTrackingInfo(): CostTrackingInfo {
@@ -143,7 +143,7 @@ export interface UserError {
 
 /**
  * Führt GraphQL-Query/Mutation mit Retry-Logik aus.
- * 
+ *
  * @param config - Shopify-Konfiguration
  * @param query - GraphQL Query/Mutation String
  * @param variables - GraphQL Variables
@@ -193,7 +193,7 @@ async function executeGraphQL<T = unknown>(
 
       if (response.status !== 200) {
         const preview = JSON.stringify(response.data).substring(0, 800);
-        
+
         // Konvertiere HTTP-Status zu WawiError
         if (response.status === 401) {
           throw WawiError.shopifyError("SHOPIFY_UNAUTHORIZED", "Authentifizierung fehlgeschlagen", {
@@ -206,10 +206,14 @@ async function executeGraphQL<T = unknown>(
             preview,
           });
         } else if (response.status >= 500 && response.status < 600) {
-          throw WawiError.shopifyError("SHOPIFY_SERVER_ERROR", `Server-Fehler: ${response.status}`, {
-            status: response.status,
-            preview,
-          });
+          throw WawiError.shopifyError(
+            "SHOPIFY_SERVER_ERROR",
+            `Server-Fehler: ${response.status}`,
+            {
+              status: response.status,
+              preview,
+            }
+          );
         } else {
           throw WawiError.shopifyError("SHOPIFY_SERVER_ERROR", `HTTP ${response.status}`, {
             status: response.status,
@@ -222,19 +226,27 @@ async function executeGraphQL<T = unknown>(
 
       if (data.errors) {
         console.error("GraphQL top-level errors:", data.errors);
-        
+
         // Prüfe auf spezifische Fehlercodes
         const firstError = data.errors[0];
         const errorCode = firstError?.extensions?.code;
-        
+
         if (errorCode === "UNAUTHORIZED" || errorCode === "UNAUTHENTICATED") {
-          throw WawiError.shopifyError("SHOPIFY_UNAUTHORIZED", firstError.message || "Authentifizierung fehlgeschlagen", {
-            errors: data.errors,
-          });
+          throw WawiError.shopifyError(
+            "SHOPIFY_UNAUTHORIZED",
+            firstError.message || "Authentifizierung fehlgeschlagen",
+            {
+              errors: data.errors,
+            }
+          );
         } else if (errorCode === "FORBIDDEN") {
-          throw WawiError.shopifyError("SHOPIFY_FORBIDDEN", firstError.message || "Zugriff verweigert", {
-            errors: data.errors,
-          });
+          throw WawiError.shopifyError(
+            "SHOPIFY_FORBIDDEN",
+            firstError.message || "Zugriff verweigert",
+            {
+              errors: data.errors,
+            }
+          );
         } else {
           throw WawiError.shopifyError("SHOPIFY_SERVER_ERROR", "GraphQL-Fehler", {
             errors: data.errors,
@@ -243,7 +255,10 @@ async function executeGraphQL<T = unknown>(
       }
 
       if (!data.data) {
-        throw WawiError.shopifyError("SHOPIFY_SERVER_ERROR", "GraphQL-Response enthält keine Daten");
+        throw WawiError.shopifyError(
+          "SHOPIFY_SERVER_ERROR",
+          "GraphQL-Response enthält keine Daten"
+        );
       }
 
       return data.data;
@@ -274,7 +289,7 @@ async function executeGraphQL<T = unknown>(
           attempt++;
           continue;
         }
-        
+
         // Andere Fehler: nicht retryen
         throw error;
       }
@@ -295,9 +310,13 @@ async function executeGraphQL<T = unknown>(
               retryAfter: axiosError.response.headers["retry-after"],
             });
           } else {
-            throw WawiError.shopifyError("SHOPIFY_SERVER_ERROR", `Server-Fehler: ${axiosError.response.status}`, {
-              status: axiosError.response.status,
-            });
+            throw WawiError.shopifyError(
+              "SHOPIFY_SERVER_ERROR",
+              `Server-Fehler: ${axiosError.response.status}`,
+              {
+                status: axiosError.response.status,
+              }
+            );
           }
         }
 
@@ -320,7 +339,11 @@ async function executeGraphQL<T = unknown>(
       }
 
       // Netzwerk-Fehler
-      if (axiosError.code === "ECONNREFUSED" || axiosError.code === "ETIMEDOUT" || axiosError.code === "ENOTFOUND") {
+      if (
+        axiosError.code === "ECONNREFUSED" ||
+        axiosError.code === "ETIMEDOUT" ||
+        axiosError.code === "ENOTFOUND"
+      ) {
         throw WawiError.networkError(`Netzwerk-Fehler: ${axiosError.message}`, {
           code: axiosError.code,
           message: axiosError.message,
@@ -335,7 +358,7 @@ async function executeGraphQL<T = unknown>(
 
 /**
  * Ruft alle Produkte mit Cursor-Pagination ab.
- * 
+ *
  * @param config - Shopify-Konfiguration
  * @param locationId - Optional: Location-ID für Inventory-Levels
  * @returns Liste von Produkten
@@ -407,19 +430,19 @@ export async function getAllProducts(
       const variants: Variant[] = node.variants.edges.map((vEdge) => {
         const inventoryItem = vEdge.node.inventoryItem;
         const inventoryLevels = inventoryItem?.inventoryLevels?.edges;
-        
+
         // Extrahiere die verfügbare Menge aus quantities
         let currentQuantity: number | undefined = undefined;
         if (inventoryLevels && inventoryLevels.length > 0) {
           // Wenn locationId angegeben ist, filtere nach dieser Location
           const relevantLevel = locationId
-            ? inventoryLevels.find(level => level.node.location.id === locationId)
+            ? inventoryLevels.find((level) => level.node.location.id === locationId)
             : inventoryLevels[0];
-          
+
           if (relevantLevel) {
             // Finde die "available" Quantity
             const availableQuantity = relevantLevel.node.quantities.find(
-              q => q.name === "available"
+              (q) => q.name === "available"
             );
             currentQuantity = availableQuantity?.quantity;
           }
@@ -457,7 +480,7 @@ export async function getAllProducts(
 
 /**
  * Ruft alle Locations von Shopify ab.
- * 
+ *
  * @param config - Shopify-Konfiguration
  * @returns Liste von Locations
  */
@@ -509,7 +532,7 @@ export async function getAllLocations(
 
 /**
  * Ruft Location-ID anhand des Namens ab.
- * 
+ *
  * @param config - Shopify-Konfiguration
  * @param locationName - Name der Location
  * @returns Location-ID (GID) oder null
@@ -557,20 +580,22 @@ export async function getLocationId(
   }
 
   // Location nicht gefunden - werfe Fehler
-  throw WawiError.shopifyError("SHOPIFY_LOCATION_NOT_FOUND", `Location '${locationName}' nicht gefunden`, {
-    locationName,
-  });
+  throw WawiError.shopifyError(
+    "SHOPIFY_LOCATION_NOT_FOUND",
+    `Location '${locationName}' nicht gefunden`,
+    {
+      locationName,
+    }
+  );
 }
 
 /**
  * Ruft die Access-Scopes des aktuellen Tokens ab.
- * 
+ *
  * @param config - Shopify-Konfiguration
  * @returns Liste von Scope-Handles (z.B. ["read_products", "write_products"])
  */
-export async function getAccessScopes(
-  config: ShopifyConfig
-): Promise<string[]> {
+export async function getAccessScopes(config: ShopifyConfig): Promise<string[]> {
   try {
     const data = await executeGraphQL<{
       shop: {
@@ -597,7 +622,7 @@ export async function getAccessScopes(
 
 /**
  * Aktualisiert Preise für Varianten (Bulk-Update pro Produkt).
- * 
+ *
  * @param config - Shopify-Konfiguration
  * @param productId - Product GID
  * @param updates - Liste von (variantId, price)-Paaren
@@ -635,7 +660,7 @@ export async function updatePricesBulk(
 
 /**
  * Setzt Inventory-Mengen für eine Location.
- * 
+ *
  * @param config - Shopify-Konfiguration
  * @param locationId - Location GID
  * @param updates - Liste von (inventoryItemId, quantity)-Paaren
@@ -665,7 +690,8 @@ export async function setInventory(
       name: "available", // 'available' oder 'on_hand'
       reason: "correction",
       ignoreCompareQuantity: true, // CAS aus -> direkt absolut setzen
-      quantities: updates.map(({ inventoryItemId, quantity }) => ({ // <<< WICHTIG: 'quantities', nicht 'setQuantities'
+      quantities: updates.map(({ inventoryItemId, quantity }) => ({
+        // <<< WICHTIG: 'quantities', nicht 'setQuantities'
         inventoryItemId,
         locationId,
         quantity,
@@ -682,4 +708,3 @@ export async function setInventory(
 
   return { success: true, userErrors: [] };
 }
-

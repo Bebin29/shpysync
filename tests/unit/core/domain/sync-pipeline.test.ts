@@ -1,7 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { processCsvToUpdates, groupPriceUpdatesByProduct } from "../../../../core/domain/sync-pipeline.js";
+import {
+  processCsvToUpdates,
+  groupPriceUpdatesByProduct,
+} from "../../../../core/domain/sync-pipeline.js";
 import type { CsvRow, Product } from "../../../../core/domain/types.js";
-import { createMockProduct, createMockVariant, createMockCsvRow } from "../../../helpers/test-utils.js";
+import {
+  createMockProduct,
+  createMockVariant,
+  createMockCsvRow,
+} from "../../../helpers/test-utils.js";
 
 describe("processCsvToUpdates", () => {
   let products: Product[];
@@ -359,9 +366,21 @@ describe("processCsvToUpdates", () => {
 describe("groupPriceUpdatesByProduct", () => {
   it("sollte Preis-Updates nach Produkt-ID gruppieren", () => {
     const priceUpdates = [
-      { productId: "gid://shopify/Product/1", variantId: "gid://shopify/ProductVariant/1", price: "12.50" },
-      { productId: "gid://shopify/Product/1", variantId: "gid://shopify/ProductVariant/2", price: "15.00" },
-      { productId: "gid://shopify/Product/2", variantId: "gid://shopify/ProductVariant/3", price: "20.00" },
+      {
+        productId: "gid://shopify/Product/1",
+        variantId: "gid://shopify/ProductVariant/1",
+        price: "12.50",
+      },
+      {
+        productId: "gid://shopify/Product/1",
+        variantId: "gid://shopify/ProductVariant/2",
+        price: "15.00",
+      },
+      {
+        productId: "gid://shopify/Product/2",
+        variantId: "gid://shopify/ProductVariant/3",
+        price: "20.00",
+      },
     ];
 
     const grouped = groupPriceUpdatesByProduct(priceUpdates);
@@ -390,5 +409,3 @@ describe("groupPriceUpdatesByProduct", () => {
     expect(product1Updates?.map((u) => u.variantId)).toEqual(["variant1", "variant2", "variant3"]);
   });
 });
-
-

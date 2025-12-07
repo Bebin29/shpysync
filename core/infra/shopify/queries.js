@@ -5,7 +5,12 @@
  * API-Version: 2025-10 (sollte bei Implementierung auf neueste Version aktualisiert werden)
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.GQL_SHOP_ACCESS_SCOPES = exports.GQL_INVENTORY_SET = exports.GQL_VARIANTS_BULK_UPDATE = exports.GQL_LOCATIONS = exports.GQL_PRODUCTS = void 0;
+exports.GQL_SHOP_ACCESS_SCOPES =
+  exports.GQL_INVENTORY_SET =
+  exports.GQL_VARIANTS_BULK_UPDATE =
+  exports.GQL_LOCATIONS =
+  exports.GQL_PRODUCTS =
+    void 0;
 exports.GQL_PRODUCTS = `
   query ListProducts($first: Int!, $after: String) {
     products(first: $first, after: $after, sortKey: ID) {

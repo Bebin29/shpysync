@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import type { BrowserWindow } from "electron";
 import { SyncEngine } from "../../../../electron/services/sync-engine.js";
-import type { ShopConfig, ColumnMapping, SyncPreviewRequest, SyncStartConfig } from "../../../../electron/types/ipc.js";
+import type { ShopConfig, SyncPreviewRequest } from "../../../../electron/types/ipc.js";
 import { createMockProduct, createMockVariant } from "../../../helpers/test-utils.js";
 import * as fs from "fs";
 import * as path from "path";
@@ -25,7 +25,7 @@ vi.mock("../../../../core/infra/csv/parser.js", async () => {
           },
         };
       }
-      
+
       return {
         headers: ["SKU", "Name", "Preis", "Bestand"],
         encoding: "utf-8",
@@ -68,7 +68,7 @@ describe("SyncEngine", () => {
   beforeEach(() => {
     syncEngine = new SyncEngine();
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "sync-test-"));
-    
+
     // Erstelle Test-CSV
     const csvContent = "SKU;Name;Preis;Bestand\nSKU-001;Test Produkt;12.50;10";
     csvPath = path.join(tempDir, "test.csv");
@@ -86,7 +86,9 @@ describe("SyncEngine", () => {
 
   describe("generatePreview", () => {
     it("sollte Vorschau ohne Ausführung generieren", async () => {
-      const { getAllProductsWithVariants } = await import("../../../../electron/services/shopify-product-service.js");
+      const { getAllProductsWithVariants } = await import(
+        "../../../../electron/services/shopify-product-service.js"
+      );
 
       const mockProducts = [
         createMockProduct({
@@ -129,7 +131,9 @@ describe("SyncEngine", () => {
     });
 
     it("sollte nur Preis-Updates in Vorschau enthalten wenn updateInventory false", async () => {
-      const { getAllProductsWithVariants } = await import("../../../../electron/services/shopify-product-service.js");
+      const { getAllProductsWithVariants } = await import(
+        "../../../../electron/services/shopify-product-service.js"
+      );
 
       const mockProducts = [
         createMockProduct({
@@ -164,7 +168,7 @@ describe("SyncEngine", () => {
       // Sollte nur Preis-Updates enthalten
       const priceOps = result.planned.filter((op) => op.type === "price");
       const inventoryOps = result.planned.filter((op) => op.type === "inventory");
-      
+
       expect(priceOps.length).toBeGreaterThan(0);
       expect(inventoryOps.length).toBe(0);
     });
@@ -194,4 +198,3 @@ describe("SyncEngine", () => {
     });
   });
 });
-
