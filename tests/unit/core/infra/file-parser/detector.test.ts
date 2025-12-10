@@ -12,11 +12,14 @@ describe("Dateityp-Erkennung", () => {
   let tempDir: string;
 
   beforeEach(() => {
+    // eslint-disable-next-line security/detect-non-literal-fs-filename
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "file-detector-test-"));
   });
 
   afterEach(() => {
+    // eslint-disable-next-line security/detect-non-literal-fs-filename
     if (fs.existsSync(tempDir)) {
+      // eslint-disable-next-line security/detect-non-literal-fs-filename
       fs.rmSync(tempDir, { recursive: true, force: true });
     }
   });
@@ -50,6 +53,7 @@ describe("Dateityp-Erkennung", () => {
       buffer[1] = 0x00;
       buffer[2] = 0x00;
       buffer[3] = 0x00;
+      // eslint-disable-next-line security/detect-non-literal-fs-filename
       fs.writeFileSync(dbfPath, buffer);
 
       const result = detectFileTypeByMagicBytes(dbfPath);
@@ -59,6 +63,7 @@ describe("Dateityp-Erkennung", () => {
     it("sollte UTF-8 BOM als CSV erkennen", () => {
       const csvPath = path.join(tempDir, "test.csv");
       const buffer = Buffer.from([0xef, 0xbb, 0xbf, 0x53, 0x4b, 0x55]); // UTF-8 BOM + "SKU"
+      // eslint-disable-next-line security/detect-non-literal-fs-filename
       fs.writeFileSync(csvPath, buffer);
 
       const result = detectFileTypeByMagicBytes(csvPath);
@@ -67,6 +72,7 @@ describe("Dateityp-Erkennung", () => {
 
     it("sollte Text-ähnliche Zeichen als CSV erkennen", () => {
       const csvPath = path.join(tempDir, "test.csv");
+      // eslint-disable-next-line security/detect-non-literal-fs-filename
       fs.writeFileSync(csvPath, "SKU;Name;Preis", "utf-8");
 
       const result = detectFileTypeByMagicBytes(csvPath);
@@ -76,6 +82,7 @@ describe("Dateityp-Erkennung", () => {
     it("sollte null zurückgeben für unbekannte Magic Bytes", () => {
       const unknownPath = path.join(tempDir, "test.bin");
       const buffer = Buffer.from([0xff, 0xff, 0xff, 0xff]);
+      // eslint-disable-next-line security/detect-non-literal-fs-filename
       fs.writeFileSync(unknownPath, buffer);
 
       const result = detectFileTypeByMagicBytes(unknownPath);
@@ -89,6 +96,7 @@ describe("Dateityp-Erkennung", () => {
       const dbfPath = path.join(tempDir, "test.txt");
       const buffer = Buffer.alloc(4);
       buffer[0] = 0x03; // dBASE III Magic Byte
+      // eslint-disable-next-line security/detect-non-literal-fs-filename
       fs.writeFileSync(dbfPath, buffer);
 
       const result = detectFileType(dbfPath);
@@ -97,6 +105,7 @@ describe("Dateityp-Erkennung", () => {
 
     it("sollte auf Dateiendung zurückfallen, wenn Magic Bytes nicht erkannt werden", () => {
       const csvPath = path.join(tempDir, "test.csv");
+      // eslint-disable-next-line security/detect-non-literal-fs-filename
       fs.writeFileSync(csvPath, "SKU;Name", "utf-8");
 
       const result = detectFileType(csvPath);
@@ -105,6 +114,7 @@ describe("Dateityp-Erkennung", () => {
 
     it("sollte CSV als Default zurückgeben", () => {
       const unknownPath = path.join(tempDir, "test.unknown");
+      // eslint-disable-next-line security/detect-non-literal-fs-filename
       fs.writeFileSync(unknownPath, "some content", "utf-8");
 
       const result = detectFileType(unknownPath);

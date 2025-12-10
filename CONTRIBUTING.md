@@ -294,6 +294,7 @@ Kurze Beschreibung der Änderungen
 3. **Paritäts-Tests:** Für Daten-Konsistenz
 4. **Accessibility-Tests:** Für UI-Komponenten (WCAG 2.1 Level AA)
 5. **E2E-Tests:** Für vollständige User-Flows
+6. **Mutation-Tests:** Für Test-Qualitätsbewertung (optional, für kritische Bereiche)
 
 ### Test-Struktur
 
@@ -325,6 +326,17 @@ describe("calculateProductPrice", () => {
 - **Ziel:** Mindestens 80% Test-Coverage
 - **Prüfung:** `npm run test:coverage`
 - **Neue Features:** Neue Features müssen Tests haben
+
+### Mutation Testing
+
+Mutation Testing bewertet die Qualität der Tests, indem es absichtlich Fehler in den Code einbaut und prüft, ob die Tests diese finden.
+
+- **Ausführung:** `npm run test:mutation` (kann 15-30 Minuten dauern)
+- **Incremental Mode:** `npm run test:mutation:incremental` (nur geänderte Dateien, schneller)
+- **Zweck:** Identifiziert unvollständige Tests, die Code-Coverage nicht erkennt
+- **Empfohlen:** Für kritische Domain-Logik und Services vor wichtigen Releases
+
+Weitere Informationen: [Testing Documentation](./docs/developer/testing.md#mutation-testing)
 
 ## Code-Review-Guidelines
 
