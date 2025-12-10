@@ -124,13 +124,20 @@ export class UpdateService {
     });
 
     autoUpdater.on("error", (error) => {
-      // 404-Fehler sind normal, wenn noch keine Releases vorhanden sind oder Repository privat ist
-      const is404Error = error.message.includes("404") || error.message.includes("Not Found");
+      // 404-Fehler sind normal, wenn noch keine Releases vorhanden sind, Repository privat ist,
+      // oder wenn die latest-*.yml Dateien im Release fehlen
+      const is404Error =
+        error.message.includes("404") ||
+        error.message.includes("Not Found") ||
+        error.message.includes("Cannot find latest") ||
+        error.message.includes("latest-mac.yml") ||
+        error.message.includes("latest.yml") ||
+        error.message.includes("latest-linux.yml");
 
       if (is404Error) {
         this.logger.info(
           "update",
-          "Keine Releases gefunden oder Repository nicht öffentlich zugänglich"
+          "Keine Updates verfügbar: Release nicht gefunden oder Update-Metadaten fehlen"
         );
         this.status.checking = false;
         this.status.available = false;
