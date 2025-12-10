@@ -5,6 +5,8 @@ node_modules/
 
 # Testing
 /coverage
+.stryker-tmp/
+reports/mutation/
 
 # Next.js
 /.next/

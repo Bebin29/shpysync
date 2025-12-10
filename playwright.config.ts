@@ -18,6 +18,15 @@ export default defineConfig({
   timeout: 30 * 1000,
   expect: {
     timeout: 5000,
+    // Visual Regression Testing Konfiguration
+    toHaveScreenshot: {
+      // Maximale Anzahl unterschiedlicher Pixel (0.2% der Bildfläche)
+      threshold: 0.2,
+      // Maximale Anzahl unterschiedlicher Pixel absolut
+      maxDiffPixels: 100,
+      // Animationen ignorieren
+      animations: "disabled",
+    },
   },
 
   // Test-Ausführung
@@ -32,6 +41,8 @@ export default defineConfig({
     baseURL: "http://localhost:3000",
     trace: "on-first-retry",
     screenshot: "only-on-failure",
+    // Visual Regression Testing: Screenshot-Vergleiche
+    // Screenshots werden in tests/e2e/screenshots/ gespeichert
   },
 
   // Projekte für verschiedene Browser

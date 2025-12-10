@@ -225,7 +225,7 @@ export function createMockProductEdgeCase(
 export function createMockCsvRowWithPriceFormat(
   priceFormat: "comma" | "dot" | "currency" | "whitespace" | "invalid"
 ): CsvRow {
-  const priceMap: Record<string, string> = {
+  const priceMap: Record<"comma" | "dot" | "currency" | "whitespace" | "invalid", string> = {
     comma: "12,50",
     dot: "12.50",
     currency: "12,50 €",
@@ -233,12 +233,14 @@ export function createMockCsvRowWithPriceFormat(
     invalid: "invalid-price",
   };
 
+  const price = priceMap[priceFormat];
+
   return createMockCsvRow({
-    price: priceMap[priceFormat],
+    price,
     rawData: {
       SKU: "SKU-001",
       Name: "Test Produkt",
-      Preis: priceMap[priceFormat],
+      Preis: price,
       Bestand: "10",
     },
   });
