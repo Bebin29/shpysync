@@ -7,11 +7,13 @@ export default defineConfig({
     globals: true,
     environment: "node",
     // E2E-Tests werden von Playwright ausgeführt, nicht von Vitest
+    // Accessibility-Tests benötigen jsdom und werden mit vitest.config.a11y.ts ausgeführt
     exclude: [
       "**/node_modules/**",
       "**/dist/**",
       "**/out/**",
       "**/tests/e2e/**",
+      "**/tests/accessibility/**", // Accessibility-Tests benötigen jsdom
       "**/*.e2e.spec.ts",
       "**/*.e2e.test.ts",
       "**/*.spec.ts", // Playwright verwendet .spec.ts
