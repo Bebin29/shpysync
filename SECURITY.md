@@ -114,12 +114,14 @@ WAWISync implementiert eine Content Security Policy für den Renderer-Prozess:
 
 ```
 default-src 'self';
-script-src 'self';
+script-src 'self' 'unsafe-inline';
 style-src 'self' 'unsafe-inline';
 img-src 'self' data: https:;
 font-src 'self' data:;
 connect-src 'self' https://*.myshopify.com;
 ```
+
+**Hinweis:** `'unsafe-inline'` für `script-src` ist erforderlich, da Next.js inline Scripts für `__NEXT_DATA__` und Initialisierung generiert. Für Electron-Apps ist dies akzeptabel, da Context Isolation aktiviert und Node Integration deaktiviert ist, was XSS → RCE Angriffe verhindert.
 
 ### Development CSP
 

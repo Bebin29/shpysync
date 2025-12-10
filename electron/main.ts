@@ -18,16 +18,17 @@ function createWindow(): void {
   let preloadPath: string;
 
   if (app.isPackaged) {
-    // Production: Preload liegt in resources/app/electron/dist/electron/preload.js
-    // Oder in resources/app.asar/electron/dist/electron/preload.js (wenn asar aktiviert)
+    // Production: Preload liegt in resources/app/electron/dist/electron/preload.cjs
+    // Oder in resources/app.asar/electron/dist/electron/preload.cjs (wenn asar aktiviert)
+    // Verwende .cjs Extension, da electron/package.json "type": "module" hat
     const appPath = app.getAppPath();
 
     // Versuche verschiedene Pfade (mit und ohne ASAR)
     const possiblePaths = [
-      path.join(appPath, "electron", "dist", "electron", "preload.js"), // Mit ASAR
-      path.join(appPath, "electron", "dist", "electron", "preload.js"), // Ohne ASAR (gleicher Pfad)
-      path.join(appPath, "dist", "electron", "preload.js"), // Alternative Struktur
-      path.join(dirnamePath, "preload.js"), // Relativ zu main.js
+      path.join(appPath, "electron", "dist", "electron", "preload.cjs"), // Mit ASAR
+      path.join(appPath, "electron", "dist", "electron", "preload.cjs"), // Ohne ASAR (gleicher Pfad)
+      path.join(appPath, "dist", "electron", "preload.cjs"), // Alternative Struktur
+      path.join(dirnamePath, "preload.cjs"), // Relativ zu main.js
     ];
 
     // Finde den ersten existierenden Pfad
@@ -45,8 +46,9 @@ function createWindow(): void {
     console.log("[Electron] Gewählter Preload-Pfad:", preloadPath);
     console.log("[Electron] Preload existiert:", existsSync(preloadPath));
   } else {
-    // Dev: Preload liegt in electron/dist/electron/preload.js
-    preloadPath = path.resolve(dirnamePath, "electron", "preload.js");
+    // Dev: Preload liegt im gleichen Verzeichnis wie main.js: electron/dist/electron/preload.cjs
+    // Verwende .cjs Extension, da electron/package.json "type": "module" hat
+    preloadPath = path.resolve(dirnamePath, "preload.cjs");
     console.log("[Electron] Dev-Modus - Preload-Pfad:", preloadPath);
     console.log("[Electron] dirnamePath:", dirnamePath);
     console.log("[Electron] Preload existiert:", existsSync(preloadPath));
@@ -66,15 +68,47 @@ function createWindow(): void {
     icon: path.join(dirnamePath, "../public/icons/icon.png"), // Optional
   });
 
+  // Blockiere RSC (React Server Components) Anfragen im statischen Export
+  // Next.js versucht RSC Payloads zu laden, auch bei statischen Exports
+  // Diese Anfragen schlagen im file:// Protokoll fehl und sind nicht nötig
+  mainWindow.webContents.session.webRequest.onBeforeRequest((details, callback) => {
+    // Blockiere Anfragen nach .txt?_rsc= (RSC Payloads)
+    // RSC-Anfragen haben typischerweise das Format: /path/index.txt?_rsc=...
+    if (details.url.includes("?_rsc=") || details.url.includes("/index.txt")) {
+      // Prüfe ob es eine RSC-Anfrage ist
+      // Entweder hat die URL den _rsc Query-Parameter oder endet mit /index.txt
+      try {
+        // Versuche URL zu parsen (funktioniert für absolute URLs)
+        const url = new URL(details.url);
+        if (url.searchParams.has("_rsc") || url.pathname.endsWith("/index.txt")) {
+          console.log("[Electron] RSC-Anfrage blockiert:", details.url);
+          callback({ cancel: true });
+          return;
+        }
+      } catch {
+        // Wenn URL-Parsing fehlschlägt (relative URL), prüfe String-Muster
+        if (details.url.includes("?_rsc=") || details.url.endsWith("/index.txt")) {
+          console.log("[Electron] RSC-Anfrage blockiert (relative URL):", details.url);
+          callback({ cancel: true });
+          return;
+        }
+      }
+    }
+    callback({});
+  });
+
   // Content Security Policy (CSP) für Renderer-Prozess
   // CSP wird über session.webRequest.onHeadersReceived gesetzt
   mainWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
     const isDev = !app.isPackaged;
 
     // Restriktive CSP für Production, weniger restriktiv für Development
+    // WICHTIG: 'unsafe-inline' für script-src ist in Production nötig, da Next.js inline Scripts
+    // für __NEXT_DATA__ und Initialisierung generiert. Für Electron-Apps akzeptabel, da
+    // Context Isolation aktiviert und Node Integration deaktiviert ist.
     const csp = isDev
       ? "default-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:* ws://localhost:*; script-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:*; style-src 'self' 'unsafe-inline'; img-src 'self' data: http: https:; font-src 'self' data:; connect-src 'self' http://localhost:* ws://localhost:* https://*.myshopify.com;"
-      : "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://*.myshopify.com;";
+      : "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://*.myshopify.com;";
 
     callback({
       responseHeaders: {
