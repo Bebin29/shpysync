@@ -369,6 +369,139 @@ npm run test:e2e:ui
 - Electron-spezifische Tests erfordern zusätzliche Konfiguration
 - Tests werden in CI/CD automatisch ausgeführt
 
+## Mutation Testing
+
+### Übersicht
+
+Mutation Testing bewertet die Qualität der Tests, indem es absichtlich Fehler (Mutationen) in den Code einbaut und prüft, ob die Tests diese Fehler finden. Wenn Tests Mutationen nicht erkennen, sind sie unvollständig.
+
+**Tool:** Stryker  
+**Location:** `stryker.conf.json`
+
+### Was ist Mutation Testing?
+
+Mutation Testing geht über Code-Coverage hinaus:
+
+- **Code-Coverage** zeigt, welche Codezeilen ausgeführt werden
+- **Mutation Testing** zeigt, ob Tests tatsächlich Fehler erkennen
+
+**Beispiel:**
+
+```typescript
+// Original Code
+function calculateTotal(price: number, quantity: number): number {
+  return price * quantity;
+}
+
+// Mutation: * wird zu +
+function calculateTotal(price: number, quantity: number): number {
+  return price + quantity; // Falsch!
+}
+
+// Wenn Tests diese Mutation nicht erkennen, sind sie unvollständig
+```
+
+### Konfiguration
+
+Mutation Testing ist für folgende Bereiche konfiguriert:
+
+- `core/**/*.ts` - Core Domain-Logik
+- `electron/services/**/*.ts` - Service-Layer
+
+**Thresholds:**
+
+- **High (70%+):** Exzellente Testqualität
+- **Low (50-70%):** Gute Testqualität, Verbesserungspotenzial
+- **Break (<40%):** Tests müssen verbessert werden
+
+### Ausführung
+
+```bash
+# Vollständige Mutation Tests (kann 15-30 Minuten dauern)
+npm run test:mutation
+
+# Incremental Mode (nur geänderte Dateien, schneller)
+npm run test:mutation:incremental
+
+# CI-Modus mit HTML-Report
+npm run test:mutation:ci
+```
+
+### Mutation-Reports lesen
+
+Nach der Ausführung wird ein HTML-Report generiert:
+
+1. **Öffne den Report:** `reports/mutation/mutation.html`
+2. **Mutation Score:** Zeigt den Prozentsatz der getöteten Mutationen
+3. **Überlebene Mutationen:** Zeigen unvollständige Tests
+4. **Getötete Mutationen:** Zeigen, dass Tests funktionieren
+
+### Mutation-Typen
+
+Stryker erzeugt verschiedene Mutationen:
+
+- **Arithmetische Operatoren:** `+` → `-`, `*` → `/`
+- **Logische Operatoren:** `&&` → `||`, `!` → (entfernen)
+- **Vergleichsoperatoren:** `===` → `!==`, `>` → `<`
+- **Bedingte Operatoren:** `if` → entfernen, `else` → entfernen
+- **Return-Statements:** `return x` → `return null`
+- **Variablen:** `let x = 5` → `let x = 0`
+
+### Best Practices
+
+#### 1. Incremental Mode für lokale Entwicklung
+
+```bash
+# Nur geänderte Dateien mutieren (viel schneller)
+npm run test:mutation:incremental
+```
+
+#### 2. Fokus auf kritische Bereiche
+
+Mutation Testing ist rechenintensiv. Fokussiere auf:
+
+- Domain-Logik (Core)
+- Business-Critical Services
+- Komplexe Algorithmen
+
+#### 3. Überlebene Mutationen analysieren
+
+Wenn Mutationen überleben:
+
+1. **Prüfe den Test:** Deckt er den mutierten Code ab?
+2. **Erweitere den Test:** Füge Assertions hinzu
+3. **Prüfe Edge Cases:** Werden alle Szenarien getestet?
+
+#### 4. Falsche Positive ignorieren
+
+Manche Mutationen sind "falsche Positive":
+
+- Mutationen, die semantisch gleichwertig sind
+- Mutationen in Code, der nicht testbar ist
+
+Diese können in der Konfiguration ignoriert werden.
+
+### Performance-Optimierungen
+
+Die Konfiguration ist für Performance optimiert:
+
+- **`coverageAnalysis: "perTest"`** - Schneller als "all"
+- **`typescriptChecker.prioritizePerformanceOverAccuracy: true`** - Schnellere TypeScript-Checks
+- **Incremental Mode** - Nur geänderte Dateien mutieren
+
+### CI/CD-Integration
+
+Mutation Tests können in CI/CD integriert werden:
+
+- **Optional:** Da sehr langsam (10-30+ Minuten)
+- **Empfohlen:** Nur auf `main` Branch oder wöchentlich
+- **Reports:** HTML-Reports als Artefakte hochladen
+
+### Weitere Informationen
+
+- [Stryker Documentation](https://stryker-mutator.io/)
+- [Mutation Testing Explained](https://stryker-mutator.io/docs/mutation-testing-elements/)
+
 ## Continuous Integration
 
 ### GitHub Actions
