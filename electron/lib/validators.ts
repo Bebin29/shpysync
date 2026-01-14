@@ -103,6 +103,16 @@ export const updateConfigSchema = z.object({
 export type UpdateConfigSchema = z.infer<typeof updateConfigSchema>;
 
 /**
+ * Error-Reporting-Config Schema.
+ */
+export const errorReportingConfigSchema = z.object({
+  enabled: z.boolean(),
+  dsn: z.string().url().optional(),
+});
+
+export type ErrorReportingConfigSchema = z.infer<typeof errorReportingConfigSchema>;
+
+/**
  * App-Config Schema.
  */
 export const appConfigSchema = z.object({
@@ -113,6 +123,7 @@ export const appConfigSchema = z.object({
   defaultCsvPath: z.string().optional(),
   defaultDbfPath: z.string().optional(),
   update: updateConfigSchema,
+  errorReporting: errorReportingConfigSchema.optional(),
 });
 
 export type AppConfigSchema = z.infer<typeof appConfigSchema>;

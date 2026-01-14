@@ -1,10 +1,9 @@
 {
-  "extends": "./tsconfig.json",
   "compilerOptions": {
     "target": "ES2020",
     "module": "CommonJS",
     "lib": ["ES2020"],
-    "outDir": "./dist/electron",
+    "outDir": "./dist/preload-temp",
     "noEmit": false,
     "strict": true,
     "esModuleInterop": true,
@@ -12,8 +11,10 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "moduleResolution": "node",
-    "types": ["node"]
+    "types": ["node"],
+    "isolatedModules": false,
+    "noResolve": false
   },
-  "include": ["preload.ts"],
+  "files": ["preload.ts"],
   "exclude": ["node_modules", "dist"]
 }

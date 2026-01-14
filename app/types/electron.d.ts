@@ -6,7 +6,7 @@
  */
 
 import type { ElectronAPI } from "../../electron/preload";
-import type { DashboardStats, SyncHistoryEntry, CacheStats, UpdateInfo, UpdateStatus } from "../../electron/types/ipc";
+import type { DashboardStats, SyncHistoryEntry, CacheStats, UpdateInfo, UpdateStatus, ErrorReportingConfig } from "../../electron/types/ipc";
 
 declare global {
   interface Window {
@@ -15,7 +15,7 @@ declare global {
 }
 
 // Re-export Types für Verwendung in React-Komponenten
-export type { DashboardStats, SyncHistoryEntry, CacheStats, UpdateInfo, UpdateStatus };
+export type { DashboardStats, SyncHistoryEntry, CacheStats, UpdateInfo, UpdateStatus, ErrorReportingConfig };
 
 export {};
 

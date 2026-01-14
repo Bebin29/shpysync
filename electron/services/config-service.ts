@@ -1,5 +1,11 @@
 import Store from "electron-store";
-import type { ShopConfig, ShopConfigStored, AppConfig, ColumnMapping } from "../types/ipc.js";
+import type {
+  ShopConfig,
+  ShopConfigStored,
+  AppConfig,
+  ColumnMapping,
+  ErrorReportingConfig,
+} from "../types/ipc.js";
 import { storeToken, loadToken, updateToken, deleteToken, tokenExists } from "./token-store.js";
 import { appConfigSchema, shopConfigStoredSchema, shopConfigSchema } from "../lib/validators.js";
 import { SHOPIFY_API_VERSION } from "./api-version-manager.js";
@@ -27,6 +33,9 @@ const store = new Store<AppConfig>({
     update: {
       autoCheckEnabled: true,
       autoCheckInterval: 24, // Standard: 24 Stunden
+    },
+    errorReporting: {
+      enabled: false, // Standard: Opt-in (deaktiviert)
     },
   },
   encryptionKey: "wawisync-config-key", // TODO: In Produktion aus sicherer Quelle laden
@@ -82,6 +91,9 @@ function migrateOldConfig(config: unknown): AppConfig | null {
           autoCheckEnabled: true,
           autoCheckInterval: 24,
         },
+    errorReporting: isObject(config.errorReporting)
+      ? (config.errorReporting as AppConfig["errorReporting"])
+      : { enabled: false },
   };
 
   // Prüfe, ob shop vorhanden ist
@@ -165,6 +177,7 @@ export function getConfig(): AppConfig {
     defaultCsvPath: storeTyped.get("defaultCsvPath"),
     defaultDbfPath: storeTyped.get("defaultDbfPath"),
     update: storeTyped.get("update"),
+    errorReporting: storeTyped.get("errorReporting"), // WICHTIG: errorReporting muss geladen werden
   };
 
   // Migration von alter Struktur
@@ -186,6 +199,9 @@ export function getConfig(): AppConfig {
       update: {
         autoCheckEnabled: true,
         autoCheckInterval: 24,
+      },
+      errorReporting: {
+        enabled: false,
       },
     };
   }
@@ -226,6 +242,16 @@ export function setConfig(config: AppConfig): void {
     storeTyped.set("defaultDbfPath", result.data.defaultDbfPath);
   } else {
     storeTyped.delete("defaultDbfPath");
+  }
+  // Update-Config speichern
+  if (result.data.update) {
+    storeTyped.set("update", result.data.update);
+  }
+  // Error-Reporting-Config speichern
+  if (result.data.errorReporting) {
+    storeTyped.set("errorReporting", result.data.errorReporting);
+  } else {
+    storeTyped.delete("errorReporting");
   }
 }
 
@@ -566,6 +592,32 @@ export function setUpdateConfig(updateConfig: AppConfig["update"]): void {
   const updatedConfig: AppConfig = {
     ...currentConfig,
     update: updateConfig,
+  };
+  setConfig(updatedConfig);
+}
+
+/**
+ * Lädt die Error-Reporting-Konfiguration.
+ *
+ * @returns Error-Reporting-Konfiguration
+ */
+export function getErrorReportingConfig(): ErrorReportingConfig {
+  const config = getConfig();
+  return config.errorReporting ?? { enabled: false };
+}
+
+/**
+ * Speichert die Error-Reporting-Konfiguration.
+ *
+ * @param errorReportingConfig - Error-Reporting-Konfiguration
+ * @throws Error wenn Konfiguration ungültig ist
+ */
+export function setErrorReportingConfig(errorReportingConfig: AppConfig["errorReporting"]): void {
+  // Speichere Config
+  const currentConfig = getConfig();
+  const updatedConfig: AppConfig = {
+    ...currentConfig,
+    errorReporting: errorReportingConfig,
   };
   setConfig(updatedConfig);
 }

@@ -105,6 +105,7 @@ export function LogViewer({ logs, maxHeight = "400px" }: LogViewerProps) {
       history: "Historie",
       sync: "Sync",
       update: "Update",
+      "error-monitoring": "Fehlerüberwachung",
     };
     // eslint-disable-next-line security/detect-object-injection
     return labels[category] || category;
