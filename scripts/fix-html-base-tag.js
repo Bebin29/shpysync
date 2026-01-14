@@ -44,6 +44,62 @@ function fixHtmlFile(filePath) {
 }
 
 /**
+ * Patched Webpack Runtime-Dateien, um relativen publicPath zu verwenden
+ */
+function patchWebpackRuntime(dir) {
+  const chunksDir = path.join(dir, "_next", "static", "chunks");
+
+  if (!fs.existsSync(chunksDir)) {
+    return;
+  }
+
+  // Finde alle Webpack Runtime-Dateien (webpack-*.js)
+  const entries = fs.readdirSync(chunksDir, { withFileTypes: true });
+
+  for (const entry of entries) {
+    if (entry.isFile() && entry.name.startsWith("webpack-") && entry.name.endsWith(".js")) {
+      const filePath = path.join(chunksDir, entry.name);
+      let content = fs.readFileSync(filePath, "utf-8");
+      let modified = false;
+
+      // Patch 1: Ersetze absoluten publicPath "/_next/" durch relativen "./_next/"
+      // Suche nach d.p="/_next/" (minifiziert)
+      const publicPathRegex = /d\.p\s*=\s*"\/_next\/"/g;
+      if (publicPathRegex.test(content)) {
+        content = content.replace(publicPathRegex, 'd.p="./_next/"');
+        modified = true;
+      }
+
+      // Patch 2: Ersetze auch andere Varianten wie d.p='/_next/'
+      const publicPathRegex2 = /d\.p\s*=\s*'\/_next\/'/g;
+      if (publicPathRegex2.test(content)) {
+        content = content.replace(publicPathRegex2, "d.p='./_next/'");
+        modified = true;
+      }
+
+      // Patch 3: Minifizierte Variante ohne Leerzeichen: d.p="/_next/"
+      const publicPathRegex3 = /d\.p="\/_next\/"/g;
+      if (publicPathRegex3.test(content)) {
+        content = content.replace(publicPathRegex3, 'd.p="./_next/"');
+        modified = true;
+      }
+
+      // Patch 4: Minifizierte Variante mit Single Quotes: d.p='/_next/'
+      const publicPathRegex4 = /d\.p='\/_next\/'/g;
+      if (publicPathRegex4.test(content)) {
+        content = content.replace(publicPathRegex4, "d.p='./_next/'");
+        modified = true;
+      }
+
+      if (modified) {
+        fs.writeFileSync(filePath, content, "utf-8");
+        console.log(`Patched Webpack Runtime: ${path.relative(OUT_DIR, filePath)}`);
+      }
+    }
+  }
+}
+
+/**
  * Rekursiv alle HTML-Dateien durchsuchen
  */
 function processDirectory(dir) {
@@ -69,4 +125,6 @@ if (!fs.existsSync(OUT_DIR)) {
 
 console.log("Fixing HTML files with base tags...");
 processDirectory(OUT_DIR);
+console.log("Patching Webpack Runtime files...");
+patchWebpackRuntime(OUT_DIR);
 console.log("Done!");

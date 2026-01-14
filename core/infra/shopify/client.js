@@ -284,9 +284,10 @@ async function executeGraphQL(config, query, variables = {}) {
  * Ruft alle Produkte mit Cursor-Pagination ab.
  *
  * @param config - Shopify-Konfiguration
+ * @param locationId - Optional: Location-ID für Inventory-Levels
  * @returns Liste von Produkten
  */
-async function getAllProducts(config) {
+async function getAllProducts(config, locationId) {
   const products = [];
   let after = null;
   let page = 0;
@@ -296,6 +297,7 @@ async function getAllProducts(config) {
     if (after) {
       variables.after = after;
     }
+    // locationId wird nicht mehr in der Query verwendet, sondern beim Filtern der Ergebnisse
     const data = await executeGraphQL(config, queries_js_1.GQL_PRODUCTS, variables);
     const connection = data.products;
     const count = connection.edges.length;
@@ -304,15 +306,35 @@ async function getAllProducts(config) {
     );
     for (const edge of connection.edges) {
       const node = edge.node;
-      const variants = node.variants.edges.map((vEdge) => ({
-        id: vEdge.node.id,
-        productId: node.id,
-        sku: vEdge.node.sku,
-        barcode: vEdge.node.barcode,
-        title: vEdge.node.title,
-        price: vEdge.node.price,
-        inventoryItemId: vEdge.node.inventoryItem?.id || null,
-      }));
+      const variants = node.variants.edges.map((vEdge) => {
+        const inventoryItem = vEdge.node.inventoryItem;
+        const inventoryLevels = inventoryItem?.inventoryLevels?.edges;
+        // Extrahiere die verfügbare Menge aus quantities
+        let currentQuantity = undefined;
+        if (inventoryLevels && inventoryLevels.length > 0) {
+          // Wenn locationId angegeben ist, filtere nach dieser Location
+          const relevantLevel = locationId
+            ? inventoryLevels.find((level) => level.node.location.id === locationId)
+            : inventoryLevels[0];
+          if (relevantLevel) {
+            // Finde die "available" Quantity
+            const availableQuantity = relevantLevel.node.quantities.find(
+              (q) => q.name === "available"
+            );
+            currentQuantity = availableQuantity?.quantity;
+          }
+        }
+        return {
+          id: vEdge.node.id,
+          productId: node.id,
+          sku: vEdge.node.sku,
+          barcode: vEdge.node.barcode,
+          title: vEdge.node.title,
+          price: vEdge.node.price,
+          inventoryItemId: inventoryItem?.id || null,
+          currentQuantity,
+        };
+      });
       products.push({
         id: node.id,
         title: node.title,
@@ -459,6 +481,7 @@ async function setInventory(config, locationId, updates) {
       reason: "correction",
       ignoreCompareQuantity: true, // CAS aus -> direkt absolut setzen
       quantities: updates.map(({ inventoryItemId, quantity }) => ({
+        // <<< WICHTIG: 'quantities', nicht 'setQuantities'
         inventoryItemId,
         locationId,
         quantity,

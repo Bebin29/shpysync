@@ -4,6 +4,7 @@ import { app } from "electron";
 import { join } from "path";
 import { writeFile, appendFile, mkdir } from "fs/promises";
 import { existsSync } from "fs";
+import { getErrorMonitoringService } from "./error-monitoring-service.js";
 
 /**
  * Logger-Service für strukturiertes Logging.
@@ -146,6 +147,17 @@ export class Logger {
     this.sendToRenderer(log);
     if (this.logFileEnabled) {
       this.writeToLogFile(log);
+    }
+
+    // Sende kritische Fehler an Sentry (wenn aktiviert)
+    const errorMonitoringService = getErrorMonitoringService();
+    if (errorMonitoringService.isErrorMonitoringEnabled()) {
+      // Erstelle Error-Objekt für Sentry
+      const error = new Error(message);
+      errorMonitoringService.captureError(error, {
+        category,
+        ...context,
+      });
     }
   }
 
