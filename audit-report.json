@@ -1,0 +1,448 @@
+{
+  "auditReportVersion": 2,
+  "vulnerabilities": {
+    "@inquirer/editor": {
+      "name": "@inquirer/editor",
+      "severity": "low",
+      "isDirect": false,
+      "via": ["external-editor"],
+      "effects": ["@inquirer/prompts"],
+      "range": "<=4.2.15",
+      "nodes": ["node_modules/@inquirer/editor"],
+      "fixAvailable": true
+    },
+    "@inquirer/prompts": {
+      "name": "@inquirer/prompts",
+      "severity": "low",
+      "isDirect": false,
+      "via": ["@inquirer/editor"],
+      "effects": ["@stryker-mutator/core"],
+      "range": "<=6.0.1",
+      "nodes": ["node_modules/@inquirer/prompts"],
+      "fixAvailable": true
+    },
+    "@next/eslint-plugin-next": {
+      "name": "@next/eslint-plugin-next",
+      "severity": "high",
+      "isDirect": false,
+      "via": ["glob"],
+      "effects": ["eslint-config-next"],
+      "range": "14.0.5-canary.0 - 15.0.0-rc.1",
+      "nodes": ["node_modules/@next/eslint-plugin-next"],
+      "fixAvailable": {
+        "name": "eslint-config-next",
+        "version": "16.1.1",
+        "isSemVerMajor": true
+      }
+    },
+    "@semantic-release/npm": {
+      "name": "@semantic-release/npm",
+      "severity": "high",
+      "isDirect": true,
+      "via": ["npm"],
+      "effects": ["semantic-release"],
+      "range": "11.0.0 - 12.0.2",
+      "nodes": [
+        "node_modules/@semantic-release/npm",
+        "node_modules/semantic-release/node_modules/@semantic-release/npm"
+      ],
+      "fixAvailable": {
+        "name": "@semantic-release/npm",
+        "version": "10.0.6",
+        "isSemVerMajor": true
+      }
+    },
+    "@stryker-mutator/core": {
+      "name": "@stryker-mutator/core",
+      "severity": "low",
+      "isDirect": true,
+      "via": ["@inquirer/prompts"],
+      "effects": ["@stryker-mutator/typescript-checker", "@stryker-mutator/vitest-runner"],
+      "range": "8.3.0 - 8.7.1",
+      "nodes": ["node_modules/@stryker-mutator/core"],
+      "fixAvailable": true
+    },
+    "@stryker-mutator/typescript-checker": {
+      "name": "@stryker-mutator/typescript-checker",
+      "severity": "low",
+      "isDirect": true,
+      "via": ["@stryker-mutator/core"],
+      "effects": [],
+      "range": "8.3.0 - 8.7.1",
+      "nodes": ["node_modules/@stryker-mutator/typescript-checker"],
+      "fixAvailable": true
+    },
+    "@stryker-mutator/vitest-runner": {
+      "name": "@stryker-mutator/vitest-runner",
+      "severity": "low",
+      "isDirect": true,
+      "via": ["@stryker-mutator/core"],
+      "effects": [],
+      "range": "8.3.0 - 8.7.1",
+      "nodes": ["node_modules/@stryker-mutator/vitest-runner"],
+      "fixAvailable": true
+    },
+    "@vitest/coverage-v8": {
+      "name": "@vitest/coverage-v8",
+      "severity": "moderate",
+      "isDirect": true,
+      "via": ["vitest"],
+      "effects": [],
+      "range": "<=2.2.0-beta.2",
+      "nodes": ["node_modules/@vitest/coverage-v8"],
+      "fixAvailable": {
+        "name": "@vitest/coverage-v8",
+        "version": "4.0.17",
+        "isSemVerMajor": true
+      }
+    },
+    "@vitest/ui": {
+      "name": "@vitest/ui",
+      "severity": "moderate",
+      "isDirect": true,
+      "via": ["vitest"],
+      "effects": ["vitest"],
+      "range": "<=0.0.122 || 0.31.0 - 2.2.0-beta.2",
+      "nodes": ["node_modules/@vitest/ui"],
+      "fixAvailable": {
+        "name": "@vitest/ui",
+        "version": "4.0.17",
+        "isSemVerMajor": true
+      }
+    },
+    "diff": {
+      "name": "diff",
+      "severity": "low",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1112148,
+          "name": "diff",
+          "dependency": "diff",
+          "title": "jsdiff has a Denial of Service vulnerability in parsePatch and applyPatch",
+          "url": "https://github.com/advisories/GHSA-73rr-hh4g-fpgx",
+          "severity": "low",
+          "cwe": ["CWE-400", "CWE-1333"],
+          "cvss": {
+            "score": 0,
+            "vectorString": null
+          },
+          "range": "<8.0.3"
+        }
+      ],
+      "effects": ["libnpmdiff"],
+      "range": "<8.0.3",
+      "nodes": ["node_modules/npm/node_modules/diff"],
+      "fixAvailable": {
+        "name": "@semantic-release/npm",
+        "version": "10.0.6",
+        "isSemVerMajor": true
+      }
+    },
+    "electron": {
+      "name": "electron",
+      "severity": "moderate",
+      "isDirect": true,
+      "via": [
+        {
+          "source": 1107272,
+          "name": "electron",
+          "dependency": "electron",
+          "title": "Electron has ASAR Integrity Bypass via resource modification",
+          "url": "https://github.com/advisories/GHSA-vmqv-hx8q-j7mg",
+          "severity": "moderate",
+          "cwe": ["CWE-94", "CWE-829"],
+          "cvss": {
+            "score": 6.1,
+            "vectorString": "CVSS:3.1/AV:L/AC:L/PR:L/UI:R/S:U/C:L/I:H/A:L"
+          },
+          "range": "<35.7.5"
+        }
+      ],
+      "effects": [],
+      "range": "<35.7.5",
+      "nodes": ["node_modules/electron"],
+      "fixAvailable": {
+        "name": "electron",
+        "version": "39.2.7",
+        "isSemVerMajor": true
+      }
+    },
+    "esbuild": {
+      "name": "esbuild",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1102341,
+          "name": "esbuild",
+          "dependency": "esbuild",
+          "title": "esbuild enables any website to send any requests to the development server and read the response",
+          "url": "https://github.com/advisories/GHSA-67mh-4wv8-2f99",
+          "severity": "moderate",
+          "cwe": ["CWE-346"],
+          "cvss": {
+            "score": 5.3,
+            "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:U/C:H/I:N/A:N"
+          },
+          "range": "<=0.24.2"
+        }
+      ],
+      "effects": ["vite"],
+      "range": "<=0.24.2",
+      "nodes": ["node_modules/esbuild"],
+      "fixAvailable": {
+        "name": "vitest",
+        "version": "4.0.17",
+        "isSemVerMajor": true
+      }
+    },
+    "eslint-config-next": {
+      "name": "eslint-config-next",
+      "severity": "high",
+      "isDirect": true,
+      "via": ["@next/eslint-plugin-next"],
+      "effects": [],
+      "range": "14.0.5-canary.0 - 15.0.0-rc.1",
+      "nodes": ["node_modules/eslint-config-next"],
+      "fixAvailable": {
+        "name": "eslint-config-next",
+        "version": "16.1.1",
+        "isSemVerMajor": true
+      }
+    },
+    "external-editor": {
+      "name": "external-editor",
+      "severity": "low",
+      "isDirect": false,
+      "via": ["tmp"],
+      "effects": ["@inquirer/editor"],
+      "range": ">=1.1.1",
+      "nodes": ["node_modules/external-editor"],
+      "fixAvailable": true
+    },
+    "glob": {
+      "name": "glob",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1109842,
+          "name": "glob",
+          "dependency": "glob",
+          "title": "glob CLI: Command injection via -c/--cmd executes matches with shell:true",
+          "url": "https://github.com/advisories/GHSA-5j98-mcp5-4vw2",
+          "severity": "high",
+          "cwe": ["CWE-78"],
+          "cvss": {
+            "score": 7.5,
+            "vectorString": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:U/C:H/I:H/A:H"
+          },
+          "range": ">=10.2.0 <10.5.0"
+        }
+      ],
+      "effects": ["@next/eslint-plugin-next", "npm"],
+      "range": "10.2.0 - 10.4.5",
+      "nodes": [
+        "node_modules/@next/eslint-plugin-next/node_modules/glob",
+        "node_modules/npm/node_modules/glob"
+      ],
+      "fixAvailable": {
+        "name": "@semantic-release/npm",
+        "version": "10.0.6",
+        "isSemVerMajor": true
+      }
+    },
+    "libnpmdiff": {
+      "name": "libnpmdiff",
+      "severity": "low",
+      "isDirect": false,
+      "via": ["diff"],
+      "effects": ["npm"],
+      "range": "<=8.0.7",
+      "nodes": ["node_modules/npm/node_modules/libnpmdiff"],
+      "fixAvailable": {
+        "name": "@semantic-release/npm",
+        "version": "10.0.6",
+        "isSemVerMajor": true
+      }
+    },
+    "next": {
+      "name": "next",
+      "severity": "high",
+      "isDirect": true,
+      "via": [
+        {
+          "source": 1111391,
+          "name": "next",
+          "dependency": "next",
+          "title": "Next Vulnerable to Denial of Service with Server Components",
+          "url": "https://github.com/advisories/GHSA-mwv6-3258-q52c",
+          "severity": "high",
+          "cwe": ["CWE-400", "CWE-502", "CWE-1395"],
+          "cvss": {
+            "score": 7.5,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+          },
+          "range": ">=13.3.0 <14.2.34"
+        },
+        {
+          "source": 1111461,
+          "name": "next",
+          "dependency": "next",
+          "title": "Next has a Denial of Service with Server Components - Incomplete Fix Follow-Up",
+          "url": "https://github.com/advisories/GHSA-5j59-xgg2-r9c4",
+          "severity": "high",
+          "cwe": ["CWE-400", "CWE-502", "CWE-1395"],
+          "cvss": {
+            "score": 7.5,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+          },
+          "range": ">=13.3.1-canary.0 <14.2.35"
+        }
+      ],
+      "effects": [],
+      "range": "13.3.0 - 14.2.34",
+      "nodes": ["node_modules/next"],
+      "fixAvailable": true
+    },
+    "npm": {
+      "name": "npm",
+      "severity": "high",
+      "isDirect": false,
+      "via": ["glob", "libnpmdiff"],
+      "effects": ["@semantic-release/npm"],
+      "range": "7.5.0 - 11.6.0",
+      "nodes": ["node_modules/npm"],
+      "fixAvailable": {
+        "name": "eslint-config-next",
+        "version": "16.1.1",
+        "isSemVerMajor": true
+      }
+    },
+    "qs": {
+      "name": "qs",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1111755,
+          "name": "qs",
+          "dependency": "qs",
+          "title": "qs's arrayLimit bypass in its bracket notation allows DoS via memory exhaustion",
+          "url": "https://github.com/advisories/GHSA-6rw7-vpxm-498p",
+          "severity": "high",
+          "cwe": ["CWE-20"],
+          "cvss": {
+            "score": 7.5,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+          },
+          "range": "<6.14.1"
+        }
+      ],
+      "effects": [],
+      "range": "<6.14.1",
+      "nodes": ["node_modules/qs"],
+      "fixAvailable": true
+    },
+    "semantic-release": {
+      "name": "semantic-release",
+      "severity": "high",
+      "isDirect": true,
+      "via": ["@semantic-release/npm"],
+      "effects": [],
+      "range": "22.0.0-beta.1 - 25.0.0-beta.1",
+      "nodes": ["node_modules/semantic-release"],
+      "fixAvailable": {
+        "name": "semantic-release",
+        "version": "21.1.2",
+        "isSemVerMajor": true
+      }
+    },
+    "tmp": {
+      "name": "tmp",
+      "severity": "low",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1109537,
+          "name": "tmp",
+          "dependency": "tmp",
+          "title": "tmp allows arbitrary temporary file / directory write via symbolic link `dir` parameter",
+          "url": "https://github.com/advisories/GHSA-52f5-9888-hmc6",
+          "severity": "low",
+          "cwe": ["CWE-59"],
+          "cvss": {
+            "score": 2.5,
+            "vectorString": "CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:U/C:N/I:L/A:N"
+          },
+          "range": "<=0.2.3"
+        }
+      ],
+      "effects": ["external-editor"],
+      "range": "<=0.2.3",
+      "nodes": ["node_modules/external-editor/node_modules/tmp"],
+      "fixAvailable": true
+    },
+    "vite": {
+      "name": "vite",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": ["esbuild"],
+      "effects": ["vite-node", "vitest"],
+      "range": "0.11.0 - 6.1.6",
+      "nodes": ["node_modules/vite"],
+      "fixAvailable": {
+        "name": "vitest",
+        "version": "4.0.17",
+        "isSemVerMajor": true
+      }
+    },
+    "vite-node": {
+      "name": "vite-node",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": ["vite"],
+      "effects": ["vitest"],
+      "range": "<=2.2.0-beta.2",
+      "nodes": ["node_modules/vite-node"],
+      "fixAvailable": {
+        "name": "vitest",
+        "version": "4.0.17",
+        "isSemVerMajor": true
+      }
+    },
+    "vitest": {
+      "name": "vitest",
+      "severity": "moderate",
+      "isDirect": true,
+      "via": ["@vitest/ui", "vite", "vite-node"],
+      "effects": ["@vitest/coverage-v8", "@vitest/ui"],
+      "range": "0.0.1 - 0.0.12 || 0.0.29 - 0.0.122 || 0.3.3 - 2.2.0-beta.2 || 4.0.0-beta.1 - 4.0.0-beta.14",
+      "nodes": ["node_modules/vitest"],
+      "fixAvailable": {
+        "name": "vitest",
+        "version": "4.0.17",
+        "isSemVerMajor": true
+      }
+    }
+  },
+  "metadata": {
+    "vulnerabilities": {
+      "info": 0,
+      "low": 9,
+      "moderate": 7,
+      "high": 8,
+      "critical": 0,
+      "total": 24
+    },
+    "dependencies": {
+      "prod": 353,
+      "dev": 1483,
+      "optional": 116,
+      "peer": 34,
+      "peerOptional": 0,
+      "total": 1845
+    }
+  }
+}

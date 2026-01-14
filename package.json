@@ -43,6 +43,7 @@
     "test:mutation:ci": "stryker run --reporters html clear-text",
     "test:all": "vitest run && playwright test",
     "test:workflows": "bash scripts/test-workflows.sh",
+    "test:security": "node scripts/test-security.js",
     "size-limit": "size-limit",
     "prepare": "husky",
     "release": "semantic-release"
