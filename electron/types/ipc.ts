@@ -115,7 +115,8 @@ export type LogCategory =
   | "cache"
   | "history"
   | "sync"
-  | "update";
+  | "update"
+  | "error-monitoring";
 
 export interface SyncLog {
   id: string;
@@ -175,6 +176,11 @@ export interface AppConfig {
   update: {
     autoCheckEnabled: boolean;
     autoCheckInterval: number; // in Stunden (z.B. 24)
+  };
+  // Error-Reporting-Konfiguration (Sentry)
+  errorReporting?: {
+    enabled: boolean;
+    dsn?: string; // Sentry DSN (optional, kann auch über Umgebungsvariable gesetzt werden)
   };
 }
 
@@ -278,4 +284,10 @@ export interface UpdateStatus {
   progress: number;
   error: string | null;
   info: UpdateInfo | null;
+}
+
+// Error-Reporting-Types
+export interface ErrorReportingConfig {
+  enabled: boolean;
+  dsn?: string;
 }

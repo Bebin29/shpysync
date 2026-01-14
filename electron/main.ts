@@ -255,8 +255,27 @@ import { registerIpcHandlers } from "./services/ipc-handlers.js";
 import { getSyncEngine } from "./services/sync-engine.js";
 import { getLogger } from "./services/logger.js";
 import { getAutoSyncService } from "./services/auto-sync-service.js";
-import { getAutoSyncConfig, getUpdateConfig } from "./services/config-service.js";
+import {
+  getAutoSyncConfig,
+  getUpdateConfig,
+  getErrorReportingConfig,
+} from "./services/config-service.js";
 import { getUpdateService } from "./services/update-service.js";
+import { getErrorMonitoringService } from "./services/error-monitoring-service.js";
+
+// WICHTIG: Sentry MUSS vor app.whenReady() initialisiert werden
+// Initialisiere Error Monitoring beim App-Start, wenn aktiviert
+try {
+  const errorReportingConfig = getErrorReportingConfig();
+  if (errorReportingConfig.enabled) {
+    const errorMonitoringService = getErrorMonitoringService();
+    errorMonitoringService.setEnabled(true);
+    errorMonitoringService.initialize();
+  }
+} catch (error) {
+  // Fehler beim Initialisieren von Sentry sollten die App nicht blockieren
+  console.error("[Main] Fehler beim Initialisieren von Error Monitoring:", error);
+}
 
 // App-Info Handler
 ipcMain.handle("app:version", () => {

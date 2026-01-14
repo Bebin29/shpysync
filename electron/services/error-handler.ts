@@ -10,6 +10,7 @@
 import { app } from "electron";
 import { WawiError } from "../../core/domain/errors.js";
 import type { ErrorInfo } from "../types/ipc.js";
+import { getErrorMonitoringService } from "./error-monitoring-service.js";
 
 /**
  * Prüft, ob die App im Development-Modus läuft.
@@ -114,6 +115,33 @@ export function withErrorHandling<T extends (...args: unknown[]) => Promise<unkn
     } catch (error) {
       const errorInfo = errorToErrorInfo(error);
       console.error(`IPC Handler Error [${errorInfo.code}]:`, errorInfo.message, errorInfo.details);
+
+      // Sende kritische Fehler an Sentry (wenn aktiviert)
+      const errorMonitoringService = getErrorMonitoringService();
+      if (errorMonitoringService.isErrorMonitoringEnabled()) {
+        // Nur error und fatal Severity senden
+        if (
+          error instanceof WawiError &&
+          (error.severity === "error" || error.severity === "fatal")
+        ) {
+          errorMonitoringService.captureError(error, {
+            source: "ipc-handler",
+            errorInfo: {
+              code: errorInfo.code,
+              severity: errorInfo.severity,
+            },
+          });
+        } else if (error instanceof Error) {
+          // Standard Error auch senden
+          errorMonitoringService.captureError(error, {
+            source: "ipc-handler",
+            errorInfo: {
+              code: errorInfo.code,
+              severity: errorInfo.severity,
+            },
+          });
+        }
+      }
 
       // Werfe den Fehler weiter (wird von Electron behandelt)
       // IPC-Handler sollten selbst entscheiden, wie sie Fehler zurückgeben

@@ -2363,6 +2363,73 @@ SyntaxError: The requested module './api-version-manager.js' does not provide an
 
 **Hinweis:** Dieses Problem tritt möglicherweise nur im Production Build auf. Im Dev-Modus funktioniert alles korrekt.
 
+##### Problem 6: tsconfig.preload.json überschreibt ES Module-Versionen mit CommonJS
+
+**Symptom:**
+
+```
+SyntaxError: Named export 'WawiError' not found. The requested module '../../core/domain/errors.js' is a CommonJS module
+```
+
+**Ursache:**
+
+- `tsconfig.preload.json` verwendet `"extends": "./tsconfig.json"`, was die `include`-Liste von `tsconfig.json` erweitert
+- Dadurch werden alle Electron-Dateien als CommonJS kompiliert (weil `tsconfig.preload.json` `"module": "CommonJS"` hat)
+- Diese CommonJS-Versionen überschreiben die ES Module-Versionen, die von `tsconfig.json` erstellt wurden
+- Der Import `../../core/domain/errors.js` zeigt auf die CommonJS-Version statt auf die ES Module-Version
+
+**Lösung:**
+
+- ❌ **NICHT:** `"extends": "./tsconfig.json"` in `tsconfig.preload.json` verwenden
+- ✅ **Richtig:** `tsconfig.preload.json` sollte eine eigenständige Konfiguration sein (ohne `extends`)
+- ✅ **Wichtig:** `outDir` muss unterschiedlich sein: `"outDir": "./dist/preload-temp"` statt `"./dist/electron"`
+- ✅ **Wichtig:** Build-Script muss `preload.js` aus `preload-temp` nach `electron/dist/electron/preload.cjs` kopieren
+
+**Konfiguration:**
+
+```jsonc
+// electron/tsconfig.preload.json
+{
+  // KEIN "extends" - eigenständige Konfiguration!
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "CommonJS", // WICHTIG: CommonJS für Preload
+    "lib": ["ES2020"],
+    "outDir": "./dist/preload-temp", // WICHTIG: Separates Verzeichnis!
+    "noEmit": false,
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "moduleResolution": "node",
+    "types": ["node"],
+  },
+  "include": ["preload.ts"], // NUR preload.ts!
+  "exclude": ["node_modules", "dist"],
+}
+```
+
+**Build-Script:**
+
+```jsonc
+{
+  "scripts": {
+    "electron:build:ts": "tsc -p electron/tsconfig.json && tsc -p electron/tsconfig.preload.json && tsc-esm-fix --target electron/dist && node scripts/fix-sentry-imports.js && node -e \"const fs = require('fs'); const path = require('path'); const preloadSrc = path.join('electron', 'dist', 'preload-temp', 'electron', 'preload.js'); const preloadDest = path.join('electron', 'dist', 'electron', 'preload.cjs'); if (fs.existsSync(preloadSrc)) { fs.copyFileSync(preloadSrc, preloadDest); console.log('Preload.js zu preload.cjs kopiert'); } ...\"",
+  },
+}
+```
+
+**WICHTIG:** Der Preload-Pfad ist `electron/dist/preload-temp/electron/preload.js` (nicht `electron/dist/preload-temp/preload.js`), weil TypeScript die Verzeichnisstruktur beibehält.
+
+**Hinweis:** Die Kompilierungsreihenfolge ist wichtig: Zuerst `tsconfig.json` (ES Modules), dann `tsconfig.preload.json` (CommonJS), damit die ES Module-Versionen nicht von den CommonJS-Versionen überschrieben werden.
+
+**WICHTIG:** Bei Problemen mit gemischten CommonJS/ES Module-Versionen:
+
+- Lösche das `electron/dist` Verzeichnis und führe einen sauberen Build durch
+- Stelle sicher, dass `tsconfig.json` VOR `tsconfig.preload.json` kompiliert wird
+- Prüfe, dass `outDir` in `tsconfig.preload.json` auf `./dist/preload-temp` gesetzt ist (nicht `./dist/electron`)
+
 ##### Zusammenfassung der Build-Konfiguration
 
 **Erforderliche Dateien:**

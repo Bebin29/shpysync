@@ -14,6 +14,7 @@ import type {
   SyncHistoryEntry,
   UpdateInfo,
   UpdateStatus,
+  ErrorReportingConfig,
 } from "./types/ipc.js";
 import type { AutoSyncStatus } from "./services/auto-sync-service.js";
 
@@ -161,6 +162,19 @@ const electronAPI = {
     removeAllListeners: (channel: string) => {
       ipcRenderer.removeAllListeners(channel);
     },
+  },
+
+  // Error-Reporting-Funktionen
+  errorReporting: {
+    getConfig: () =>
+      ipcRenderer.invoke("error-reporting:get-config") as Promise<ErrorReportingConfig>,
+    setConfig: (config: ErrorReportingConfig) =>
+      ipcRenderer.invoke("error-reporting:set-config", config) as Promise<void>,
+    testError: () =>
+      ipcRenderer.invoke("error-reporting:test-error") as Promise<{
+        success: boolean;
+        message: string;
+      }>,
   },
 };
 

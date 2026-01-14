@@ -1,4 +1,4 @@
-import { ipcMain, dialog, BrowserWindow } from "electron";
+import { ipcMain, dialog, BrowserWindow, app } from "electron";
 import type {
   ShopConfig,
   AppConfig,
@@ -18,6 +18,8 @@ import {
   validateShopConfig,
   getAutoSyncConfig,
   setAutoSyncConfig,
+  getErrorReportingConfig,
+  setErrorReportingConfig,
 } from "./config-service.js";
 import { testConnection, getLocations } from "./shopify-service.js";
 import { previewCsvWithMapping, createColumnNameToLetterMap } from "./csv-service.js";
@@ -28,7 +30,14 @@ import { getCacheService } from "./cache-service.js";
 import { getSyncHistoryService } from "./sync-history-service.js";
 import { getAllProductsWithVariants } from "./shopify-product-service.js";
 import { getUpdateService } from "./update-service.js";
-import type { CacheStats, DashboardStats, SyncHistoryEntry, UpdateStatus } from "../types/ipc.js";
+import { getErrorMonitoringService } from "./error-monitoring-service.js";
+import type {
+  CacheStats,
+  DashboardStats,
+  SyncHistoryEntry,
+  UpdateStatus,
+  ErrorReportingConfig,
+} from "../types/ipc.js";
 
 /**
  * Registriert alle IPC-Handler für die Electron-App.
@@ -612,4 +621,144 @@ export function registerIpcHandlers(): void {
     const updateService = getUpdateService();
     return updateService.getStatus();
   });
+
+  // Error-Reporting-Handler
+  ipcMain.handle("error-reporting:get-config", async (): Promise<ErrorReportingConfig> => {
+    try {
+      return getErrorReportingConfig();
+    } catch (error) {
+      const errorInfo = errorToErrorInfo(error);
+      throw new Error(errorInfo.userMessage);
+    }
+  });
+
+  ipcMain.handle(
+    "error-reporting:set-config",
+    async (_event, config: ErrorReportingConfig): Promise<void> => {
+      try {
+        setErrorReportingConfig(config);
+
+        // Aktiviere/Deaktiviere Error Monitoring Service
+        const errorMonitoringService = getErrorMonitoringService();
+        errorMonitoringService.setEnabled(config.enabled);
+
+        // Wenn aktiviert, versuche Sentry zu initialisieren
+        // WICHTIG: Sentry sollte beim App-Start initialisiert werden (vor app.whenReady())
+        // Wenn die App bereits bereit ist, kann Sentry nicht mehr initialisiert werden
+        if (config.enabled) {
+          // Versuche zu initialisieren (kann fehlschlagen, wenn App bereits bereit ist)
+          try {
+            errorMonitoringService.initialize();
+          } catch (initError) {
+            // Wenn Initialisierung fehlschlägt, weil App bereits bereit ist,
+            // informiere den Benutzer, dass ein Neustart erforderlich ist
+            if (app.isReady()) {
+              // Wir werfen keinen Fehler, sondern lassen den Benutzer wissen,
+              // dass ein Neustart erforderlich ist (wird in der UI angezeigt)
+            } else {
+              // Wenn die App nicht bereit ist, aber trotzdem ein Fehler auftritt,
+              // sollte dieser weitergegeben werden
+              throw initError;
+            }
+          }
+        }
+      } catch (error) {
+        const errorInfo = errorToErrorInfo(error);
+        throw new Error(errorInfo.userMessage);
+      }
+    }
+  );
+
+  // Test-Fehler für Development (nur wenn nicht packaged)
+  ipcMain.handle(
+    "error-reporting:test-error",
+    async (): Promise<{ success: boolean; message: string }> => {
+      try {
+        const errorMonitoringService = getErrorMonitoringService();
+        const config = getErrorReportingConfig();
+
+        // #region agent log
+        fetch("http://127.0.0.1:7243/ingest/32d6af7b-05b1-4f59-95cd-98f5edfe25f6", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            location: "ipc-handlers.ts:719",
+            message: "IPC: test-error aufgerufen",
+            data: {
+              configEnabled: config.enabled,
+              isEnabled: errorMonitoringService.isErrorMonitoringEnabled(),
+              hasDSN: !!(process.env.SENTRY_DSN || config.dsn),
+              appIsReady: app.isReady(),
+            },
+            timestamp: Date.now(),
+            sessionId: "debug-session",
+            runId: "run1",
+            hypothesisId: "A",
+          }),
+        }).catch(() => {});
+        // #endregion
+
+        // Prüfe, ob Error Monitoring aktiviert ist
+        if (!errorMonitoringService.isErrorMonitoringEnabled()) {
+          // Wenn Config aktiviert ist, aber Sentry nicht initialisiert werden kann (App bereits bereit)
+          if (config.enabled) {
+            if (app.isReady()) {
+              return {
+                success: false,
+                message:
+                  "Error Reporting ist aktiviert, aber Sentry kann nicht zur Laufzeit initialisiert werden. Bitte starten Sie die App neu, damit Error Reporting aktiviert wird.",
+              };
+            }
+
+            // Versuche zu initialisieren, wenn App noch nicht bereit ist
+            try {
+              errorMonitoringService.initialize();
+
+              // Prüfe erneut
+              if (!errorMonitoringService.isErrorMonitoringEnabled()) {
+                return {
+                  success: false,
+                  message:
+                    "Error Reporting ist nicht aktiviert. Bitte aktivieren Sie es zuerst und stellen Sie sicher, dass SENTRY_DSN gesetzt ist.",
+                };
+              }
+            } catch (initError) {
+              return {
+                success: false,
+                message: `Fehler beim Initialisieren von Error Reporting: ${initError instanceof Error ? initError.message : String(initError)}. Bitte starten Sie die App neu.`,
+              };
+            }
+          } else {
+            return {
+              success: false,
+              message: "Error Reporting ist nicht aktiviert. Bitte aktivieren Sie es zuerst.",
+            };
+          }
+        }
+
+        // Erstelle einen Test-Fehler
+        const testError = new Error("Test-Fehler für Sentry (Development)");
+        testError.name = "SentryTestError";
+
+        // Sende Test-Fehler an Sentry
+        errorMonitoringService.captureError(testError, {
+          test: true,
+          source: "manual-test",
+          timestamp: new Date().toISOString(),
+          environment: "development",
+        });
+
+        return {
+          success: true,
+          message: "Test-Fehler wurde an Sentry gesendet. Prüfen Sie das Sentry-Dashboard.",
+        };
+      } catch (error) {
+        const errorInfo = errorToErrorInfo(error);
+        return {
+          success: false,
+          message: errorInfo.userMessage,
+        };
+      }
+    }
+  );
 }

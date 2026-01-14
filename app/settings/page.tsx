@@ -28,6 +28,7 @@ import { useConfig } from "@/app/hooks/use-config";
 import { useElectron } from "@/app/hooks/use-electron";
 import { Checkbox } from "@/components/ui/checkbox";
 import { UpdateSection } from "@/app/components/update-section";
+import type { ErrorReportingConfig } from "@/app/types/electron.d";
 
 /**
  * Einstellungs-Seite für Shop-Konfiguration.
@@ -84,6 +85,19 @@ export default function SettingsPage() {
   const [savingAutoSync, setSavingAutoSync] = useState(false);
   const [testingAutoSync, setTestingAutoSync] = useState(false);
 
+  // Error-Reporting State
+  const [errorReportingConfig, setErrorReportingConfig] = useState<ErrorReportingConfig>({
+    enabled: false,
+  });
+  const [errorReportingConfigDirty, setErrorReportingConfigDirty] = useState(false);
+  const [loadingErrorReporting, setLoadingErrorReporting] = useState(true);
+  const [savingErrorReporting, setSavingErrorReporting] = useState(false);
+  const [testingErrorReporting, setTestingErrorReporting] = useState(false);
+  const [errorReportingTestResult, setErrorReportingTestResult] = useState<{
+    success: boolean;
+    message: string;
+  } | null>(null);
+
   // Lade vorhandene Konfiguration
   useEffect(() => {
     if (shopConfig) {
@@ -93,6 +107,23 @@ export default function SettingsPage() {
       setLocationName(shopConfig.locationName);
     }
   }, [shopConfig]);
+
+  // Lade Error-Reporting-Config
+  useEffect(() => {
+    const loadErrorReportingConfig = async () => {
+      try {
+        setLoadingErrorReporting(true);
+        const config = await window.electron.errorReporting.getConfig();
+        setErrorReportingConfig(config);
+        setErrorReportingConfigDirty(false);
+      } catch (err) {
+        console.error("Fehler beim Laden der Error-Reporting-Config:", err);
+      } finally {
+        setLoadingErrorReporting(false);
+      }
+    };
+    loadErrorReportingConfig();
+  }, []);
 
   // Lade Auto-Sync-Config und Standard-Pfade
   useEffect(() => {
@@ -965,6 +996,181 @@ export default function SettingsPage() {
             <Label className="mb-2 block">Manuelle Update-Prüfung</Label>
             <UpdateSection />
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Error-Reporting */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Fehlerberichterstattung</CardTitle>
+          <CardDescription>
+            Automatische Fehlerberichte an den Entwickler senden (Sentry)
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {loadingErrorReporting ? (
+            <div className="flex items-center justify-center py-4">
+              <Loader2 className="h-4 w-4 animate-spin" />
+            </div>
+          ) : (
+            <>
+              <div className="flex items-start space-x-2">
+                <Checkbox
+                  id="error-reporting-enabled"
+                  checked={errorReportingConfig.enabled}
+                  onCheckedChange={(checked) => {
+                    setErrorReportingConfig({
+                      ...errorReportingConfig,
+                      enabled: checked === true,
+                    });
+                    setErrorReportingConfigDirty(true);
+                  }}
+                  disabled={savingErrorReporting}
+                />
+                <div className="space-y-1">
+                  <Label htmlFor="error-reporting-enabled" className="cursor-pointer">
+                    Fehlerberichte an Entwickler senden
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Hilft dabei, Fehler schneller zu beheben und die App zu verbessern
+                  </p>
+                </div>
+              </div>
+
+              {errorReportingConfig.enabled && (
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription className="text-xs">
+                    <strong>Was wird gesendet:</strong>
+                    <ul className="mt-1 ml-4 list-disc space-y-1">
+                      <li>Fehlermeldungen und Stack-Traces</li>
+                      <li>App-Version und Betriebssystem</li>
+                      <li>Fehler-Kontext (z.B. während Sync)</li>
+                    </ul>
+                    <strong className="mt-2 block">Was wird NICHT gesendet:</strong>
+                    <ul className="mt-1 ml-4 list-disc space-y-1">
+                      <li>Keine persönlichen Daten (Namen, E-Mails)</li>
+                      <li>Keine Access-Tokens oder Passwörter</li>
+                      <li>Keine Shop-URLs im Klartext</li>
+                      <li>Keine CSV-Daten oder Produktinformationen</li>
+                    </ul>
+                    <p className="mt-2">
+                      Alle sensiblen Daten werden automatisch anonymisiert oder entfernt.
+                    </p>
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {errorReportingTestResult && (
+                <Alert variant={errorReportingTestResult.success ? "default" : "destructive"}>
+                  {errorReportingTestResult.success ? (
+                    <CheckCircle2 className="h-4 w-4" />
+                  ) : (
+                    <AlertCircle className="h-4 w-4" />
+                  )}
+                  <AlertDescription>{errorReportingTestResult.message}</AlertDescription>
+                </Alert>
+              )}
+
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      setSavingErrorReporting(true);
+                      setErrorReportingTestResult(null);
+                      await window.electron.errorReporting.setConfig(errorReportingConfig);
+                      setErrorReportingConfigDirty(false);
+
+                      // Prüfe, ob Error Reporting aktiviert wurde und ob ein Neustart erforderlich ist
+                      if (errorReportingConfig.enabled) {
+                        // Versuche zu prüfen, ob Sentry initialisiert wurde
+                        // Wenn nicht, ist ein Neustart erforderlich
+                        try {
+                          const testResult = await window.electron.errorReporting.testError();
+                          if (
+                            !testResult.success &&
+                            testResult.message.includes("nicht aktiviert")
+                          ) {
+                            setErrorReportingTestResult({
+                              success: true,
+                              message:
+                                "Einstellungen gespeichert. Bitte starten Sie die App neu, damit Error Reporting aktiviert wird.",
+                            });
+                          } else {
+                            setErrorReportingTestResult({
+                              success: true,
+                              message: "Einstellungen gespeichert",
+                            });
+                          }
+                        } catch {
+                          setErrorReportingTestResult({
+                            success: true,
+                            message: "Einstellungen gespeichert",
+                          });
+                        }
+                      } else {
+                        setErrorReportingTestResult({
+                          success: true,
+                          message: "Einstellungen gespeichert",
+                        });
+                      }
+                    } catch (err) {
+                      console.error("Fehler beim Speichern der Error-Reporting-Config:", err);
+                      setErrorReportingTestResult({
+                        success: false,
+                        message: err instanceof Error ? err.message : "Fehler beim Speichern",
+                      });
+                    } finally {
+                      setSavingErrorReporting(false);
+                    }
+                  }}
+                  disabled={savingErrorReporting || !errorReportingConfigDirty}
+                  variant="outline"
+                >
+                  {savingErrorReporting ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="mr-2 h-4 w-4" />
+                  )}
+                  Speichern
+                </Button>
+
+                {errorReportingConfig.enabled && (
+                  <Button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        setTestingErrorReporting(true);
+                        setErrorReportingTestResult(null);
+                        const result = await window.electron.errorReporting.testError();
+                        setErrorReportingTestResult(result);
+                      } catch (err) {
+                        console.error("Fehler beim Testen der Error-Reporting:", err);
+                        setErrorReportingTestResult({
+                          success: false,
+                          message: err instanceof Error ? err.message : "Fehler beim Testen",
+                        });
+                      } finally {
+                        setTestingErrorReporting(false);
+                      }
+                    }}
+                    disabled={
+                      testingErrorReporting || savingErrorReporting || errorReportingConfigDirty
+                    }
+                    variant="outline"
+                  >
+                    {testingErrorReporting ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <TestTube className="mr-2 h-4 w-4" />
+                    )}
+                    Test-Fehler senden
+                  </Button>
+                )}
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
 

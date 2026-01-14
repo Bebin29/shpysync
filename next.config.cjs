@@ -2,8 +2,8 @@
 const nextConfig = {
   output: "export",
   // Asset-Pfade relativ machen für Electron file:// Protokoll
-  // WICHTIG: assetPrefix nur für Production Builds, nicht für Dev-Modus
-  assetPrefix: process.env.NODE_ENV === "production" ? "./" : undefined,
+  // WICHTIG: assetPrefix immer für Electron-Builds setzen (Next.js setzt NODE_ENV=production automatisch beim Build)
+  assetPrefix: "./",
   // Trailing Slash für korrekte Routen im file:// Kontext
   trailingSlash: true,
   images: {
