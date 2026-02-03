@@ -32,8 +32,9 @@ jobs:
         run: npm run electron:build:ts
 
       - name: Setup Windows Code Signing
-        if: ${{ secrets.WINDOWS_SIGNING_CERT != '' }}
+        if: ${{ env.HAS_SIGNING_CERT == 'true' }}
         env:
+          HAS_SIGNING_CERT: ${{ secrets.WINDOWS_SIGNING_CERT != '' }}
           WINDOWS_SIGNING_CERT: ${{ secrets.WINDOWS_SIGNING_CERT }}
           WINDOWS_SIGNING_PASSWORD: ${{ secrets.WINDOWS_SIGNING_PASSWORD }}
         run: |
@@ -46,7 +47,7 @@ jobs:
 
       - name: Build Electron for Windows
         env:
-          CSC_IDENTITY_AUTO_DISCOVERY: ${{ secrets.WINDOWS_SIGNING_CERT != '' && 'false' || 'false' }}
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
         run: npm run electron:build
 
       - name: Upload Windows artifacts
