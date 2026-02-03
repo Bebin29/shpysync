@@ -290,4 +290,6 @@ export interface UpdateStatus {
 export interface ErrorReportingConfig {
   enabled: boolean;
   dsn?: string;
+  performanceMonitoring?: boolean;
+  sessionReplay?: boolean;
 }

@@ -23,6 +23,7 @@ export class ErrorMonitoringService {
   private isInitialized = false;
   private isEnabled = false;
   private isEnabledExplicitlySet = false; // Flag, um zu markieren, ob isEnabled explizit gesetzt wurde
+  private performanceMonitoringEnabled = false;
   private logger = getLogger();
 
   /**
@@ -391,6 +392,28 @@ export class ErrorMonitoringService {
    */
   isErrorMonitoringEnabled(): boolean {
     return this.isEnabled && this.isInitialized;
+  }
+
+  /**
+   * Aktiviert oder deaktiviert Performance Monitoring.
+   *
+   * @param enabled - Ob Performance Monitoring aktiviert sein soll
+   */
+  setPerformanceMonitoringEnabled(enabled: boolean): void {
+    this.performanceMonitoringEnabled = enabled;
+    this.logger.debug(
+      "error-monitoring",
+      `Performance Monitoring ${enabled ? "aktiviert" : "deaktiviert"}`
+    );
+  }
+
+  /**
+   * Gibt zurück, ob Performance Monitoring aktiviert ist.
+   *
+   * @returns true wenn aktiviert
+   */
+  isPerformanceMonitoringEnabled(): boolean {
+    return this.isEnabled && this.isInitialized && this.performanceMonitoringEnabled;
   }
 }
 

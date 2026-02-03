@@ -603,7 +603,13 @@ export function setUpdateConfig(updateConfig: AppConfig["update"]): void {
  */
 export function getErrorReportingConfig(): ErrorReportingConfig {
   const config = getConfig();
-  return config.errorReporting ?? { enabled: false };
+  return (
+    config.errorReporting ?? {
+      enabled: false,
+      performanceMonitoring: false,
+      sessionReplay: false,
+    }
+  );
 }
 
 /**

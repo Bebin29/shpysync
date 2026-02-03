@@ -108,6 +108,8 @@ export type UpdateConfigSchema = z.infer<typeof updateConfigSchema>;
 export const errorReportingConfigSchema = z.object({
   enabled: z.boolean(),
   dsn: z.string().url().optional(),
+  performanceMonitoring: z.boolean().optional().default(false),
+  sessionReplay: z.boolean().optional().default(false),
 });
 
 export type ErrorReportingConfigSchema = z.infer<typeof errorReportingConfigSchema>;
