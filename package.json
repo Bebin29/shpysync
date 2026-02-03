@@ -44,6 +44,9 @@
     "test:all": "vitest run && playwright test",
     "test:workflows": "bash scripts/test-workflows.sh",
     "test:security": "node scripts/test-security.js",
+    "test:ci:local": "node scripts/test-ci-local.js",
+    "test:ci:quick": "node scripts/test-ci-local.js --quick",
+    "test:ci:full": "node scripts/test-ci-local.js --full",
     "size-limit": "size-limit",
     "prepare": "husky",
     "release": "semantic-release"
