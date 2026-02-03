@@ -1,0 +1,20 @@
+# Gitleaks configuration
+# https://github.com/gitleaks/gitleaks
+
+title = "WAWISync Gitleaks Configuration"
+
+# Allow paths - ignore build artifacts and development certificates
+[allowlist]
+  description = "Allowlisted files and patterns"
+  
+  paths = [
+    # Build artifacts (not committed, but scanned locally)
+    '''\.next/.*''',
+    '''dist/.*''',
+    '''build/.*''',
+    '''out/.*''',
+    '''node_modules/.*''',
+    
+    # Development certificate (self-signed, not a real secret)
+    '''scripts/build/certificate\.pfx''',
+  ]
