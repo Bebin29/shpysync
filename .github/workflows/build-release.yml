@@ -51,7 +51,7 @@ jobs:
         run: npm run electron:build
 
       - name: Upload Windows artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: windows-build
           path: |
@@ -95,7 +95,7 @@ jobs:
         run: node scripts/create-latest-mac-yml.js
 
       - name: Upload macOS artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: macos-build
           path: |
@@ -134,7 +134,7 @@ jobs:
         run: npm run electron:build:linux
 
       - name: Upload Linux artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: linux-build
           path: |
